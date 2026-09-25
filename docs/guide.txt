@@ -1,0 +1,33 @@
+1. Create the repo, put the .md in docs/requirements.md, and add a CLAUDE.md at the root with your stack decisions (Compose, Room vs DataStore, min SDK, package structure) and "see docs/requirements.md for the spec."
+
+2. First session: ask for an architecture plan only — package layout, data entities, navigation graph, ViewModel structure. Review it before any code is written.
+
+3. Then one feature per session, in MVP order: data layer → exercise library → routines → active workout → history → settings/export → reminders. Reference the IDs directly: "Implement FR-3.1 through FR-3.4."
+
+4. Build and run in Android Studio after each slice. Paste errors and crash logs back.
+
+5. Ask for unit tests on the domain logic (volume, estimated 1RM, PR detection, unit conversion), since those are easy to get subtly wrong.
+
+
+Start a new project
+On the Android Studio welcome screen click New Project. If you already have a project open, use File → New → New Project instead.
+
+Pick the Empty Activity template
+Under Phone and Tablet, choose Empty Activity. This one is Jetpack Compose with Material 3. Don't pick Empty Views Activity, which uses the older XML layout system.
+
+Configure the project
+Name: your app name (e.g. Liftbook). Package name: reverse-domain style like com.yourname.liftbook. Language: Kotlin. Minimum SDK: API 26 (Android 8.0), which matches NFR-4 in your spec. Build configuration language: Kotlin DSL (build.gradle.kts). Then click Finish.
+
+Wait for Gradle sync
+The first sync downloads the Gradle wrapper and dependencies and can take several minutes. Watch the progress bar at the bottom; if it fails, check your internet connection and click Sync Project with Gradle Files (the elephant icon) to retry.
+
+Set up a device
+Open Device Manager (right sidebar) → Create Device → pick a Pixel and a recent system image, then download it. Or plug in your phone with USB debugging enabled under Developer Options. A real device is better for testing the rest timer and reminders.
+
+Run the starter app
+Press the green Run button (or Shift+F10). You should see "Hello Android!" on screen. If it builds and runs, your setup is done.
+
+
+Add your spec and open in Claude Code
+In the project root create a docs folder and drop requirements.md in it, plus a CLAUDE.md with your stack decisions. Then open the project folder in Claude Code and start with the architecture-plan session.
+
