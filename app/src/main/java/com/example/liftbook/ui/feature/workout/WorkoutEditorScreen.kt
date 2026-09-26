@@ -31,8 +31,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.SwapVert
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +42,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -52,7 +49,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,6 +84,7 @@ import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.ExercisePickerSheet
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.NoteField
+import com.example.liftbook.ui.components.PastDatePickerDialog
 import com.example.liftbook.ui.components.ReorderableItem
 import com.example.liftbook.ui.components.SectionHeader
 import com.example.liftbook.ui.components.SkeletonBlock
@@ -106,11 +103,9 @@ import com.example.liftbook.ui.theme.ThemePreviews
 import com.example.liftbook.ui.theme.tabularNumbers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 
 @Composable
 fun WorkoutEditorRoute(
@@ -281,7 +276,7 @@ fun WorkoutEditorScreen(
     when (val field = picking) {
         null -> Unit
         TimeField.Date -> if (span != null) {
-            WorkoutDatePicker(
+            PastDatePickerDialog(
                 selected = span.start.atZone(state.zone).toLocalDate(),
                 today = state.today,
                 onPick = { date ->
@@ -578,39 +573,6 @@ private fun PickerField(label: String, value: String, onClick: () -> Unit, modif
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WorkoutDatePicker(selected: LocalDate, today: LocalDate, onPick: (LocalDate) -> Unit, onDismiss: () -> Unit) {
-    // The picker works in UTC midnights; a workout can't have happened after today.
-    val latest = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-    val state = rememberDatePickerState(
-        initialSelectedDateMillis = selected.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-        yearRange = PICKER_FIRST_YEAR..today.year,
-        selectableDates = remember(latest) {
-            object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= latest
-
-                override fun isSelectableYear(year: Int) = year <= today.year
-            }
-        },
-    )
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    state.selectedDateMillis?.let { onPick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) } ?: onDismiss()
-                },
-            ) {
-                Text(stringResource(R.string.workout_editor_pick_confirm))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.workout_editor_pick_dismiss)) } },
-    ) {
-        DatePicker(state = state)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 private fun WorkoutTimePicker(title: String, selected: LocalTime, onPick: (LocalTime) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val state = rememberTimePickerState(
@@ -705,7 +667,6 @@ private const val FIRST_EXERCISE_INDEX = 4
 /** The LazyColumn index of the first exercise while reordering: after the hint. */
 private const val REORDER_FIRST_INDEX = 1
 private const val SCROLL_WAIT_MILLIS = 2_000L
-private const val PICKER_FIRST_YEAR = 2000
 private val PickerFieldHeight = 56.dp
 private val FieldOutline = 1.dp
 private val AddButtonHeight = 48.dp

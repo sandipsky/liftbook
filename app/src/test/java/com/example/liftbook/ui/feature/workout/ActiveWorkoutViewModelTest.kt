@@ -3,10 +3,12 @@ package com.example.liftbook.ui.feature.workout
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshots.Snapshot
 import app.cash.turbine.test
+import com.example.liftbook.domain.calculator.oneRepMax
 import com.example.liftbook.domain.model.Equipment
 import com.example.liftbook.domain.model.ExerciseType
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.MuscleGroup
+import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetTarget
@@ -160,6 +162,53 @@ class ActiveWorkoutViewModelTest {
         assertEquals(List(3) { SetValues(weightKg = 80.0, reps = 8) }, stored.map { it.values })
         assertEquals(listOf(true, false, false), stored.map { it.isCompleted })
         assertEquals("80", viewModel.set(stored[2].id).fields.weight.text)
+    }
+
+    @Test
+    fun `a done set that beats every earlier workout is flagged as a record as it's done`() = runTest {
+        workouts.history[bench.id] = listOf(LoggedSet(SetType.NORMAL, SetMetrics.Strength(95.0, 5)))
+        workouts.startFromRoutine("push")
+        val viewModel = activeWorkout()
+        assertTrue(viewModel.set(benchSet1).records.isEmpty())
+
+        viewModel.onAction(ActiveWorkoutAction.ToggleSetDone(benchSet1))
+
+        assertEquals(
+            listOf(PersonalRecord.HeaviestWeight(100.0, 5), PersonalRecord.BestEstimatedOneRepMax(oneRepMax(100.0, 5), 100.0, 5)),
+            viewModel.set(benchSet1).records,
+        )
+        assertEquals(viewModel.set(benchSet1).records, viewModel.uiState.value.exercises.first().records)
+    }
+
+    @Test
+    fun `a record moves to the set that beats it, and back when that set is undone`() = runTest {
+        workouts.history[bench.id] = listOf(LoggedSet(SetType.NORMAL, SetMetrics.Strength(95.0, 5)))
+        workouts.startFromRoutine("push")
+        val viewModel = activeWorkout()
+        viewModel.onAction(ActiveWorkoutAction.ToggleSetDone(benchSet1))
+        viewModel.set(benchSet2).fields.weight.state.setTextAndPlaceCursorAtEnd("102.5")
+
+        viewModel.onAction(ActiveWorkoutAction.ToggleSetDone(benchSet2))
+
+        // Measured against earlier workouts, the same way the summary will be: the heavier set holds both.
+        assertTrue(viewModel.set(benchSet1).records.isEmpty())
+        assertEquals(2, viewModel.set(benchSet2).records.size)
+
+        viewModel.onAction(ActiveWorkoutAction.ToggleSetDone(benchSet2))
+
+        assertEquals(2, viewModel.set(benchSet1).records.size)
+        assertTrue(viewModel.set(benchSet2).records.isEmpty())
+    }
+
+    @Test
+    fun `nothing is a record the first time an exercise is done`() = runTest {
+        workouts.startFromRoutine("push")
+        val viewModel = activeWorkout()
+
+        viewModel.onAction(ActiveWorkoutAction.ToggleSetDone(benchSet1))
+
+        assertTrue(viewModel.set(benchSet1).records.isEmpty())
+        assertTrue(viewModel.uiState.value.exercises.all { it.records.isEmpty() })
     }
 
     @Test

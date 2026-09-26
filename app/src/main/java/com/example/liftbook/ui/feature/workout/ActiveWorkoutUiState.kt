@@ -2,6 +2,7 @@ package com.example.liftbook.ui.feature.workout
 
 import androidx.compose.foundation.text.input.TextFieldState
 import com.example.liftbook.domain.calculator.WorkoutProgress
+import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.UserPreferences
@@ -44,6 +45,8 @@ data class ActiveExercise(
     val restSeconds: Int,
     /** Whether the exercise has a rest time of its own, rather than the default. */
     val hasOwnRest: Boolean,
+    /** The records its done sets have set so far this workout (FR-5.2). */
+    val records: List<PersonalRecord> = emptyList(),
 ) {
     val id: String get() = item.id
     val hasCompletedSets: Boolean get() = sets.any { it.set.isCompleted }
@@ -56,6 +59,11 @@ data class ActiveSet(
     val fields: SetFields,
     /** Marking it done was tried with something missing: the empty fields show as errors. */
     val showMissing: Boolean = false,
+    /**
+     * The records it holds, against every earlier workout (FR-5.2) — the same ones the summary
+     * will list. Empty until it's done, and for a set another set of the workout has beaten.
+     */
+    val records: List<PersonalRecord> = emptyList(),
 )
 
 sealed interface ActiveWorkoutAction {

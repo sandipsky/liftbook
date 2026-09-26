@@ -51,11 +51,25 @@ data class RecapExercise(
     val id: String,
     val exercise: Exercise,
     val sets: List<LoggedSet>,
+    /** The indices of [sets] that set one of the workout's records (FR-5.2). */
+    val recordSets: Set<Int> = emptySet(),
 )
 
-/** The exercises with something done, in workout order. */
-fun Workout.recapExercises(): List<RecapExercise> = exercises.mapNotNull { exercise ->
-    exercise.completedSets().takeIf { it.isNotEmpty() }?.let { RecapExercise(exercise.id, exercise.exercise, it) }
+/**
+ * The exercises with something done, in workout order: each exercise's completed sets, as
+ * [completedSets] reads them, flagged where their id is in [recordSetIds].
+ */
+fun Workout.recapExercises(recordSetIds: Set<String> = emptySet()): List<RecapExercise> = exercises.mapNotNull { exercise ->
+    val done = exercise.sets.filter { it.isCompleted }.mapNotNull { set ->
+        set.values.metricsFor(exercise.exercise.type)?.let { set.id to LoggedSet(set.setType, it) }
+    }
+    if (done.isEmpty()) return@mapNotNull null
+    RecapExercise(
+        id = exercise.id,
+        exercise = exercise.exercise,
+        sets = done.map { it.second },
+        recordSets = done.indices.filterTo(HashSet()) { done[it].first in recordSetIds },
+    )
 }
 
 /** The three numbers that sum a workout up: how long, how much, how many sets. */
@@ -201,13 +215,18 @@ fun LoggedExerciseCard(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(bottom = Spacing.xxs),
         )
-        exercise.sets.forEachIndexed { index, set -> LoggedSetLine(set = set, number = numbers[index], weightUnit = weightUnit) }
+        exercise.sets.forEachIndexed { index, set ->
+            LoggedSetLine(set = set, number = numbers[index], weightUnit = weightUnit, isRecord = index in exercise.recordSets)
+        }
     }
 }
 
-/** A completed set on one line: its marker — number, or W / D / F — then what it recorded. */
+/**
+ * A completed set on one line: its marker — number, or W / D / F — then what it recorded. A set
+ * that set a record (FR-5.2) carries the trophy on its trailing edge, which TalkBack reads out.
+ */
 @Composable
-fun LoggedSetLine(set: LoggedSet, number: Int?, weightUnit: WeightUnit, modifier: Modifier = Modifier) {
+fun LoggedSetLine(set: LoggedSet, number: Int?, weightUnit: WeightUnit, modifier: Modifier = Modifier, isRecord: Boolean = false) {
     val spokenTitle = setSpokenTitle(set.setType, number)
     Row(
         modifier = modifier
@@ -224,6 +243,14 @@ fun LoggedSetLine(set: LoggedSet, number: Int?, weightUnit: WeightUnit, modifier
                 .width(Spacing.lg)
                 .semantics { contentDescription = spokenTitle },
         )
-        SetMetricsText(metrics = set.metrics, weightUnit = weightUnit)
+        SetMetricsText(metrics = set.metrics, weightUnit = weightUnit, modifier = Modifier.weight(1f))
+        if (isRecord) {
+            Icon(
+                Icons.Outlined.EmojiEvents,
+                contentDescription = stringResource(R.string.record_flag),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(IconSize.inline),
+            )
+        }
     }
 }

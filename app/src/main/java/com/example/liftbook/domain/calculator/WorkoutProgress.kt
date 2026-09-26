@@ -2,6 +2,7 @@ package com.example.liftbook.domain.calculator
 
 import com.example.liftbook.domain.model.ExerciseRecords
 import com.example.liftbook.domain.model.LoggedSet
+import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutExercise
 import com.example.liftbook.domain.model.WorkoutSet
@@ -64,7 +65,29 @@ fun Workout.summarize(previousSets: Map<String, List<LoggedSet>>): WorkoutSummar
         volumeKg = volume(exercises.flatMap { it.completedSets() }),
         completedSets = exercises.sumOf { exercise -> exercise.sets.count { it.isCompleted } },
         records = records,
+        recordSetIds = recordSets(previousSets).keys,
     )
+}
+
+/**
+ * The completed sets that hold the records this workout sets against [previousSets], by set id
+ * (FR-5.2): what flags a set as a record — as it's done, in the summary and in the history. They
+ * are the same records [summarize] lists, judged the same way, so the two never disagree. A set
+ * can hold more than one; a set that holds none isn't in the map.
+ */
+fun Workout.recordSets(previousSets: Map<String, List<LoggedSet>>): Map<String, List<PersonalRecord>> {
+    val bySet = LinkedHashMap<String, MutableList<PersonalRecord>>()
+    exercises.groupBy { it.exercise.id }.forEach { (exerciseId, appearances) ->
+        val done = appearances.flatMap { appearance ->
+            appearance.sets.filter { it.isCompleted }.mapNotNull { set ->
+                set.values.metricsFor(appearance.exercise.type)?.let { set.id to LoggedSet(set.setType, it) }
+            }
+        }
+        detectRecordSets(previousSets[exerciseId].orEmpty(), done.map { it.second }).forEach { (index, record) ->
+            bySet.getOrPut(done[index].first) { mutableListOf() } += record
+        }
+    }
+    return bySet
 }
 
 /** The part of the day a workout starts in, which names an empty workout: "Evening workout". */

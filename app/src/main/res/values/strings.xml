@@ -8,6 +8,8 @@
     <string name="action_more_options">More options</string>
     <string name="action_restore">Restore</string>
     <string name="action_undo">Undo</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
 
     <!-- Exercise library (FR-1.1, FR-1.4) -->
     <string name="exercises_title">Exercises</string>
@@ -197,6 +199,7 @@
     <!-- Navigation -->
     <string name="nav_workout">Workout</string>
     <string name="nav_history">History</string>
+    <string name="nav_progress">Progress</string>
     <string name="nav_exercises">Exercises</string>
 
     <!-- Home: routines and starting from one (FR-2.3, FR-2.4) -->
@@ -229,6 +232,8 @@
     <string name="routine_last_done_date">Last done %1$s</string>
     <string name="routine_never_done">Not done yet</string>
     <string name="list_separator">" · "</string>
+    <!-- Between items TalkBack reads out: "heaviest weight, best estimated 1RM" -->
+    <string name="list_separator_spoken">", "</string>
 
     <!-- Set targets: "3 × 10 · 80 kg" -->
     <plurals name="sets_count">
@@ -477,6 +482,16 @@
     <string name="weight_with_unit">%1$s %2$s</string>
     <!-- Spoken by TalkBack for one record: "Bench Press, heaviest weight, 100 kg" -->
     <string name="record_spoken">%1$s, %2$s, %3$s</string>
+    <!-- A set that set a record (FR-5.2), as TalkBack hears its trophy -->
+    <string name="record_flag">Personal record</string>
+    <!-- TalkBack state of a done set's toggle once the set is a record -->
+    <string name="set_done_record_state">Done, personal record</string>
+    <!-- Records named briefly, under an exercise mid-workout: "Heaviest · Est. 1RM" -->
+    <string name="record_short_heaviest">Heaviest</string>
+    <string name="record_short_one_rep_max">Est. 1RM</string>
+    <string name="record_short_most_reps_at">Reps at %1$s</string>
+    <!-- Spoken by TalkBack as records land: "New record: heaviest weight, best estimated 1RM" -->
+    <string name="workout_records_spoken">New record: %1$s</string>
 
     <!-- Short durations, for lists: "1 h 2 min", "45 min" -->
     <string name="duration_short_hours_minutes">%1$d h %2$d min</string>
@@ -562,6 +577,126 @@
     <string name="workout_editor_nothing_delete">Delete workout</string>
     <string name="workout_editor_nothing_dismiss">Keep editing</string>
     <string name="workout_editor_loading">Loading workout</string>
+
+    <!-- Progress (FR-5.1) -->
+    <string name="progress_title">Progress</string>
+    <string name="progress_loading">Loading progress</string>
+    <string name="progress_empty_title">No finished workouts yet</string>
+    <string name="progress_empty_body">Finish a workout and this week’s totals, and each exercise’s progress, show up here.</string>
+    <string name="progress_empty_action">Start a workout</string>
+    <string name="progress_exercises">Exercises</string>
+    <!-- A trained exercise's line: "16 workouts · Yesterday" -->
+    <string name="progress_exercise_meta">%1$s · %2$s</string>
+    <plurals name="workouts_count">
+        <item quantity="one">%d workout</item>
+        <item quantity="other">%d workouts</item>
+    </plurals>
+    <string name="metric_one_rep_max">Est. 1RM</string>
+    <string name="metric_one_rep_max_spoken">Estimated one-rep max</string>
+    <string name="metric_max_weight">Max weight</string>
+    <string name="metric_volume">Volume</string>
+    <string name="metric_most_reps">Most reps</string>
+    <string name="metric_total_reps">Total reps</string>
+    <string name="metric_duration">Time</string>
+    <string name="metric_distance">Distance</string>
+    <string name="range_one_month">1M</string>
+    <string name="range_three_months">3M</string>
+    <string name="range_six_months">6M</string>
+    <string name="range_one_year">1Y</string>
+    <string name="range_all">All</string>
+    <!-- Ranges spoken, and used mid-sentence: "Nothing in the last 3 months" -->
+    <string name="range_one_month_spoken">the last month</string>
+    <string name="range_three_months_spoken">the last 3 months</string>
+    <string name="range_six_months_spoken">the last 6 months</string>
+    <string name="range_one_year_spoken">the last year</string>
+    <string name="range_all_spoken">all time</string>
+    <string name="progress_no_change">No change</string>
+    <!-- A signed change, with a real minus sign: "+8.3 kg", "−2 reps" -->
+    <string name="progress_change_up">+%1$s</string>
+    <string name="progress_change_down">−%1$s</string>
+    <string name="progress_change_up_spoken">Up %1$s</string>
+    <string name="progress_change_down_spoken">Down %1$s</string>
+    <!-- "+8.3 kg since 26 Jun" -->
+    <string name="progress_change_since">%1$s since %2$s</string>
+    <!-- Above a chart's number: "Latest · Thu, 25 Sep" -->
+    <string name="progress_caption_latest">Latest · %1$s</string>
+    <!-- Above a scrubbed point's number: "Tue, 12 Aug · Push" -->
+    <string name="progress_caption_point">%1$s · %2$s</string>
+    <string name="progress_range_empty_title">Nothing in %1$s</string>
+    <string name="progress_range_empty_body">Earlier workouts are still charted.</string>
+    <string name="progress_show_all">Show all time</string>
+    <string name="progress_metric_empty_title">Nothing to chart yet</string>
+    <string name="progress_metric_empty_body">None of these workouts logged it. Add it to a set and it shows here.</string>
+    <!-- Spoken by TalkBack for a chart with one point: "Estimated one-rep max over the last month: one workout, 110 kg." -->
+    <string name="progress_chart_spoken_single">%1$s over %2$s: one workout, %3$s.</string>
+    <!-- Spoken by TalkBack for a chart: "Estimated one-rep max over the last 3 months: 12 workouts, from 100 kg to 116.7 kg; best 116.7 kg." -->
+    <plurals name="progress_chart_spoken">
+        <item quantity="one">%2$s over %3$s: %1$d workout, from %4$s to %5$s; best %6$s.</item>
+        <item quantity="other">%2$s over %3$s: %1$d workouts, from %4$s to %5$s; best %6$s.</item>
+    </plurals>
+    <string name="exercise_progress_empty_title">No finished workouts with it yet</string>
+    <string name="exercise_progress_empty_body">Log it in a workout and its progress charts here.</string>
+    <string name="exercise_progress_workouts">Workouts</string>
+    <string name="exercise_detail_progress">Progress</string>
+    <string name="exercise_detail_progress_click_label">view progress</string>
+
+    <!-- Weekly summary (FR-5.3) -->
+    <string name="week_title">This week</string>
+    <string name="week_this_week">This week</string>
+    <string name="week_last_week">Last week</string>
+    <string name="week_workouts">Workouts</string>
+    <string name="week_volume">Volume</string>
+    <string name="week_sets">Sets</string>
+    <string name="week_sets_per_muscle">Sets per muscle</string>
+    <string name="week_sets_empty">No sets logged this week or last.</string>
+    <!-- Spoken by TalkBack for a row of the week table: "Volume: this week 12,340 kg, last week 15,200 kg" -->
+    <string name="week_row_spoken">%1$s: %2$s %3$s, %4$s %5$s</string>
+    <!-- Spoken by TalkBack for a muscle's bar: "Chest: 12 sets this week, 10 sets last week" -->
+    <string name="week_muscle_spoken">%1$s: %2$s this week, %3$s last week</string>
+
+    <!-- Body weight (FR-5.4) -->
+    <string name="body_weight_title">Body weight</string>
+    <string name="body_weight_loading">Loading body weight</string>
+    <string name="body_weight_empty_title">No weigh-ins yet</string>
+    <string name="body_weight_empty_body">Log your weight now and then. The trend line smooths out day-to-day swings.</string>
+    <string name="body_weight_entries">Weigh-ins</string>
+    <plurals name="body_weight_entries_count">
+        <item quantity="one">%d weigh-in</item>
+        <item quantity="other">%d weigh-ins</item>
+    </plurals>
+    <string name="body_weight_edit_click_label">edit weigh-in</string>
+    <string name="body_weight_range_empty_title">No weigh-ins in %1$s</string>
+    <string name="body_weight_range_empty_body">Earlier ones are still here.</string>
+    <!-- "Trend −0.6 kg since 26 Jun" -->
+    <string name="body_weight_trend_since">Trend %1$s since %2$s</string>
+    <!-- Spoken by TalkBack for the chart: "Body weight over the last 3 months: 45 weigh-ins, from 84.3 kg to 82.2 kg." -->
+    <plurals name="body_weight_chart_spoken">
+        <item quantity="one">Body weight over %2$s: %1$d weigh-in, %3$s.</item>
+        <item quantity="other">Body weight over %2$s: %1$d weigh-ins, from %3$s to %4$s.</item>
+    </plurals>
+    <string name="body_weight_legend_entries">Weigh-in</string>
+    <string name="body_weight_legend_trend">7-day trend</string>
+    <string name="body_weight_log_action">Log weight</string>
+    <string name="body_weight_log_short">Log</string>
+    <string name="body_weight_log_click_label">log weight</string>
+    <string name="body_weight_card_click_label">view body weight</string>
+    <!-- Spoken by TalkBack for the Progress tab's card: "Body weight 82.4 kg, Today" -->
+    <string name="body_weight_card_spoken">Body weight %1$s, %2$s</string>
+    <!-- …and with its trend: "Body weight 82.4 kg, Today. Trend down 0.6 kg since 26 Jun" -->
+    <string name="body_weight_card_spoken_trend">Body weight %1$s, %2$s. %3$s</string>
+    <string name="body_weight_log_title">Log weight</string>
+    <string name="body_weight_log_edit_title">Edit weigh-in</string>
+    <string name="body_weight_log_date">Date</string>
+    <string name="body_weight_log_weight">Weight</string>
+    <!-- Spoken by TalkBack for the date field: "Date, Today" -->
+    <string name="body_weight_log_date_spoken">%1$s, %2$s</string>
+    <string name="body_weight_log_date_click_label">change date</string>
+    <string name="body_weight_log_error">Enter your weight.</string>
+    <string name="body_weight_log_replaces">Already logged %1$s on this day. Saving replaces it.</string>
+    <string name="body_weight_log_delete">Delete weigh-in</string>
+    <string name="body_weight_log_save">Save</string>
+    <string name="body_weight_deleted">Weigh-in deleted</string>
+    <string name="body_weight_save_failed">Couldn’t save that. Try again.</string>
 
     <!-- Active workout banner -->
     <string name="banner_elapsed">In progress · %1$s</string>

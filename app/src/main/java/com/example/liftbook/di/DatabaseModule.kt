@@ -3,7 +3,9 @@ package com.example.liftbook.di
 import android.content.Context
 import androidx.room.Room
 import com.example.liftbook.data.local.LiftBookDatabase
+import com.example.liftbook.data.local.dao.BodyWeightDao
 import com.example.liftbook.data.local.dao.ExerciseDao
+import com.example.liftbook.data.local.dao.ProgressDao
 import com.example.liftbook.data.local.dao.RoutineDao
 import com.example.liftbook.data.local.dao.SetDao
 import com.example.liftbook.data.local.dao.WorkoutDao
@@ -38,4 +40,10 @@ object DatabaseModule {
 
     @Provides
     fun provideSetDao(database: LiftBookDatabase): SetDao = database.setDao()
+
+    @Provides
+    fun provideProgressDao(database: LiftBookDatabase): ProgressDao = database.progressDao()
+
+    @Provides
+    fun provideBodyWeightDao(database: LiftBookDatabase): BodyWeightDao = database.bodyWeightDao()
 }

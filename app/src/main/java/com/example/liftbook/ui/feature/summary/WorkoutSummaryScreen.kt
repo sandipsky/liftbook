@@ -281,7 +281,7 @@ private fun previewState(): WorkoutSummaryUiState {
         isLoading = false,
         workout = finished,
         summary = finished.summarize(previous),
-        exercises = finished.recapExercises(),
+        exercises = finished.recapExercises(finished.summarize(previous).recordSetIds),
         today = LocalDate.of(2026, 9, 25),
         zone = WorkoutPreviewData.zone,
     )

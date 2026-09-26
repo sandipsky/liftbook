@@ -1,5 +1,6 @@
 package com.example.liftbook.ui.feature.workout.components
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -45,11 +47,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.liftbook.R
 import com.example.liftbook.domain.model.ExerciseType
+import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.SetValues
 import com.example.liftbook.domain.model.WeightUnit
@@ -196,6 +200,7 @@ fun SetRow(
         }
         if (onToggleDone != null) DoneToggle(
             done = set.isCompleted,
+            isRecord = set.isCompleted && item.records.isNotEmpty(),
             label = stringResource(R.string.set_done_label, title),
             onToggle = {
                 val completing = !set.isCompleted
@@ -288,9 +293,13 @@ private fun SetTypeButton(
  * Marks the set done. Undone it's an outlined square holding a quiet check; done it fills with
  * the accent — completing a set is a progress moment — with a short settle, so the change is
  * felt rather than watched. The check is there either way, so the state never rests on colour.
+ *
+ * A done set that sets a personal record (FR-5.2) trades its check for a trophy, cross-faded in:
+ * the record lands where the thumb just was, and needs no room of its own on the row. TalkBack
+ * hears it in the toggle's state.
  */
 @Composable
-private fun DoneToggle(done: Boolean, label: String, onToggle: () -> Unit) {
+private fun DoneToggle(done: Boolean, isRecord: Boolean, label: String, onToggle: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val fill by animateColorAsState(
         targetValue = if (done) colors.primary else Color.Transparent,
@@ -310,12 +319,16 @@ private fun DoneToggle(done: Boolean, label: String, onToggle: () -> Unit) {
         }
     }
     val shape = MaterialTheme.shapes.medium
+    val recordState = stringResource(R.string.set_done_record_state)
     Box(
         modifier = Modifier
             .size(ControlSize)
             .clip(shape)
             .toggleable(value = done, role = Role.Checkbox, onValueChange = { onToggle() })
-            .semantics { contentDescription = label },
+            .semantics {
+                contentDescription = label
+                if (isRecord) stateDescription = recordState
+            },
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -327,7 +340,14 @@ private fun DoneToggle(done: Boolean, label: String, onToggle: () -> Unit) {
                 .border(ToggleOutline, if (done) Color.Transparent else colors.outline, shape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Check, contentDescription = null, tint = content, modifier = Modifier.size(IconSize.action))
+            Crossfade(targetState = isRecord, animationSpec = tween(TOGGLE_MILLIS), label = "doneIcon") { showRecord ->
+                Icon(
+                    if (showRecord) Icons.Outlined.EmojiEvents else Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = content,
+                    modifier = Modifier.size(IconSize.action),
+                )
+            }
         }
     }
 }
@@ -353,12 +373,13 @@ private const val SETTLE_FROM_SCALE = 0.86f
 @ThemePreviews
 @Composable
 private fun SetRowPreview() {
-    fun set(id: String, type: SetType, done: Boolean, weight: Double?, reps: Int?, number: Int?, missing: Boolean = false) =
+    fun set(id: String, type: SetType, done: Boolean, weight: Double?, reps: Int?, number: Int?, missing: Boolean = false, record: Boolean = false) =
         ActiveSet(
             set = WorkoutSet(id = id, setType = type, isCompleted = done, weightKg = weight, reps = reps),
             number = number,
             fields = SetFields.from(SetValues(weightKg = weight, reps = reps), WeightUnit.KG),
             showMissing = missing,
+            records = if (record) listOf(PersonalRecord.HeaviestWeight(weight ?: 0.0, reps ?: 0)) else emptyList(),
         )
     LiftBookPreview {
         Column(Modifier.padding(Spacing.xs)) {
@@ -366,8 +387,9 @@ private fun SetRowPreview() {
             listOf(
                 set("w", SetType.WARMUP, done = true, weight = 40.0, reps = 10, number = null),
                 set("1", SetType.NORMAL, done = true, weight = 80.0, reps = 8, number = 1),
-                set("2", SetType.NORMAL, done = false, weight = 82.5, reps = 8, number = 2),
-                set("3", SetType.FAILURE, done = false, weight = null, reps = null, number = 3, missing = true),
+                set("r", SetType.NORMAL, done = true, weight = 85.0, reps = 6, number = 2, record = true),
+                set("2", SetType.NORMAL, done = false, weight = 82.5, reps = 8, number = 3),
+                set("3", SetType.FAILURE, done = false, weight = null, reps = null, number = 4, missing = true),
             ).forEach { item ->
                 SetRow(
                     item = item,

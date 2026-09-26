@@ -1,6 +1,7 @@
 package com.example.liftbook.ui.components
 
 import android.text.format.DateFormat
+import android.text.format.DateUtils
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -11,6 +12,7 @@ import com.example.liftbook.R
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
@@ -43,6 +45,27 @@ fun workoutDateText(date: LocalDate, today: LocalDate): String {
 @Composable
 fun spokenDateText(date: LocalDate, today: LocalDate): String =
     dateText(date, if (date.year == today.year) "EEEEdMMMM" else "EEEEdMMMMy")
+
+/** A date compact enough for a chart's axis: "26 Jun" (or "Jun 26"), with the year when it isn't this one. */
+@Composable
+fun shortDateText(date: LocalDate, today: LocalDate): String = dateText(date, if (date.year == today.year) "dMMM" else "dMMMy")
+
+/**
+ * A run of days in the locale's own form, sharing what it can: "21–27 Sep", "29 Sep – 5 Oct".
+ * [end] is the last day, included.
+ */
+@Composable
+fun dateRangeText(start: LocalDate, end: LocalDate, today: LocalDate): String {
+    val context = LocalContext.current
+    // Noon UTC on each day, formatted in UTC, so no time zone or DST shift can move a day.
+    val flags = DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_UTC or
+        if (start.year == today.year && end.year == today.year) DateUtils.FORMAT_NO_YEAR else DateUtils.FORMAT_SHOW_YEAR
+    return remember(start, end, flags, LocalConfiguration.current) {
+        DateUtils.formatDateRange(context, start.noonUtcMillis(), end.noonUtcMillis(), flags)
+    }
+}
+
+private fun LocalDate.noonUtcMillis(): Long = atTime(12, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
 
 /** The short weekday: "Tue". */
 @Composable

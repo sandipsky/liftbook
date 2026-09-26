@@ -1,8 +1,11 @@
 package com.example.liftbook.ui.feature.workout
 
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,6 +14,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.ui.theme.LiftBookTheme
 import org.junit.Assert.assertEquals
@@ -67,6 +71,28 @@ class ActiveWorkoutScreenTest {
         compose.onAllNodesWithContentDescription("Set 3 done")[0].performClick()
 
         assertEquals(listOf(ActiveWorkoutAction.ToggleSetDone("b3")), actions)
+    }
+
+    @Test
+    fun `a set that sets a record says so where it's marked done, and names the record`() {
+        val state = WorkoutPreviewData.state()
+        val exercise = state.exercises.first()
+        val done = exercise.sets.first { it.set.isCompleted && it.number != null }
+        val record = PersonalRecord.HeaviestWeight(80.0, 8)
+        show(
+            state.copy(
+                exercises = listOf(
+                    exercise.copy(
+                        sets = exercise.sets.map { if (it == done) it.copy(records = listOf(record)) else it },
+                        records = listOf(record),
+                    ),
+                ) + state.exercises.drop(1),
+            ),
+        )
+
+        val recordState = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Done, personal record")
+        compose.onNode(hasContentDescription("Set ${done.number} done") and recordState).assertExists()
+        compose.onNodeWithContentDescription("New record: Heaviest weight").assertExists()
     }
 
     @Test

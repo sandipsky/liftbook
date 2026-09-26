@@ -1,11 +1,14 @@
 package com.example.liftbook.ui.feature.exercises
 
+import com.example.liftbook.domain.calculator.valueFor
 import com.example.liftbook.domain.model.Equipment
 import com.example.liftbook.domain.model.Exercise
 import com.example.liftbook.domain.model.ExerciseSession
 import com.example.liftbook.domain.model.ExerciseType
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.MuscleGroup
+import com.example.liftbook.domain.model.ProgressMetric
+import com.example.liftbook.domain.model.ProgressPoint
 import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetType
 import java.time.LocalDate
@@ -76,5 +79,19 @@ internal object ExercisePreviewData {
         ),
         session("s2", "Upper", 7, strength(77.5, 5), strength(77.5, 5), strength(77.5, 4)),
         session("s1", "Push", 11, strength(75.0, 6), strength(75.0, 5), strength(72.5, 6)),
+    )
+
+    /** The sessions' best estimated 1RM, oldest first, as the progress glance shows it. */
+    val benchProgress = ProgressPreview(
+        metric = ProgressMetric.ESTIMATED_ONE_REP_MAX,
+        points = benchSessions.reversed().map { session ->
+            ProgressPoint(
+                workoutId = session.workoutId,
+                workoutName = session.workoutName,
+                startedAt = session.startedAt,
+                date = session.startedAt.atZone(zone).toLocalDate(),
+                value = ProgressMetric.ESTIMATED_ONE_REP_MAX.valueFor(session.sets.filter { it.setType != SetType.WARMUP }.map { it.metrics })!!,
+            )
+        },
     )
 }

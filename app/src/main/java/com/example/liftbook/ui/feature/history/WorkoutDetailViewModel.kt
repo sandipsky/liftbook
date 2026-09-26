@@ -64,7 +64,7 @@ class WorkoutDetailViewModel @AssistedInject constructor(
             isLoading = false,
             workout = current?.first,
             summary = current?.second,
-            exercises = current?.first?.recapExercises().orEmpty(),
+            exercises = current?.let { (workout, summary) -> workout.recapExercises(summary.recordSetIds) }.orEmpty(),
             weightUnit = preferences.weightUnit,
             today = LocalDate.now(clock),
             zone = clock.zone,

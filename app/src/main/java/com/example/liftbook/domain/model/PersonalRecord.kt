@@ -33,4 +33,6 @@ data class WorkoutSummary(
     val volumeKg: Double,
     val completedSets: Int,
     val records: List<ExerciseRecords>,
+    /** The sets that set [records], by id, to flag where they're listed. */
+    val recordSetIds: Set<String> = emptySet(),
 )

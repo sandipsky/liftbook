@@ -2,9 +2,10 @@
 
 Status: **in use.** Implemented so far: the foundation this document describes (§7 step 1, less
 what later slices need), the exercise library (FR-1.1–1.5), routines (FR-2.1–2.4), the active
-workout (FR-3.1–3.10, FR-3.10 pulled forward from Phase 2) with its summary, and history
-(FR-4.1–4.4, the calendar FR-4.4 pulled forward from Phase 2). Where the implementation settled a
-detail or deviated, the relevant section says so.
+workout (FR-3.1–3.10, FR-3.10 pulled forward from Phase 2) with its summary, history
+(FR-4.1–4.4, the calendar FR-4.4 pulled forward from Phase 2), and progress and stats
+(FR-5.1–5.4, Phase 2, built on request). Where the implementation settled a detail or deviated,
+the relevant section says so.
 Scope: package layout, data entities, navigation graph, ViewModel structure.
 Spec: [`requirement.md`](requirement.md). Stack decisions: [`../CLAUDE.md`](../CLAUDE.md).
 
@@ -340,6 +341,13 @@ subquery in §2.9 (`WHERE s.workoutId = w.id`) needs.
 
 `id` PK · `weightKg` Double · `recordedOn` Long (epoch day, **unique** — one per day) · `note` String?
 
+*As built (schema v3):* as planned. `LocalDate` gets its epoch-day converter here, its first use.
+Logging a day that already has a weigh-in updates that row in place, keeping its id, inside one
+transaction — the unique index is what makes "one per day" hold. `note` isn't edited yet; it's in
+the table so an export (FR-6.3) can carry one without a migration. Body weight has its own
+`BodyWeightRepository` rather than living in `ProgressRepository`: it's the one part of FR-5 that
+writes, and the rest is read-only.
+
 ### 2.9 What is *not* an entity
 
 **Personal records have no table.** They are derived by indexed aggregate queries over
@@ -408,9 +416,10 @@ of the user's data. Schema changes ship with a migration test against the commit
 with their slices as additive changes, which Room's declared `AutoMigration` handles.
 
 **v2** adds `workouts.restStartedAt` / `restEndsAt` through `AutoMigration(1, 2)`.
-`LiftBookDatabaseMigrationTest` builds a v1 database from the committed `1.json`, inserts rows,
-and opens it with Room, which runs the migration and validates the result against the current
-schema. `room-testing`'s `MigrationTestHelper` isn't used: it reads schemas from instrumentation
+**v3** adds `body_weight_entries` (FR-5.4) through `AutoMigration(2, 3)`.
+`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` / `2.json`,
+inserts rows, and opens it with Room, which runs the migrations and validates the result against
+the current schema. `room-testing`'s `MigrationTestHelper` isn't used: it reads schemas from instrumentation
 assets, which JVM (Robolectric) tests don't have.
 
 ---
@@ -424,7 +433,7 @@ Pure, injected nowhere, called directly. This is the unit-test surface.
 | `oneRepMax(weightKg, reps)` | Epley: `weightKg * (1 + reps / 30.0)`. `30.0` — integer division here is the classic silent bug. |
 | `volume(sets)` | `Σ (weightKg × reps)` over sets that are **completed** and **not `WARMUP`** (FR-3.10). |
 | `detectPersonalRecords(history, candidate)` | Heaviest weight; most reps at a given weight; best estimated 1RM (FR-5.2). Warm-ups excluded. |
-| `weeklySummary(sets, firstDayOfWeek, clock)` | Workout count, total volume, sets per muscle group, current + previous week (FR-5.3). Week boundary comes from the user's `firstDayOfWeek` setting (FR-6.2). |
+| `weeklySummary(workouts, muscleSets, today, firstDayOfWeek, zone)` | Workout count, total volume, sets per muscle group, current + previous week (FR-5.3). Week boundary comes from the user's `firstDayOfWeek` setting (FR-6.2) — the locale's until then. |
 | `kgToLb` / `lbToKg` | `1 lb = 0.45359237 kg` exactly. |
 
 *As built* in `domain/calculator/`: `volume` (bodyweight counts added weight only, cardio nothing —
@@ -435,6 +444,22 @@ summary, and `TimeOfDay`. PR rules settled: nothing is a record the first time a
 apply to weighted sets, most reps to bodyweight sets too (at their added weight), and cardio has
 none. Weights are compared to the gram, so the same plates typed in pounds match. The history they
 read is a single query of earlier working sets per exercise, loaded once per summary.
+
+*As built, FR-5:*
+- **Which set holds a record** — `detectRecordSets` is `detectPersonalRecords` that also names the
+  set that set each record (the first to reach it, on a tie), and `Workout.recordSets` applies it
+  across a workout. `summarize` carries the result as `recordSetIds`. The live workout, the summary
+  and the past-workout page all flag the sets from this one function, so a flag and the records
+  listed can never disagree. A record is judged against *earlier workouts* only, so while logging it
+  moves to whichever set now holds it — beat your first set's PR in your third and the trophy moves.
+- **`ExerciseProgress.kt`** — `ProgressMetric.valueFor(sets)` per workout, `progressSeries` over a
+  `ProgressRange` (1M / 3M / 6M / 1Y / all, counted back in whole months), and `summary()` (first,
+  latest, best). A workout with nothing for the metric is left out rather than plotted as zero.
+- **`WeeklySummaryCalculator.kt`** — `weeklySummary(workouts, muscleSets, today, firstDayOfWeek,
+  zone)` (the planned signature took the sets and a clock; the week's workout list already carries
+  volume computed the same way as history, so it's reused). `summaryWeeks` gives the span to query.
+- **`BodyWeightTrend.kt`** — a 7-calendar-day trailing average at each weigh-in, and its change.
+  Calendar days, not a count of entries, so irregular logging isn't averaged across gaps.
 
 ---
 
@@ -480,8 +505,8 @@ it belongs next to the start button. That keeps the bar at four targets, which i
 use wants.
 
 *As built:* `Home` is the start destination, labelled **Workout** in the bar. The bar has the
-tabs that exist — Workout, History and Exercises (`ui/navigation/TopLevelDestination.kt`); Progress
-joins with its slice, since a tab leading to a placeholder is worse than no tab. There
+four tabs — Workout, History, Progress and Exercises (`ui/navigation/TopLevelDestination.kt`);
+Progress joined with its slice, since a tab leading to a placeholder is worse than no tab. There
 is no `MainGraph` node: it is one flat graph in one `NavHost`, and the shell's `Scaffold` shows the
 bar only while the current destination is a tab, sliding it away as a full-screen destination
 opens. Tabs switch with a cross-fade and keep their own state (`saveState`/`restoreState`); every
@@ -509,6 +534,21 @@ in the `SavedStateHandle`. `WorkoutDetail(workoutId)` reads a past workout back 
 does — stats, the records it set *at the time*, every set — with Edit in the top bar and Delete
 behind the menu. `WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
 each session to its workout, so FR-4.3 leads into FR-4.2.
+
+*As built, FR-5:* **Progress** is the third tab: this week against last as a small table — this
+week's numbers strongest, last week's receding — then sets per muscle as ink bars with a tick
+where last week reached (FR-5.3); body weight's latest weigh-in and a sparkline of its trend,
+with Log beside the heading (FR-5.4); then every exercise with finished work, most recent first.
+Each opens **`ExerciseProgress(exerciseId)`** (FR-5.1): metric chips for what the type records,
+the headline number and its change, a hand-drawn chart, the range under it within thumb reach,
+and the workouts behind the line, each opening its `WorkoutDetail`. The exercise page leads there
+too, from a progress glance between "Last time" and its history. **`BodyWeight`** is the full log:
+the chart (weigh-ins as quiet dots, the trend as the line), the range, and the weigh-ins, each
+opening the log sheet to change or delete it (with Undo); Log weight is its bottom action. The
+chart's metric and range live in the `SavedStateHandle`. PRs are flagged during the workout
+(FR-5.2): a done set holding a record trades its check for a trophy, and the exercise names its
+records ("Heaviest · Est. 1RM") under its title, announced politely to TalkBack. The summary and
+the past-workout page flag the same sets with a trophy on their line.
 
 ### 4.2 Navigation rules
 
@@ -608,8 +648,9 @@ cursors. The screen signature becomes `(state, textFieldState, onAction)`.
 | `ArchivedExercisesViewModel` | archived exercises | FR-1.3 restore path |
 | `RoutineDetailViewModel` | routine + last performed; start, duplicate, delete | FR-2.2–2.4 |
 | `RoutineEditorViewModel` | name, ordered exercises with target text fields, exercise picker | FR-2.1, 2.2 — see below |
-| `ProgressViewModel` | weekly summary, body weight trend | FR-5.3, 5.4 |
-| `ExerciseProgressViewModel` | chart series + range selector | FR-5.1 |
+| `ProgressViewModel` | weekly summary, trained exercises, body-weight glance, log sheet | FR-5.1, 5.3, 5.4 — see below |
+| `ExerciseProgressViewModel` | chart series + metric and range selectors | FR-5.1 |
+| `BodyWeightViewModel` | weigh-ins and trend over a range, log / edit / delete | FR-5.4 |
 | `SettingsViewModel` | `UserPreferences` | FR-6.1, 6.2 |
 | `ReminderListViewModel` / `ReminderEditorViewModel` | schedules, permission state | FR-7.1, 7.6, 7.7 |
 | `DataManagementViewModel` | export/import/clear progress | FR-6.3–6.5 |
@@ -630,6 +671,17 @@ loaded rather than re-parsed from its rounded display text, so 80 kg viewed in p
 back as 79.9999 kg. Reordering is a drag handle (`ui/components/ReorderableList.kt`, hand-rolled
 over `LazyListState` — Compose has no drag-to-reorder and it isn't worth a library) plus Move up /
 Move down in each exercise's menu, which is also the TalkBack path.
+
+*Progress reads through `ProgressRepository`* (`data/local/dao/ProgressDao.kt`): every working set
+of one exercise (a range scan of the `(exerciseId, completedAt)` index), per-workout per-muscle set
+counts for a span (grouped in SQL), and the trained exercises. Each query repeats the rules at the
+source — completed, not a warm-up, finished workout — and none filters archived exercises. An
+exercise's workouts are read whole and filtered by range in memory: an exercise's history is
+bounded by how often it's been done, so this is a list rather than pages, and changing the range
+or metric is instant. *Logging body weight* is a `BodyWeightLogger` that both the Progress tab and
+the body-weight screen own — the sheet's state, the weight's `TextFieldState`, and the writes — so
+the rules live once: a new day starts from the last weight, selected; a day with a weigh-in shows
+it; an untouched value is saved exactly as stored, never re-read from its rounded text.
 
 *Editing a past workout (FR-4.2) is a draft, like the routine editor, not write-through like the
 active workout.* History is edited rarely and on purpose, so Close has to be able to throw an
@@ -693,6 +745,10 @@ This screen carries most of the app's risk, so its rules are explicit.
 - **"Rest over" stays until dismissed** or replaced by the next set's rest (it clears itself only
   after 10 minutes, as the notification does). A bar that stepped aside on a timer put the set row
   behind it under a thumb reaching for Done.
+- **Live records (FR-5.2)** are `Workout.recordSets` against each exercise's earlier working sets.
+  Those are read once — again only when an exercise joins, since history doesn't change mid-workout
+  — through the same shared active-workout flow the screen uses, so the hot query doesn't run twice.
+  A failed read leaves the workout without flags rather than failing it.
 
 ### 5.4 `ui/components/` — the design system
 
@@ -727,6 +783,17 @@ which the past-workout page shares: `WorkoutStatsRow`, `PersonalRecordsBlock`,
 `LoggedExerciseCard`, `LoggedSetLine` and `RecapExercise`. `SetRow` and `ExerciseBlock` take a
 null done toggle and rest chip for the editor. The history's own parts are in
 `ui/feature/history/`: `WorkoutHistoryRow`, `CalendarMonthHeader`, `TrainingCalendarGrid`.
+
+The FR-5 slice added `ProgressChart` / `Sparkline` (Canvas, no library: dashed gridlines at round
+values from `ChartScale`, days spaced by time, the latest point emphasised; press-and-drag scrubs
+and letting go returns to the latest; an optional trend line with the readings as dots) ·
+`SegmentedSelector` (a tonal track with a sliding ink indicator, for a chart's range) ·
+`ProgressLabels` (metric and range names, stored-to-display conversion, signed changes) ·
+`PastDatePickerDialog` (moved out of the workout editor for the log sheet to share) · and
+`shortDateText` / `dateRangeText` in `DateLabels`. `RecapExercise` carries `recordSets` and
+`LoggedSetLine` an `isRecord` trophy. The progress feature's own parts are in
+`ui/feature/progress/`: `ChartHeadline`, `RangeSelector`, `ProgressRow`, `ChartEmptyPanel`,
+`WeeklySummaryBlock`, `BodyWeightLogSheet`.
 
 ### 5.5 Threading & testing
 
@@ -831,13 +898,19 @@ set row and logging, add / remove / reorder exercises, pre-fill, the rest timer 
 elapsed time, autosave, notes, Finish and the summary with PRs — which brought the volume, 1RM and
 PR calculators forward from §3. Schema v2 added the rest timer columns. Still to come from step 4's
 neighbours: rescheduling a rest alarm after a reboot (alarms don't survive one) arrives with the
-reminders slice's `BootReceiver`; PRs flagged on the set row *during* the workout are FR-5.2,
-Phase 2 — the summary shows them now.
+reminders slice's `BootReceiver`. PRs flagged on the set row *during* the workout (FR-5.2)
+arrived with the progress slice.
 
 Step 5 is done, with FR-4.4 (the calendar) pulled forward on request: the History tab's list and
 calendar, the past-workout page with delete, and the editor. FR-4.3 already existed as the
 exercise page's history (FR-1.5); it now opens each session's workout. The schema is unchanged:
 history is queries over the v2 tables.
+
+FR-5.1–5.4 (Phase 2) are done, on request: the Progress tab, per-exercise charts, PRs flagged on
+the set row during the workout and on the recap's set lines, the weekly summary, and the
+body-weight log with its trend. Schema v3 added `body_weight_entries`; everything else is queries
+over existing tables. FR-6.2's week-start setting doesn't exist yet, so weeks start where the
+locale starts them (`di/ClockModule` provides `WeekFields`; the setting replaces that provider).
 
 ---
 
@@ -891,4 +964,19 @@ Assumptions are stated so work is not blocked; confirm or correct before the fou
     logged — name, date, start and end, notes, set values and types, sets and exercises added or
     removed, their order — but not which exercise a logged set belongs to. Swapping an exercise
     would be a remove and an add. Deleting asks first and has no undo, as for routines.
-14. **The calendar's week start (FR-4.4)** follows the locale until FR-6.2 adds the setting.
+14. **The calendar's week start (FR-4.4)** follows the locale until FR-6.2 adds the setting. The
+    weekly summary (FR-5.3) does the same.
+15. **What a chart shows for types other than strength (FR-5.1).** The spec names max weight,
+    estimated 1RM and volume, which only mean something for weighted sets. *Assumed:* strength
+    charts those three (1RM first — it compares sets of different reps); bodyweight charts most
+    reps and total reps; cardio charts total time and total distance. A pull-up page with nothing
+    to chart would be the wrong answer.
+16. **Sets per muscle group (FR-5.3)** count completed working sets by the exercise's primary
+    muscle; warm-ups don't count, as for volume. Exercises have no secondary muscles, so a bench
+    set counts for chest only.
+17. **A record belongs to the set that holds it at the end (FR-5.2).** Records are judged against
+    earlier workouts, as the summary judges them, so if a later set beats an earlier set's record
+    in the same workout the flag moves to it. The alternative — flag every set that beat
+    everything before it, this workout included — would flag sets the summary doesn't list.
+18. **Body-weight trend** is a 7-day trailing average (calendar days). Other smoothing
+    (exponential, 10-day) is a one-constant change if it reads wrong in use.

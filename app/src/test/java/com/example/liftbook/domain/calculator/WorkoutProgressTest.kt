@@ -94,6 +94,36 @@ class WorkoutProgressTest {
     }
 
     @Test
+    fun `the sets holding the records are flagged, the same ones the summary lists`() {
+        val workout = workout(
+            WorkoutExercise("a", bench, listOf(set("1", done = true, weightKg = 100.0, reps = 5), set("2", done = true, weightKg = 90.0, reps = 5))),
+            WorkoutExercise("b", bench, listOf(set("3", done = true, weightKg = 105.0, reps = 3), set("4", done = false, weightKg = 120.0, reps = 5))),
+            WorkoutExercise("c", squat, listOf(set("5", done = true, weightKg = 140.0, reps = 5))),
+        )
+        val previous = mapOf(bench.id to listOf(LoggedSet(SetType.NORMAL, SetMetrics.Strength(95.0, 5))))
+
+        val records = workout.recordSets(previous)
+
+        // Judged across both appearances: 105 × 3 is the heaviest, 100 × 5 the best estimate. The
+        // undone 120 counts for nothing, and squat, done for the first time, sets no record.
+        assertEquals(
+            mapOf(
+                "3" to listOf(PersonalRecord.HeaviestWeight(105.0, 3)),
+                "1" to listOf(PersonalRecord.BestEstimatedOneRepMax(oneRepMax(100.0, 5), 100.0, 5)),
+            ),
+            records,
+        )
+        assertEquals(records.keys, workout.copy(finishedAt = start.plusSeconds(60)).summarize(previous).recordSetIds)
+    }
+
+    @Test
+    fun `nothing is flagged without history to beat`() {
+        val workout = workout(WorkoutExercise("a", bench, listOf(set("1", done = true, weightKg = 100.0, reps = 5))))
+
+        assertEquals(emptyMap<String, List<PersonalRecord>>(), workout.recordSets(emptyMap()))
+    }
+
+    @Test
     fun `cardio adds nothing to volume but its sets count`() {
         val rowing = exercise("Rowing (Machine)", type = ExerciseType.CARDIO)
         val summary = workout(

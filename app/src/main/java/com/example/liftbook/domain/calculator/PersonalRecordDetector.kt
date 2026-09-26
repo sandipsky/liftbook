@@ -19,52 +19,67 @@ import kotlin.math.roundToLong
  * the same reason. Heaviest weight and 1RM apply to weighted sets; most reps also applies to
  * bodyweight sets, at their added weight. Cardio has no records.
  */
-fun detectPersonalRecords(previous: List<LoggedSet>, current: List<LoggedSet>): List<PersonalRecord> {
-    val before = previous.working()
+fun detectPersonalRecords(previous: List<LoggedSet>, current: List<LoggedSet>): List<PersonalRecord> =
+    detectRecordSets(previous, current).map { it.record }
+
+/** A record, and the set that set it: its index in the sets it was found in. */
+data class SetRecord(val setIndex: Int, val record: PersonalRecord)
+
+/**
+ * [detectPersonalRecords], saying which of [current] set each record, so the set can be flagged
+ * where it's shown (FR-5.2). When sets tie, the first to reach the number holds the record. The
+ * records come in the same order as [detectPersonalRecords] gives them.
+ */
+fun detectRecordSets(previous: List<LoggedSet>, current: List<LoggedSet>): List<SetRecord> {
+    val before = previous.working().map { it.metrics }
     val now = current.working()
     if (before.isEmpty() || now.isEmpty()) return emptyList()
 
-    val records = mutableListOf<PersonalRecord>()
+    val records = mutableListOf<SetRecord>()
     val strengthBefore = before.mapNotNull { it as? SetMetrics.Strength }
-    val strengthNow = now.mapNotNull { it as? SetMetrics.Strength }
+    val strengthNow = now.mapNotNull { set -> (set.metrics as? SetMetrics.Strength)?.let { IndexedValue(set.index, it) } }
     if (strengthBefore.isNotEmpty() && strengthNow.isNotEmpty()) {
-        val heaviest = strengthNow.maxWith(compareBy({ it.weightKg }, { it.reps }))
-        if (heaviest.weightKg > strengthBefore.maxOf { it.weightKg } + EPSILON_KG) {
-            records += PersonalRecord.HeaviestWeight(heaviest.weightKg, heaviest.reps)
+        // maxWith and maxBy keep the first of equal elements, so the first to reach it holds it.
+        val heaviest = strengthNow.maxWith(compareBy({ it.value.weightKg }, { it.value.reps }))
+        if (heaviest.value.weightKg > strengthBefore.maxOf { it.weightKg } + EPSILON_KG) {
+            records += SetRecord(heaviest.index, PersonalRecord.HeaviestWeight(heaviest.value.weightKg, heaviest.value.reps))
         }
-        val best = strengthNow.maxBy { oneRepMax(it.weightKg, it.reps) }
-        val bestEstimate = oneRepMax(best.weightKg, best.reps)
+        val best = strengthNow.maxBy { oneRepMax(it.value.weightKg, it.value.reps) }
+        val bestEstimate = oneRepMax(best.value.weightKg, best.value.reps)
         if (bestEstimate > strengthBefore.maxOf { oneRepMax(it.weightKg, it.reps) } + EPSILON_KG) {
-            records += PersonalRecord.BestEstimatedOneRepMax(bestEstimate, best.weightKg, best.reps)
+            records += SetRecord(best.index, PersonalRecord.BestEstimatedOneRepMax(bestEstimate, best.value.weightKg, best.value.reps))
         }
     }
 
-    val repsBefore = before.mostRepsByWeight()
-    now.mostRepsByWeight().entries
+    val repsBefore = before.mapIndexed(::IndexedValue).mostRepsByWeight()
+    now.map { IndexedValue(it.index, it.metrics) }.mostRepsByWeight().entries
         .sortedBy { it.value.weightKg }
         .forEach { (grams, best) ->
             val earlier = repsBefore[grams] ?: return@forEach
-            if (best.reps > earlier.reps) records += PersonalRecord.MostReps(best.reps, best.weightKg)
+            if (best.reps > earlier.reps) records += SetRecord(best.setIndex, PersonalRecord.MostReps(best.reps, best.weightKg))
         }
     return records
 }
 
-/** Working sets as reps at a weight, or nothing for cardio. */
-private fun List<LoggedSet>.working(): List<SetMetrics> = filter { it.setType != SetType.WARMUP }.map { it.metrics }
+/** Working sets, each with its index among all the sets given. */
+private fun List<LoggedSet>.working(): List<IndexedSet> =
+    mapIndexedNotNull { index, set -> if (set.setType == SetType.WARMUP) null else IndexedSet(index, set.metrics) }
 
-private data class RepsAtWeight(val weightKg: Double, val reps: Int)
+private class IndexedSet(val index: Int, val metrics: SetMetrics)
+
+private data class RepsAtWeight(val setIndex: Int, val weightKg: Double, val reps: Int)
 
 /**
  * The most reps done at each weight, keyed by the weight in whole grams. Weights typed in
  * pounds are stored converted, so the same plate total can differ in the last few digits of a
  * Double; grams are far finer than any plate and absorb that.
  */
-private fun List<SetMetrics>.mostRepsByWeight(): Map<Long, RepsAtWeight> {
+private fun List<IndexedValue<SetMetrics>>.mostRepsByWeight(): Map<Long, RepsAtWeight> {
     val best = mutableMapOf<Long, RepsAtWeight>()
-    forEach { metrics ->
+    forEach { (index, metrics) ->
         val set = when (metrics) {
-            is SetMetrics.Strength -> RepsAtWeight(metrics.weightKg, metrics.reps)
-            is SetMetrics.Bodyweight -> RepsAtWeight(metrics.addedWeightKg ?: 0.0, metrics.reps)
+            is SetMetrics.Strength -> RepsAtWeight(index, metrics.weightKg, metrics.reps)
+            is SetMetrics.Bodyweight -> RepsAtWeight(index, metrics.addedWeightKg ?: 0.0, metrics.reps)
             is SetMetrics.Cardio -> return@forEach
         }
         val grams = (set.weightKg * GRAMS_PER_KG).roundToLong()

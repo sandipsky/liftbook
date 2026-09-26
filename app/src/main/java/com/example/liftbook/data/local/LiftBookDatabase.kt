@@ -4,10 +4,13 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.liftbook.data.local.dao.BodyWeightDao
 import com.example.liftbook.data.local.dao.ExerciseDao
+import com.example.liftbook.data.local.dao.ProgressDao
 import com.example.liftbook.data.local.dao.RoutineDao
 import com.example.liftbook.data.local.dao.SetDao
 import com.example.liftbook.data.local.dao.WorkoutDao
+import com.example.liftbook.data.local.entity.BodyWeightEntryEntity
 import com.example.liftbook.data.local.entity.ExerciseEntity
 import com.example.liftbook.data.local.entity.RoutineEntity
 import com.example.liftbook.data.local.entity.RoutineExerciseEntity
@@ -28,12 +31,15 @@ import com.example.liftbook.data.local.entity.WorkoutSetEntity
         WorkoutEntity::class,
         WorkoutExerciseEntity::class,
         WorkoutSetEntity::class,
+        BodyWeightEntryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     autoMigrations = [
         // v2: the workout's rest timer (FR-3.5) — two nullable columns on workouts.
         AutoMigration(from = 1, to = 2),
+        // v3: the body-weight log (FR-5.4) — a new table.
+        AutoMigration(from = 2, to = 3),
     ],
 )
 @TypeConverters(Converters::class)
@@ -42,6 +48,8 @@ abstract class LiftBookDatabase : RoomDatabase() {
     abstract fun routineDao(): RoutineDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun setDao(): SetDao
+    abstract fun progressDao(): ProgressDao
+    abstract fun bodyWeightDao(): BodyWeightDao
 
     companion object {
         const val NAME = "liftbook.db"

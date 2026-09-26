@@ -48,6 +48,9 @@ import com.example.liftbook.ui.feature.exercises.ExerciseLibraryViewModel
 import com.example.liftbook.ui.feature.history.HistoryRoute
 import com.example.liftbook.ui.feature.history.WorkoutDetailRoute
 import com.example.liftbook.ui.feature.home.HomeRoute
+import com.example.liftbook.ui.feature.progress.BodyWeightRoute
+import com.example.liftbook.ui.feature.progress.ExerciseProgressRoute
+import com.example.liftbook.ui.feature.progress.ProgressRoute
 import com.example.liftbook.ui.feature.routines.RoutineDetailRoute
 import com.example.liftbook.ui.feature.routines.RoutineEditorRoute
 import com.example.liftbook.ui.feature.summary.WorkoutSummaryRoute
@@ -126,6 +129,7 @@ fun LiftBookNavHost(
                         entry.ifResumed { navController.popBackStack() }
                     },
                     onOpenWorkout = { id -> entry.ifResumed { navController.navigate(Route.WorkoutDetail(id)) } },
+                    onOpenProgress = { id -> entry.ifResumed { navController.navigate(Route.ExerciseProgress(id)) } },
                 )
             }
             composable<Route.ExerciseEditor> { entry ->
@@ -222,6 +226,24 @@ fun LiftBookNavHost(
                         }
                     },
                 )
+            }
+            composable<Route.Progress> { entry ->
+                ProgressRoute(
+                    onOpenExercise = { id -> entry.ifResumed { navController.navigate(Route.ExerciseProgress(id)) } },
+                    onOpenBodyWeight = { entry.ifResumed { navController.navigate(Route.BodyWeight) } },
+                    onStartWorkout = { entry.ifResumed { navController.navigateToTab(TopLevelDestination.Workout) } },
+                )
+            }
+            composable<Route.ExerciseProgress> { entry ->
+                val route = entry.toRoute<Route.ExerciseProgress>()
+                ExerciseProgressRoute(
+                    exerciseId = route.exerciseId,
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onOpenWorkout = { id -> entry.ifResumed { navController.navigate(Route.WorkoutDetail(id)) } },
+                )
+            }
+            composable<Route.BodyWeight> { entry ->
+                BodyWeightRoute(onNavigateUp = { entry.ifResumed { navController.navigateUp() } })
             }
         }
     }

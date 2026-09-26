@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.DragIndicator
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Timer
@@ -45,13 +46,17 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.liftbook.R
+import com.example.liftbook.domain.model.ExerciseType
+import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.NoteField
@@ -61,6 +66,7 @@ import com.example.liftbook.ui.components.exerciseMetaSpoken
 import com.example.liftbook.ui.components.exerciseMetaText
 import com.example.liftbook.ui.components.restDurationSpoken
 import com.example.liftbook.ui.components.restDurationText
+import com.example.liftbook.ui.components.weightWithUnit
 import com.example.liftbook.ui.feature.workout.ActiveExercise
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.Spacing
@@ -131,6 +137,14 @@ fun ExerciseBlock(
                 onRemove = onRemove,
             )
         }
+        if (item.records.isNotEmpty()) {
+            RecordsLine(
+                records = item.records,
+                type = exercise.type,
+                weightUnit = weightUnit,
+                modifier = Modifier.padding(start = Spacing.md, end = Spacing.md, bottom = Spacing.xs),
+            )
+        }
         if (item.showNote) {
             NoteField(
                 state = item.note,
@@ -176,6 +190,73 @@ fun ExerciseBlock(
         }
     }
 }
+
+/**
+ * The records the exercise has set so far this workout (FR-5.2), in the accent beside a trophy:
+ * "Heaviest · Est. 1RM". The set that holds each carries the trophy in its done toggle; this
+ * says which records they are. TalkBack announces it as it changes, since a record landing is
+ * news, and hears the records' full names.
+ */
+@Composable
+private fun RecordsLine(records: List<PersonalRecord>, type: ExerciseType, weightUnit: WeightUnit, modifier: Modifier = Modifier) {
+    val sorted = records.sortedWith(RecordOrder)
+    val separator = stringResource(R.string.list_separator)
+    val spokenSeparator = stringResource(R.string.list_separator_spoken)
+    val short = sorted.map { shortRecordLabel(it, type, weightUnit) }.distinct().joinToString(separator)
+    val spoken = stringResource(R.string.workout_records_spoken, sorted.map { fullRecordLabel(it, type, weightUnit) }.distinct().joinToString(spokenSeparator))
+    Row(
+        modifier = modifier.clearAndSetSemantics {
+            contentDescription = spoken
+            liveRegion = LiveRegionMode.Polite
+        },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Icon(
+            Icons.Outlined.EmojiEvents,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(IconSize.inline),
+        )
+        Text(text = short, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** "Heaviest", "Est. 1RM", "Most reps", "Reps at 80 kg". */
+@Composable
+private fun shortRecordLabel(record: PersonalRecord, type: ExerciseType, weightUnit: WeightUnit): String = when (record) {
+    is PersonalRecord.HeaviestWeight -> stringResource(R.string.record_short_heaviest)
+    is PersonalRecord.BestEstimatedOneRepMax -> stringResource(R.string.record_short_one_rep_max)
+    is PersonalRecord.MostReps -> if (type == ExerciseType.BODYWEIGHT && record.weightKg <= 0.0) {
+        stringResource(R.string.record_most_reps)
+    } else {
+        stringResource(R.string.record_short_most_reps_at, weightWithUnit(record.weightKg, weightUnit))
+    }
+}
+
+/** "Heaviest weight", "Best estimated 1RM", "Most reps at 80 kg" — as the summary names them. */
+@Composable
+private fun fullRecordLabel(record: PersonalRecord, type: ExerciseType, weightUnit: WeightUnit): String = when (record) {
+    is PersonalRecord.HeaviestWeight -> stringResource(R.string.record_heaviest)
+    is PersonalRecord.BestEstimatedOneRepMax -> stringResource(R.string.record_one_rep_max)
+    is PersonalRecord.MostReps -> if (type == ExerciseType.BODYWEIGHT && record.weightKg <= 0.0) {
+        stringResource(R.string.record_most_reps)
+    } else {
+        stringResource(R.string.record_most_reps_at, weightWithUnit(record.weightKg, weightUnit))
+    }
+}
+
+/** Records in the order the summary lists them: heaviest, 1RM, then most reps by weight. */
+private val RecordOrder: Comparator<PersonalRecord> = compareBy(
+    { record ->
+        when (record) {
+            is PersonalRecord.HeaviestWeight -> 0
+            is PersonalRecord.BestEstimatedOneRepMax -> 1
+            is PersonalRecord.MostReps -> 2
+        }
+    },
+    { record -> (record as? PersonalRecord.MostReps)?.weightKg ?: 0.0 },
+)
 
 /**
  * How long the rest after each set is — tap to change it (FR-3.5). A small tonal pill beside

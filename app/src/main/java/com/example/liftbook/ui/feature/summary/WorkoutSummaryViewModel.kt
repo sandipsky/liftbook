@@ -53,7 +53,7 @@ class WorkoutSummaryViewModel @AssistedInject constructor(
             isLoading = false,
             workout = workout,
             summary = summary,
-            exercises = workout.recapExercises(),
+            exercises = workout.recapExercises(summary.recordSetIds),
             weightUnit = preferences.weightUnit,
             today = LocalDate.now(clock),
             zone = clock.zone,

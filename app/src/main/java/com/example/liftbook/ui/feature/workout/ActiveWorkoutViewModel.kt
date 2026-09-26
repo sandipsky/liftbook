@@ -11,8 +11,10 @@ import com.example.liftbook.domain.calculator.SetPrefill
 import com.example.liftbook.domain.calculator.findSet
 import com.example.liftbook.domain.calculator.nextSetAfter
 import com.example.liftbook.domain.calculator.progress
+import com.example.liftbook.domain.calculator.recordSets
 import com.example.liftbook.domain.calculator.searchExercises
 import com.example.liftbook.domain.model.ExerciseFilter
+import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.UserPreferences
@@ -40,7 +42,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -123,12 +127,27 @@ class ActiveWorkoutViewModel @Inject constructor(
             }
         }
 
+    /** Shared, so the screen and the records baseline read the workout through one query. */
+    private val active: Flow<Workout?> = workoutRepository.observeActiveWorkout()
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    /**
+     * What this workout's records are measured against (FR-5.2): each exercise's working sets
+     * from earlier finished workouts. History doesn't change while a workout is logged, so it's
+     * read again only when an exercise joins — not on every edit.
+     */
+    private val previousSets: Flow<Map<String, List<LoggedSet>>> = active
+        .map { workout -> workout?.let { RecordsBaseline(it.startedAt, it.exercises.mapTo(HashSet()) { item -> item.exercise.id }) } }
+        .distinctUntilChanged()
+        .mapLatest { baseline -> baseline?.let { loadPreviousSets(it) }.orEmpty() }
+
     val uiState: StateFlow<ActiveWorkoutUiState> = combine(
-        workoutRepository.observeActiveWorkout(),
+        active,
         settingsRepository.userPreferences,
         local,
         picker,
-    ) { active, preferences, local, picker ->
+        previousSets,
+    ) { active, preferences, local, picker, previousSets ->
         // Once discarded or finished, keep the workout on screen until the screen closes,
         // instead of flashing "no workout in progress" on the way out.
         val shown = if (local.isClosing) active ?: workout else active
@@ -136,7 +155,7 @@ class ActiveWorkoutViewModel @Inject constructor(
         this.preferences = preferences
         syncFields(shown, preferences.weightUnit)
         settleOrder(shown, local)
-        stateFor(shown, preferences, local, picker)
+        stateFor(shown, preferences, local, picker, previousSets)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveWorkoutUiState())
 
     init {
@@ -406,11 +425,21 @@ class ActiveWorkoutViewModel @Inject constructor(
         }
     }
 
+    /** Records are a bonus: if the history can't be read, the workout carries on without them. */
+    private suspend fun loadPreviousSets(baseline: RecordsBaseline): Map<String, List<LoggedSet>> = try {
+        workoutRepository.previousSets(baseline.exerciseIds, before = baseline.startedAt)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyMap()
+    }
+
     private fun stateFor(
         workout: Workout?,
         preferences: UserPreferences,
         local: LocalState,
         picker: ExercisePickerUiState?,
+        previousSets: Map<String, List<LoggedSet>>,
     ): ActiveWorkoutUiState {
         if (workout == null) {
             return ActiveWorkoutUiState(
@@ -423,6 +452,7 @@ class ActiveWorkoutViewModel @Inject constructor(
         val ordered = local.order?.let { order ->
             workout.exercises.sortedBy { exercise -> order.indexOf(exercise.id).let { if (it < 0) Int.MAX_VALUE else it } }
         } ?: workout.exercises
+        val records = workout.recordSets(previousSets)
         val exercises = ordered.map { exercise ->
             // Warm-ups aren't numbered (FR-3.10); every other set takes the next number.
             var working = 0
@@ -434,12 +464,14 @@ class ActiveWorkoutViewModel @Inject constructor(
                         number = if (set.setType == SetType.WARMUP) null else ++working,
                         fields = setFields.getValue(set.id),
                         showMissing = set.id in local.missing,
+                        records = records[set.id].orEmpty(),
                     )
                 },
                 note = exerciseNotes.getValue(exercise.id).state,
                 showNote = exercise.id in shownNotes || exercise.id in local.openedNotes,
                 restSeconds = RestTimes.secondsFor(exercise, preferences.defaultRestSeconds),
                 hasOwnRest = exercise.restSecondsOverride != null || exercise.exercise.defaultRestSeconds != null,
+                records = exercise.sets.flatMap { records[it.id].orEmpty() },
             )
         }
         return ActiveWorkoutUiState(
@@ -462,6 +494,9 @@ class ActiveWorkoutViewModel @Inject constructor(
         exerciseNotes.values.forEach { add(it.state.text.toString()) }
         workoutNote?.let { add(it.state.text.toString()) }
     }
+
+    /** What decides the records baseline: when the workout started, and what's in it. */
+    private data class RecordsBaseline(val startedAt: Instant, val exerciseIds: Set<String>)
 
     /** What's on screen but not in the database. */
     private data class LocalState(

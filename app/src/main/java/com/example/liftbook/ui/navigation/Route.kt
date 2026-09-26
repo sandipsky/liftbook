@@ -51,4 +51,16 @@ sealed interface Route {
     /** A past workout, opened to edit (FR-4.2). */
     @Serializable
     data class WorkoutEditor(val workoutId: String) : Route
+
+    /** The Progress tab: this week and last, body weight, and each exercise's charts (FR-5). */
+    @Serializable
+    data object Progress : Route
+
+    /** One exercise's charts over time (FR-5.1). */
+    @Serializable
+    data class ExerciseProgress(val exerciseId: String) : Route
+
+    /** The body-weight log and its trend (FR-5.4). */
+    @Serializable
+    data object BodyWeight : Route
 }

@@ -1,16 +1,24 @@
 package com.example.liftbook.ui.feature.exercises
 
 import app.cash.turbine.test
+import com.example.liftbook.domain.calculator.oneRepMax
 import com.example.liftbook.domain.model.ExerciseSession
 import com.example.liftbook.domain.model.LoggedSet
+import com.example.liftbook.domain.model.ProgressMetric
 import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.UserPreferences
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.testing.FakeExerciseRepository
+import com.example.liftbook.testing.FakeProgressRepository
+import com.example.liftbook.testing.FakeRoutineRepository
 import com.example.liftbook.testing.FakeSettingsRepository
+import com.example.liftbook.testing.FakeWorkoutRepository
 import com.example.liftbook.testing.MainDispatcherRule
+import com.example.liftbook.testing.doneExercise
+import com.example.liftbook.testing.doneSet
 import com.example.liftbook.testing.exercise
+import com.example.liftbook.testing.finishedWorkout
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -51,8 +59,11 @@ class ExerciseDetailViewModelTest {
         startedAt = Instant.parse("2026-09-18T18:00:00Z"),
     )
 
+    private val workouts = FakeWorkoutRepository(FakeRoutineRepository(repository), repository)
+    private val progress = FakeProgressRepository(workouts)
+
     private fun TestScope.detail(exerciseId: String = benchPress.id): ExerciseDetailViewModel =
-        ExerciseDetailViewModel(exerciseId, repository, settings, clock).also { viewModel ->
+        ExerciseDetailViewModel(exerciseId, repository, progress, settings, clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         }
 
@@ -76,6 +87,29 @@ class ExerciseDetailViewModelTest {
 
         assertEquals(benchPress, state.exercise)
         assertNull(state.lastSession)
+        assertNull(state.progress)
+    }
+
+    @Test
+    fun `the progress glance charts the type's main metric over all time, oldest first`() = runTest {
+        workouts.addFinished(
+            finishedWorkout("a", "Push", "2025-11-02T18:00:00Z", listOf(doneExercise("a-e", benchPress, doneSet("a-s", weightKg = 80.0, reps = 5)))),
+        )
+        workouts.addFinished(
+            finishedWorkout(
+                "b",
+                "Push",
+                "2026-09-22T18:00:00Z",
+                listOf(doneExercise("b-e", benchPress, doneSet("b-w", weightKg = 60.0, reps = 10, type = SetType.WARMUP), doneSet("b-s", weightKg = 90.0, reps = 5))),
+            ),
+        )
+
+        val progress = detail().uiState.value.progress!!
+
+        assertEquals(ProgressMetric.ESTIMATED_ONE_REP_MAX, progress.metric)
+        assertEquals(listOf("a", "b"), progress.points.map { it.workoutId })
+        // The warm-up's estimate is lower anyway, but it isn't counted at all (FR-3.10).
+        assertEquals(oneRepMax(90.0, 5), progress.points.last().value, 1e-9)
     }
 
     @Test

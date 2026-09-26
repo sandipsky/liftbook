@@ -89,4 +89,36 @@ class PersonalRecordDetectorTest {
 
         assertTrue(detectPersonalRecords(previous = listOf(run(1_800)), current = listOf(run(1_500))).isEmpty())
     }
+
+    @Test
+    fun `each record names the set that set it, counting warm-ups in the index`() {
+        // Index 0 is a warm-up; 100 × 3 is the heaviest, 90 × 10 the best estimate and most reps at 90.
+        val sets = listOf(lift(60.0, 10, SetType.WARMUP), lift(90.0, 10), lift(100.0, 3))
+
+        val records = detectRecordSets(previous = listOf(lift(95.0, 3), lift(90.0, 8)), current = sets)
+
+        assertEquals(
+            listOf(
+                SetRecord(2, PersonalRecord.HeaviestWeight(100.0, 3)),
+                SetRecord(1, PersonalRecord.BestEstimatedOneRepMax(oneRepMax(90.0, 10), 90.0, 10)),
+                SetRecord(1, PersonalRecord.MostReps(10, 90.0)),
+            ),
+            records,
+        )
+    }
+
+    @Test
+    fun `when sets tie, the first to reach the number holds the record`() {
+        val records = detectRecordSets(previous = listOf(lift(95.0, 5)), current = listOf(lift(100.0, 5), lift(100.0, 5)))
+
+        assertEquals(setOf(0), records.map { it.setIndex }.toSet())
+    }
+
+    @Test
+    fun `the records named are the ones detected, in the same order`() {
+        val previous = listOf(lift(80.0, 8), lift(100.0, 5), bodyweight(6))
+        val current = listOf(lift(80.0, 10), lift(105.0, 2), lift(82.5, 9))
+
+        assertEquals(detectPersonalRecords(previous, current), detectRecordSets(previous, current).map { it.record })
+    }
 }

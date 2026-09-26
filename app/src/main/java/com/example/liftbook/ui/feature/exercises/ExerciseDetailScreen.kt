@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.History
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -72,6 +74,7 @@ import com.example.liftbook.domain.model.ExerciseSession
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WeightUnit
+import com.example.liftbook.ui.components.ChartPoint
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.Fact
 import com.example.liftbook.ui.components.LiftBookTopBar
@@ -80,11 +83,15 @@ import com.example.liftbook.ui.components.SectionHeader
 import com.example.liftbook.ui.components.SetMetricsText
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
+import com.example.liftbook.ui.components.Sparkline
 import com.example.liftbook.ui.components.TopBarNavigation
+import com.example.liftbook.ui.components.chartValue
 import com.example.liftbook.ui.components.labelRes
+import com.example.liftbook.ui.components.metricValueText
 import com.example.liftbook.ui.components.relativeDayText
 import com.example.liftbook.ui.components.setSpokenTitle
 import com.example.liftbook.ui.components.setTitle
+import com.example.liftbook.ui.components.spokenLabelRes
 import com.example.liftbook.ui.components.workingSetNumbers
 import com.example.liftbook.ui.components.workoutDateText
 import com.example.liftbook.ui.theme.IconSize
@@ -92,7 +99,9 @@ import com.example.liftbook.ui.theme.LiftBookTheme
 import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
 import com.example.liftbook.ui.theme.rowTitle
+import com.example.liftbook.ui.theme.tabularNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.time.ZoneId
 
 @Composable
 fun ExerciseDetailRoute(
@@ -101,6 +110,7 @@ fun ExerciseDetailRoute(
     onEdit: (exerciseId: String) -> Unit,
     onArchived: (exerciseId: String) -> Unit,
     onOpenWorkout: (workoutId: String) -> Unit,
+    onOpenProgress: (exerciseId: String) -> Unit,
 ) {
     val viewModel = hiltViewModel<ExerciseDetailViewModel, ExerciseDetailViewModel.Factory>(
         creationCallback = { factory -> factory.create(exerciseId) },
@@ -124,6 +134,7 @@ fun ExerciseDetailRoute(
             when (action) {
                 ExerciseDetailAction.NavigateUp -> onNavigateUp()
                 ExerciseDetailAction.Edit -> onEdit(exerciseId)
+                ExerciseDetailAction.OpenProgress -> onOpenProgress(exerciseId)
                 is ExerciseDetailAction.OpenWorkout -> onOpenWorkout(action.workoutId)
                 else -> viewModel.onAction(action)
             }
@@ -260,6 +271,16 @@ private fun DetailList(
             }
         } else {
             item(key = "lastTime", contentType = "lastTime") { LastTimeSection(lastSession, state) }
+            state.progress?.let { progress ->
+                item(key = "progress", contentType = "progress") {
+                    ProgressSection(
+                        preview = progress,
+                        weightUnit = state.weightUnit,
+                        zone = state.zone,
+                        onClick = { onAction(ExerciseDetailAction.OpenProgress) },
+                    )
+                }
+            }
             item(key = "historyHeader", contentType = "sectionHeader") {
                 SectionHeader(
                     title = stringResource(R.string.exercise_detail_history),
@@ -394,6 +415,64 @@ private fun LastTimeSection(session: ExerciseSession, state: ExerciseDetailUiSta
     }
 }
 
+/**
+ * A glance at the exercise's progress (FR-5.1): its main number now, beside the line that got it
+ * there, on one tonal surface that opens the full charts.
+ */
+@Composable
+private fun ProgressSection(preview: ProgressPreview, weightUnit: WeightUnit, zone: ZoneId, onClick: () -> Unit) {
+    val latest = preview.points.last()
+    val value = metricValueText(preview.metric, latest.value, weightUnit)
+    val label = stringResource(preview.metric.labelRes())
+    val spokenLabel = stringResource(preview.metric.spokenLabelRes())
+    val points = remember(preview, weightUnit, zone) {
+        preview.points.map { ChartPoint.at(it.startedAt, zone, preview.metric.chartValue(it.value, weightUnit)) }
+    }
+    val colors = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().padding(top = Spacing.xl)) {
+        SectionHeader(title = stringResource(R.string.exercise_detail_progress), modifier = Modifier.padding(bottom = Spacing.sm))
+        Row(
+            modifier = Modifier
+                .padding(horizontal = Spacing.gutter)
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.large)
+                .background(colors.surfaceContainerLow)
+                .clickable(onClickLabel = stringResource(R.string.exercise_detail_progress_click_label), onClick = onClick)
+                .semantics(mergeDescendants = true) { contentDescription = "$spokenLabel, ${value.spoken}" }
+                .padding(start = Spacing.md, end = Spacing.xs, top = Spacing.sm, bottom = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Column(Modifier.weight(1f).clearAndSetSemantics {}) {
+                Text(text = label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant, maxLines = 1)
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                    Text(
+                        text = value.number,
+                        style = MaterialTheme.typography.headlineSmall.tabularNumbers(),
+                        color = colors.onSurface,
+                        maxLines = 1,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                    value.unit?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, modifier = Modifier.alignByBaseline())
+                    }
+                }
+            }
+            Sparkline(
+                points = points,
+                containerColor = colors.surfaceContainerLow,
+                modifier = Modifier.weight(1f).height(Spacing.xxl),
+            )
+            Icon(
+                Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(IconSize.action),
+            )
+        }
+    }
+}
+
 @Composable
 private fun SetTile(set: LoggedSet, number: Int?, weightUnit: WeightUnit) {
     val spokenTitle = setSpokenTitle(set.setType, number)
@@ -517,6 +596,7 @@ private fun ExerciseDetailScreenPreview() {
                 isLoading = false,
                 exercise = ExercisePreviewData.benchPress,
                 lastSession = ExercisePreviewData.benchSessions.first(),
+                progress = ExercisePreviewData.benchProgress,
                 today = ExercisePreviewData.today,
                 zone = ExercisePreviewData.zone,
             ),
