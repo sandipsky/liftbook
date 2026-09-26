@@ -26,6 +26,9 @@ sealed interface ExerciseDetailAction {
     data object Archive : ExerciseDetailAction
 
     data object Restore : ExerciseDetailAction
+
+    /** Opens the workout a past session was part of (FR-4.2). */
+    data class OpenWorkout(val workoutId: String) : ExerciseDetailAction
 }
 
 sealed interface ExerciseDetailEvent {

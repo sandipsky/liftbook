@@ -61,7 +61,7 @@ class ExerciseDetailViewModel @AssistedInject constructor(
             }
             ExerciseDetailAction.Restore -> viewModelScope.launch { repository.restore(exerciseId) }
             // Navigation; handled by the route.
-            ExerciseDetailAction.NavigateUp, ExerciseDetailAction.Edit -> Unit
+            ExerciseDetailAction.NavigateUp, ExerciseDetailAction.Edit, is ExerciseDetailAction.OpenWorkout -> Unit
         }
     }
 

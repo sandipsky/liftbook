@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.liftbook.data.local.entity.WorkoutSetEntity
 import com.example.liftbook.data.local.projection.ExerciseSessionWithSets
 import com.example.liftbook.data.local.projection.SetWithExerciseType
@@ -41,6 +42,15 @@ interface SetDao {
 
     @Query("SELECT * FROM workout_sets WHERE workoutExerciseId = :workoutExerciseId ORDER BY position, id")
     suspend fun getForWorkoutExercise(workoutExerciseId: String): List<WorkoutSetEntity>
+
+    @Query("SELECT * FROM workout_sets WHERE workoutId = :workoutId")
+    suspend fun getForWorkout(workoutId: String): List<WorkoutSetEntity>
+
+    @Update
+    suspend fun updateAll(sets: List<WorkoutSetEntity>)
+
+    @Query("DELETE FROM workout_sets WHERE id IN (:ids)")
+    suspend fun deleteAll(ids: Collection<String>)
 
     @Query(
         "UPDATE workout_sets SET weightKg = :weightKg, reps = :reps, durationSeconds = :durationSeconds, " +

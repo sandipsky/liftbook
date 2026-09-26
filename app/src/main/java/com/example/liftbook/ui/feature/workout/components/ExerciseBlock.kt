@@ -72,16 +72,19 @@ import com.example.liftbook.ui.theme.tabularNumbers
  * as a table to log into (FR-3.3). The block is a single tonal surface; the table inside it has
  * no rules or boxes, only the fields themselves. It grows and shrinks smoothly as sets come and
  * go.
+ *
+ * Editing a finished workout (FR-4.2) passes neither [onToggleDone] nor [onEditRest]: every set
+ * is done, and there's no rest to time.
  */
 @Composable
 fun ExerciseBlock(
     item: ActiveExercise,
     weightUnit: WeightUnit,
-    onToggleDone: (setId: String) -> Unit,
+    onToggleDone: ((setId: String) -> Unit)?,
     onChangeSetType: (setId: String, SetType) -> Unit,
     onRemoveSet: (setId: String) -> Unit,
     onAddSet: () -> Unit,
-    onEditRest: () -> Unit,
+    onEditRest: (() -> Unit)?,
     onAddNote: () -> Unit,
     onReorder: () -> Unit,
     onRemove: () -> Unit,
@@ -119,7 +122,7 @@ fun ExerciseBlock(
                     modifier = Modifier.semantics { contentDescription = metaSpoken },
                 )
             }
-            RestChip(seconds = item.restSeconds, onClick = onEditRest)
+            if (onEditRest != null) RestChip(seconds = item.restSeconds, onClick = onEditRest)
             ExerciseMenu(
                 exerciseName = exercise.name,
                 canAddNote = !item.showNote,
@@ -140,13 +143,13 @@ fun ExerciseBlock(
             )
         }
         Column(Modifier.padding(horizontal = Spacing.xs)) {
-            SetTableHeader(type = exercise.type, weightUnit = weightUnit)
+            SetTableHeader(type = exercise.type, weightUnit = weightUnit, showDoneColumn = onToggleDone != null)
             item.sets.forEach { set ->
                 SetRow(
                     item = set,
                     type = exercise.type,
                     weightUnit = weightUnit,
-                    onToggleDone = { onToggleDone(set.set.id) },
+                    onToggleDone = onToggleDone?.let { toggle -> { toggle(set.set.id) } },
                     onChangeType = { onChangeSetType(set.set.id, it) },
                     onRemove = { onRemoveSet(set.set.id) },
                 )

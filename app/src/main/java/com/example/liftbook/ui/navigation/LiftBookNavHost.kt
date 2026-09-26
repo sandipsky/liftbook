@@ -45,6 +45,8 @@ import com.example.liftbook.ui.feature.exercises.ExerciseDetailRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseEditorRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseLibraryRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseLibraryViewModel
+import com.example.liftbook.ui.feature.history.HistoryRoute
+import com.example.liftbook.ui.feature.history.WorkoutDetailRoute
 import com.example.liftbook.ui.feature.home.HomeRoute
 import com.example.liftbook.ui.feature.routines.RoutineDetailRoute
 import com.example.liftbook.ui.feature.routines.RoutineEditorRoute
@@ -52,6 +54,7 @@ import com.example.liftbook.ui.feature.summary.WorkoutSummaryRoute
 import com.example.liftbook.ui.feature.workout.ActiveWorkoutBannerState
 import com.example.liftbook.ui.feature.workout.ActiveWorkoutBannerViewModel
 import com.example.liftbook.ui.feature.workout.ActiveWorkoutRoute
+import com.example.liftbook.ui.feature.workout.WorkoutEditorRoute
 import com.example.liftbook.ui.theme.Spacing
 import java.time.Instant
 
@@ -122,6 +125,7 @@ fun LiftBookNavHost(
                         navController.previousBackStackEntry?.savedStateHandle?.set(ExerciseLibraryViewModel.ARCHIVED_EXERCISE_ID, id)
                         entry.ifResumed { navController.popBackStack() }
                     },
+                    onOpenWorkout = { id -> entry.ifResumed { navController.navigate(Route.WorkoutDetail(id)) } },
                 )
             }
             composable<Route.ExerciseEditor> { entry ->
@@ -186,6 +190,37 @@ fun LiftBookNavHost(
                 WorkoutSummaryRoute(
                     workoutId = route.workoutId,
                     onDone = { entry.ifResumed { navController.popBackStack() } },
+                )
+            }
+            composable<Route.History> { entry ->
+                HistoryRoute(
+                    onOpenWorkout = { id -> entry.ifResumed { navController.navigate(Route.WorkoutDetail(id)) } },
+                    onStartWorkout = { entry.ifResumed { navController.navigateToTab(TopLevelDestination.Workout) } },
+                )
+            }
+            composable<Route.WorkoutDetail> { entry ->
+                val route = entry.toRoute<Route.WorkoutDetail>()
+                WorkoutDetailRoute(
+                    workoutId = route.workoutId,
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onEdit = { id -> entry.ifResumed { navController.navigate(Route.WorkoutEditor(id)) } },
+                    onOpenExercise = { id -> entry.ifResumed { navController.navigate(Route.ExerciseDetail(id)) } },
+                    onDeleted = { entry.ifResumed { navController.popBackStack() } },
+                )
+            }
+            composable<Route.WorkoutEditor> { entry ->
+                val route = entry.toRoute<Route.WorkoutEditor>()
+                WorkoutEditorRoute(
+                    workoutId = route.workoutId,
+                    onClose = { entry.ifResumed { navController.navigateUp() } },
+                    // The workout's page observes the database, so it already shows the change.
+                    onSaved = { entry.ifResumed { navController.navigateUp() } },
+                    onDeleted = {
+                        entry.ifResumed {
+                            // The workout's page would only say it's gone, so go back past it.
+                            if (!navController.popBackStack<Route.WorkoutDetail>(inclusive = true)) navController.popBackStack()
+                        }
+                    },
                 )
             }
         }

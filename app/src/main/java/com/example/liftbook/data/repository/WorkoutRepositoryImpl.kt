@@ -1,5 +1,9 @@
 package com.example.liftbook.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import androidx.room.withTransaction
 import com.example.liftbook.data.local.LiftBookDatabase
 import com.example.liftbook.data.local.dao.ExerciseDao
@@ -9,10 +13,15 @@ import com.example.liftbook.data.local.dao.WorkoutDao
 import com.example.liftbook.data.local.entity.WorkoutEntity
 import com.example.liftbook.data.local.entity.WorkoutExerciseEntity
 import com.example.liftbook.data.local.entity.WorkoutSetEntity
+import com.example.liftbook.data.local.projection.WorkoutListRow
 import com.example.liftbook.data.mapper.toDomain
+import com.example.liftbook.data.mapper.toListItem
 import com.example.liftbook.data.mapper.toMetrics
 import com.example.liftbook.domain.calculator.PlannedSet
 import com.example.liftbook.domain.calculator.SetPrefill
+import com.example.liftbook.domain.calculator.WorkoutNames
+import com.example.liftbook.domain.calculator.WorkoutSpan
+import com.example.liftbook.domain.calculator.WorkoutTimes
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
@@ -20,6 +29,9 @@ import com.example.liftbook.domain.model.SetValues
 import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
+import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutRevision
+import com.example.liftbook.domain.model.toValues
 import com.example.liftbook.domain.repository.WorkoutRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -201,6 +213,84 @@ class WorkoutRepositoryImpl @Inject constructor(
             .mapValues { (_, sets) -> sets.filterNotNull() }
     }
 
+    override fun observeFinishedWorkouts(): Flow<PagingData<WorkoutListItem>> =
+        Pager(PagingConfig(pageSize = HISTORY_PAGE_SIZE, enablePlaceholders = false)) { workoutDao.finishedWorkouts() }
+            .flow
+            .map { page -> page.map(WorkoutListRow::toListItem) }
+
+    override fun observeFinishedBetween(from: Instant, until: Instant): Flow<List<WorkoutListItem>> =
+        workoutDao.observeFinishedBetween(from, until).map { rows -> rows.map(WorkoutListRow::toListItem) }
+
+    override suspend fun saveRevision(workoutId: String, revision: WorkoutRevision): Boolean = database.withTransaction {
+        val workout = workoutDao.getById(workoutId) ?: return@withTransaction false
+        val finishedAt = workout.finishedAt ?: return@withTransaction false
+        val name = WorkoutNames.normalize(revision.name)
+        require(name.isNotEmpty()) { "A workout needs a name" }
+        require(revision.finishedAt.isAfter(revision.startedAt)) { "A workout ends after it starts" }
+        val from = WorkoutSpan(workout.startedAt, finishedAt)
+        val to = WorkoutSpan(revision.startedAt, revision.finishedAt)
+        val exercises = revision.exercises.filter { it.sets.isNotEmpty() || it.note != null }
+        val existingExercises = workoutDao.getExercises(workoutId).associateBy { it.id }
+        val existingSets = setDao.getForWorkout(workoutId).associateBy { it.id }
+
+        // Removed exercises take their sets with them (CASCADE); removed sets of kept ones go here.
+        (existingExercises.keys - exercises.mapTo(HashSet()) { it.id }).forEach { workoutDao.deleteExercise(it) }
+        val removedSets = existingSets.keys - exercises.flatMapTo(HashSet()) { exercise -> exercise.sets.map { it.id } }
+        if (removedSets.isNotEmpty()) setDao.deleteAll(removedSets)
+
+        val insertedExercises = mutableListOf<WorkoutExerciseEntity>()
+        val updatedExercises = mutableListOf<WorkoutExerciseEntity>()
+        val insertedSets = mutableListOf<WorkoutSetEntity>()
+        val updatedSets = mutableListOf<WorkoutSetEntity>()
+        exercises.forEachIndexed { position, exercise ->
+            val existing = existingExercises[exercise.id]
+            val row = existing?.copy(position = position, note = exercise.note) ?: WorkoutExerciseEntity(
+                id = exercise.id,
+                workoutId = workoutId,
+                exerciseId = exercise.exerciseId,
+                position = position,
+                note = exercise.note,
+                restSecondsOverride = null,
+            )
+            when {
+                existing == null -> insertedExercises += row
+                row != existing -> updatedExercises += row
+            }
+            exercise.sets.forEachIndexed { setPosition, set ->
+                val old = existingSets[set.id]
+                require(old == null || old.workoutExerciseId == row.id) { "Set ${set.id} belongs to another exercise" }
+                val values = set.metrics.toValues()
+                val entity = WorkoutSetEntity(
+                    id = set.id,
+                    workoutExerciseId = row.id,
+                    workoutId = workoutId,
+                    exerciseId = row.exerciseId,
+                    position = setPosition,
+                    setType = set.setType,
+                    isCompleted = true,
+                    weightKg = values.weightKg,
+                    reps = values.reps,
+                    durationSeconds = values.durationSeconds,
+                    distanceMeters = values.distanceMeters,
+                    completedAt = WorkoutTimes.completedAt(old?.completedAt, from, to),
+                )
+                when {
+                    old == null -> insertedSets += entity
+                    entity != old -> updatedSets += entity
+                }
+            }
+        }
+        // Exercises before their sets, for the foreign key.
+        workoutDao.insertExercises(insertedExercises)
+        workoutDao.updateExercises(updatedExercises)
+        setDao.insertAll(insertedSets)
+        setDao.updateAll(updatedSets)
+        workoutDao.update(workout.copy(name = name, startedAt = to.start, finishedAt = to.end, note = revision.note))
+        true
+    }
+
+    override suspend fun deleteFinishedWorkout(workoutId: String) = workoutDao.deleteIfFinished(workoutId)
+
     private suspend fun insertWorkout(name: String, routineId: String?): String {
         val id = newId()
         workoutDao.insert(
@@ -238,4 +328,8 @@ class WorkoutRepositoryImpl @Inject constructor(
     private fun WorkoutSetEntity.values() = SetValues(weightKg, reps, durationSeconds, distanceMeters)
 
     private fun newId(): String = UUID.randomUUID().toString()
+
+    private companion object {
+        const val HISTORY_PAGE_SIZE = 20
+    }
 }

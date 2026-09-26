@@ -196,6 +196,7 @@
 
     <!-- Navigation -->
     <string name="nav_workout">Workout</string>
+    <string name="nav_history">History</string>
     <string name="nav_exercises">Exercises</string>
 
     <!-- Home: routines and starting from one (FR-2.3, FR-2.4) -->
@@ -406,6 +407,7 @@
     <string name="set_field_time">%1$s, time</string>
     <string name="set_field_distance">%1$s, distance in %2$s</string>
     <string name="set_missing_values">Fill in the set to mark it done</string>
+    <string name="set_missing_values_edit">Fill in the set, or remove it</string>
 
     <!-- Rest timer (FR-3.5) -->
     <string name="rest_label">Rest</string>
@@ -475,6 +477,91 @@
     <string name="weight_with_unit">%1$s %2$s</string>
     <!-- Spoken by TalkBack for one record: "Bench Press, heaviest weight, 100 kg" -->
     <string name="record_spoken">%1$s, %2$s, %3$s</string>
+
+    <!-- Short durations, for lists: "1 h 2 min", "45 min" -->
+    <string name="duration_short_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_short_hours">%1$d h</string>
+    <string name="duration_short_minutes">%1$d min</string>
+    <string name="duration_short_under_minute">&lt;1 min</string>
+    <string name="duration_under_minute_spoken">Less than a minute</string>
+    <string name="unit_hours">h</string>
+
+    <!-- History (FR-4.1, FR-4.4) -->
+    <string name="history_title">History</string>
+    <string name="history_show_calendar">Show calendar</string>
+    <string name="history_show_list">Show list</string>
+    <string name="history_loading">Loading your history</string>
+    <string name="history_empty_title">No workouts yet</string>
+    <string name="history_empty_body">Finish a workout and it lands here, newest first, with its time and volume.</string>
+    <string name="history_empty_action">Start a workout</string>
+    <string name="history_error_title">Couldn’t load your history</string>
+    <string name="history_error_body">Something went wrong reading it. Try again.</string>
+    <string name="history_retry">Try again</string>
+    <string name="history_workout_click_label">view workout</string>
+    <string name="history_previous_month">Previous month</string>
+    <string name="history_next_month">Next month</string>
+    <string name="history_month_empty">No workouts in %1$s.</string>
+    <string name="history_month_empty_current">No workouts yet this month.</string>
+    <string name="history_stat_workouts">Workouts</string>
+    <string name="history_stat_time">Time</string>
+    <string name="history_stat_volume">Volume</string>
+    <!-- Spoken by TalkBack for a day with workouts: "Tuesday, 22 September, Push" -->
+    <string name="history_day_spoken">%1$s, %2$s</string>
+    <!-- Spoken by TalkBack for today: "Today, Saturday, 26 September" -->
+    <string name="history_today_spoken">Today, %1$s</string>
+
+    <!-- A past workout (FR-4.2) -->
+    <string name="workout_detail_edit">Edit workout</string>
+    <string name="workout_detail_delete">Delete workout</string>
+    <string name="workout_detail_records">Records set</string>
+    <string name="workout_detail_exercises">Exercises</string>
+    <string name="workout_detail_note">Note</string>
+    <string name="workout_detail_no_sets">No sets were logged in this workout.</string>
+    <string name="workout_detail_loading">Loading workout</string>
+    <string name="workout_detail_not_found_title">This workout isn’t in your history</string>
+    <string name="workout_detail_not_found_body">It may have been deleted.</string>
+    <string name="workout_detail_not_found_action">Back</string>
+    <string name="workout_detail_delete_title">Delete “%1$s”?</string>
+    <plurals name="workout_detail_delete_body">
+        <item quantity="one">Its %d set leaves your history, and records are worked out without it. This can’t be undone.</item>
+        <item quantity="other">Its %d sets leave your history, and records are worked out without them. This can’t be undone.</item>
+    </plurals>
+    <string name="workout_detail_delete_body_empty">It leaves your history. This can’t be undone.</string>
+    <string name="workout_detail_delete_confirm">Delete</string>
+    <string name="workout_detail_delete_dismiss">Cancel</string>
+    <string name="workout_detail_delete_failed">Couldn’t delete the workout. Try again.</string>
+
+    <!-- Editing a past workout (FR-4.2) -->
+    <string name="workout_editor_title">Edit workout</string>
+    <string name="workout_editor_name_label">Name</string>
+    <string name="workout_editor_error_name_blank">Give it a name</string>
+    <string name="workout_editor_date">Date</string>
+    <string name="workout_editor_start">Start</string>
+    <string name="workout_editor_end">End</string>
+    <string name="workout_editor_duration">Lasted %1$s</string>
+    <string name="workout_editor_duration_next_day">Lasted %1$s · ended the next day</string>
+    <!-- Spoken by TalkBack for a date or time field: "Start, 18:02" -->
+    <string name="workout_editor_field_spoken">%1$s, %2$s</string>
+    <string name="workout_editor_field_click_label">change</string>
+    <string name="workout_editor_pick_start">Started at</string>
+    <string name="workout_editor_pick_end">Ended at</string>
+    <string name="workout_editor_pick_confirm">OK</string>
+    <string name="workout_editor_pick_dismiss">Cancel</string>
+    <string name="workout_editor_exercises">Exercises</string>
+    <string name="workout_editor_empty">Add what you did in this workout.</string>
+    <string name="workout_editor_save">Save changes</string>
+    <string name="workout_editor_save_failed">Couldn’t save the workout. Try again.</string>
+    <plurals name="workout_editor_sets_missing">
+        <item quantity="one">Fill in or remove the highlighted set.</item>
+        <item quantity="other">Fill in or remove the %d highlighted sets.</item>
+    </plurals>
+    <string name="workout_editor_discard_body">Your edits to this workout won’t be saved.</string>
+    <string name="workout_editor_remove_exercise_body">Its sets go with it when you save.</string>
+    <string name="workout_editor_nothing_title">Nothing left in this workout</string>
+    <string name="workout_editor_nothing_body">Add a set to keep it, or delete the workout from your history.</string>
+    <string name="workout_editor_nothing_delete">Delete workout</string>
+    <string name="workout_editor_nothing_dismiss">Keep editing</string>
+    <string name="workout_editor_loading">Loading workout</string>
 
     <!-- Active workout banner -->
     <string name="banner_elapsed">In progress · %1$s</string>

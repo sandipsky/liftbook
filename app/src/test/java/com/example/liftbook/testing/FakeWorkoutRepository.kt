@@ -1,7 +1,10 @@
 package com.example.liftbook.testing
 
+import androidx.paging.PagingData
 import com.example.liftbook.domain.calculator.PlannedSet
 import com.example.liftbook.domain.calculator.SetPrefill
+import com.example.liftbook.domain.calculator.completedSets
+import com.example.liftbook.domain.calculator.volume
 import com.example.liftbook.domain.model.Exercise
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
@@ -11,11 +14,15 @@ import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
 import com.example.liftbook.domain.model.WorkoutExercise
+import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutRevision
 import com.example.liftbook.domain.model.WorkoutSet
+import com.example.liftbook.domain.model.toValues
 import com.example.liftbook.domain.repository.WorkoutRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import java.time.Instant
 
@@ -50,6 +57,9 @@ class FakeWorkoutRepository(
 
     /** Each exercise's own rest time as last set, by exercise id. */
     val exerciseRests = mutableMapOf<String, Int?>()
+
+    /** Every revision saved to a finished workout, with its id, in order. */
+    val revisions = mutableListOf<Pair<String, WorkoutRevision>>()
 
     /** When set, the next start throws, as a failing database would. */
     var failNextStart = false
@@ -232,6 +242,75 @@ class FakeWorkoutRepository(
 
     override suspend fun previousSets(exerciseIds: Set<String>, before: Instant): Map<String, List<LoggedSet>> =
         history.filterKeys { it in exerciseIds }
+
+    override fun observeFinishedWorkouts(): Flow<PagingData<WorkoutListItem>> =
+        finished.map { done -> PagingData.from(done.values.sortedByDescending { it.startedAt }.map { it.toListItem() }) }
+
+    override fun observeFinishedBetween(from: Instant, until: Instant): Flow<List<WorkoutListItem>> =
+        finished.map { done ->
+            done.values.filter { !it.startedAt.isBefore(from) && it.startedAt.isBefore(until) }
+                .sortedBy { it.startedAt }
+                .map { it.toListItem() }
+        }
+
+    override suspend fun saveRevision(workoutId: String, revision: WorkoutRevision): Boolean {
+        failIfAsked()
+        val workout = finished.value[workoutId] ?: return false
+        val library = exercises
+        val kept = workout.exercises.associateBy { it.id }
+        val revised = workout.copy(
+            name = revision.name,
+            startedAt = revision.startedAt,
+            finishedAt = revision.finishedAt,
+            note = revision.note,
+            exercises = revision.exercises.filter { it.sets.isNotEmpty() || it.note != null }.map { exercise ->
+                val existing = kept[exercise.id]
+                WorkoutExercise(
+                    id = exercise.id,
+                    exercise = existing?.exercise ?: requireNotNull(library?.getExercise(exercise.exerciseId)) { "No exercise ${exercise.exerciseId}" },
+                    sets = exercise.sets.map { set ->
+                        val values = set.metrics.toValues()
+                        WorkoutSet(
+                            id = set.id,
+                            setType = set.setType,
+                            isCompleted = true,
+                            weightKg = values.weightKg,
+                            reps = values.reps,
+                            durationSeconds = values.durationSeconds,
+                            distanceMeters = values.distanceMeters,
+                            completedAt = revision.finishedAt,
+                        )
+                    },
+                    note = exercise.note,
+                    restSecondsOverride = existing?.restSecondsOverride,
+                )
+            },
+        )
+        revisions += workoutId to revision
+        finished.update { it + (workoutId to revised) }
+        return true
+    }
+
+    override suspend fun deleteFinishedWorkout(workoutId: String) {
+        failIfAsked()
+        finished.update { it - workoutId }
+    }
+
+    /** Adds [workout] to the history as it is, finished. */
+    fun addFinished(workout: Workout) {
+        require(workout.finishedAt != null) { "Finish it first" }
+        finished.update { it + (workout.id to workout) }
+    }
+
+    private fun Workout.toListItem() = WorkoutListItem(
+        id = id,
+        name = name,
+        startedAt = startedAt,
+        finishedAt = finishedAt ?: startedAt,
+        volumeKg = volume(exercises.flatMap { it.completedSets() }),
+        completedSets = exercises.sumOf { exercise -> exercise.sets.count { it.isCompleted } },
+        exerciseNames = exercises.map { it.exercise.name },
+    )
 
     private fun exerciseOf(id: String, exercise: Exercise, planned: List<PlannedSet>) =
         WorkoutExercise(id = id, exercise = exercise, sets = planned.mapIndexed { index, set -> newSet("$id-s$index", set) })

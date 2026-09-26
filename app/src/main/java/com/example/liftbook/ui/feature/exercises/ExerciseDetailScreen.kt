@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -75,6 +75,7 @@ import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.Fact
 import com.example.liftbook.ui.components.LiftBookTopBar
+import com.example.liftbook.ui.components.LoggedSetLine
 import com.example.liftbook.ui.components.SectionHeader
 import com.example.liftbook.ui.components.SetMetricsText
 import com.example.liftbook.ui.components.SkeletonBlock
@@ -82,7 +83,6 @@ import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.TopBarNavigation
 import com.example.liftbook.ui.components.labelRes
 import com.example.liftbook.ui.components.relativeDayText
-import com.example.liftbook.ui.components.setMarker
 import com.example.liftbook.ui.components.setSpokenTitle
 import com.example.liftbook.ui.components.setTitle
 import com.example.liftbook.ui.components.workingSetNumbers
@@ -92,7 +92,6 @@ import com.example.liftbook.ui.theme.LiftBookTheme
 import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
 import com.example.liftbook.ui.theme.rowTitle
-import com.example.liftbook.ui.theme.tabularNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
@@ -101,6 +100,7 @@ fun ExerciseDetailRoute(
     onNavigateUp: () -> Unit,
     onEdit: (exerciseId: String) -> Unit,
     onArchived: (exerciseId: String) -> Unit,
+    onOpenWorkout: (workoutId: String) -> Unit,
 ) {
     val viewModel = hiltViewModel<ExerciseDetailViewModel, ExerciseDetailViewModel.Factory>(
         creationCallback = { factory -> factory.create(exerciseId) },
@@ -124,6 +124,7 @@ fun ExerciseDetailRoute(
             when (action) {
                 ExerciseDetailAction.NavigateUp -> onNavigateUp()
                 ExerciseDetailAction.Edit -> onEdit(exerciseId)
+                is ExerciseDetailAction.OpenWorkout -> onOpenWorkout(action.workoutId)
                 else -> viewModel.onAction(action)
             }
         },
@@ -277,6 +278,7 @@ private fun DetailList(
                     SessionCard(
                         session = session,
                         state = state,
+                        onClick = { onAction(ExerciseDetailAction.OpenWorkout(session.workoutId)) },
                         modifier = Modifier.padding(start = Spacing.gutter, end = Spacing.gutter, bottom = Spacing.xs),
                     )
                 }
@@ -418,9 +420,17 @@ private fun SetTile(set: LoggedSet, number: Int?, weightUnit: WeightUnit) {
     }
 }
 
-/** One past session in the history (FR-4.3): its date and workout, then every completed set. */
+/**
+ * One past session in the history (FR-4.3): its date and workout, then every completed set.
+ * It opens the workout it was part of (FR-4.2).
+ */
 @Composable
-private fun SessionCard(session: ExerciseSession, state: ExerciseDetailUiState, modifier: Modifier = Modifier) {
+private fun SessionCard(
+    session: ExerciseSession,
+    state: ExerciseDetailUiState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val date = session.startedAt.atZone(state.zone).toLocalDate()
     val numbers = remember(session) { workingSetNumbers(session.sets) }
     Column(
@@ -428,6 +438,7 @@ private fun SessionCard(session: ExerciseSession, state: ExerciseDetailUiState, 
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(onClickLabel = stringResource(R.string.history_workout_click_label), onClick = onClick)
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
     ) {
         Row(Modifier.fillMaxWidth().padding(bottom = Spacing.xxs)) {
@@ -447,30 +458,8 @@ private fun SessionCard(session: ExerciseSession, state: ExerciseDetailUiState, 
             )
         }
         session.sets.forEachIndexed { index, set ->
-            SetLine(set = set, number = numbers[index], weightUnit = state.weightUnit)
+            LoggedSetLine(set = set, number = numbers[index], weightUnit = state.weightUnit)
         }
-    }
-}
-
-@Composable
-private fun SetLine(set: LoggedSet, number: Int?, weightUnit: WeightUnit) {
-    val spokenTitle = setSpokenTitle(set.setType, number)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = Spacing.xxs)
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = setMarker(set.setType, number),
-            style = MaterialTheme.typography.labelLarge.tabularNumbers(),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .width(Spacing.lg)
-                .semantics { contentDescription = spokenTitle },
-        )
-        SetMetricsText(metrics = set.metrics, weightUnit = weightUnit)
     }
 }
 

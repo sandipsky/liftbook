@@ -10,6 +10,7 @@ import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.WeightUnit
 import java.time.Duration
 import java.time.Instant
+import java.util.Locale
 
 /** The name an empty workout gets from when it starts: "Evening workout". */
 @StringRes
@@ -34,6 +35,36 @@ fun restSecondsLeft(rest: RestTimer, now: Instant): Int =
     ((rest.remaining(now).toMillis() + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND).toInt()
 
 private const val MILLIS_PER_SECOND = 1_000L
+
+/** How long a workout lasted, to the minute, as a list reads it: "1 h 2 min", "45 min", "2 h", "<1 min". */
+@Composable
+fun workoutDurationText(totalSeconds: Long): String {
+    val minutes = (totalSeconds.coerceAtLeast(0) / SECONDS_PER_MINUTE).toInt()
+    val hours = minutes / MINUTES_PER_HOUR
+    val rest = minutes % MINUTES_PER_HOUR
+    return when {
+        minutes == 0 -> stringResource(R.string.duration_short_under_minute)
+        hours == 0 -> stringResource(R.string.duration_short_minutes, rest)
+        rest == 0 -> stringResource(R.string.duration_short_hours, hours)
+        else -> stringResource(R.string.duration_short_hours_minutes, hours, rest)
+    }
+}
+
+/** [workoutDurationText] for TalkBack: "1 hour 2 minutes". */
+@Composable
+fun workoutDurationSpoken(totalSeconds: Long): String {
+    val minutes = (totalSeconds.coerceAtLeast(0) / SECONDS_PER_MINUTE).coerceAtMost(Int.MAX_VALUE.toLong() / SECONDS_PER_MINUTE).toInt()
+    return if (minutes == 0) stringResource(R.string.duration_under_minute_spoken) else spokenDuration(minutes * SECONDS_PER_MINUTE.toInt())
+}
+
+/** Hours and minutes as a clock reading, for totals shown with an "h": 9 h 20 min → "9:20". */
+fun hoursMinutesText(totalSeconds: Long): String {
+    val minutes = totalSeconds.coerceAtLeast(0) / SECONDS_PER_MINUTE
+    return String.format(Locale.getDefault(), "%d:%02d", minutes / MINUTES_PER_HOUR, minutes % MINUTES_PER_HOUR)
+}
+
+private const val SECONDS_PER_MINUTE = 60L
+private const val MINUTES_PER_HOUR = 60
 
 /** A rest duration as a clock reading, "1:30", or "Off" for no timer. */
 @Composable

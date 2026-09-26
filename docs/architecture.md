@@ -1,9 +1,10 @@
 # LiftBook — Architecture Plan
 
 Status: **in use.** Implemented so far: the foundation this document describes (§7 step 1, less
-what later slices need), the exercise library (FR-1.1–1.5), routines (FR-2.1–2.4), and the active
-workout (FR-3.1–3.10, FR-3.10 pulled forward from Phase 2) with its summary. Where the
-implementation settled a detail or deviated, the relevant section says so.
+what later slices need), the exercise library (FR-1.1–1.5), routines (FR-2.1–2.4), the active
+workout (FR-3.1–3.10, FR-3.10 pulled forward from Phase 2) with its summary, and history
+(FR-4.1–4.4, the calendar FR-4.4 pulled forward from Phase 2). Where the implementation settled a
+detail or deviated, the relevant section says so.
 Scope: package layout, data entities, navigation graph, ViewModel structure.
 Spec: [`requirement.md`](requirement.md). Stack decisions: [`../CLAUDE.md`](../CLAUDE.md).
 
@@ -119,7 +120,7 @@ com.example.liftbook
         ├── workout/                  ACTIVE WORKOUT — the core screen
         │   └── components/           set row, exercise block, rest timer bar
         ├── summary/                  post-workout summary (FR-3.8)
-        ├── history/                  list, calendar, past-workout detail & edit
+        ├── history/                  list, calendar, past-workout detail (its editor is in workout/, §5.2)
         ├── exercises/                library, detail, editor, archived list
         ├── routines/                 detail, editor
         ├── progress/                 dashboard, per-exercise charts, body weight
@@ -367,6 +368,12 @@ ORDER BY w.startedAt DESC
 `WHERE ... setType <> 'WARMUP'` is FR-3.10 enforced at the source. The same predicate must appear in
 every volume and PR query — it is the single easiest thing to get wrong in this app.
 
+*As built* (`WorkoutDao.FINISHED_WORKOUTS`): the volume subquery also joins `exercises` and leaves
+out `CARDIO`, so it gives exactly what `VolumeCalculator` gives (§8 Q1, Q2) even for a cardio set
+that has a weight in it; `WorkoutHistoryRepositoryTest` checks the list's volume against the
+summary's. The row also carries its exercises' names through a `@Relation`, for the list to show
+what was done. The calendar (FR-4.4) runs the same query over one month's range of `startedAt`.
+
 ### 2.10 Settings — DataStore, not Room
 
 Preferences DataStore, wrapped by `SettingsRepository`, exposed as `Flow<UserPreferences>`. Keys:
@@ -472,9 +479,9 @@ Routines sit on **Home** rather than getting their own tab: a routine exists to 
 it belongs next to the start button. That keeps the bar at four targets, which is what one-handed
 use wants.
 
-*As built:* `Home` is the start destination, labelled **Workout** in the bar. The bar has the two
-tabs that exist, Workout and Exercises (`ui/navigation/TopLevelDestination.kt`); History and
-Progress join with their slices, since a tab leading to a placeholder is worse than no tab. There
+*As built:* `Home` is the start destination, labelled **Workout** in the bar. The bar has the
+tabs that exist — Workout, History and Exercises (`ui/navigation/TopLevelDestination.kt`); Progress
+joins with its slice, since a tab leading to a placeholder is worse than no tab. There
 is no `MainGraph` node: it is one flat graph in one `NavHost`, and the shell's `Scaffold` shows the
 bar only while the current destination is a tab, sliding it away as a full-screen destination
 opens. Tabs switch with a cross-fade and keep their own state (`saveState`/`restoreState`); every
@@ -490,6 +497,18 @@ Exercises are added from the shared `ExercisePickerSheet` and reordered in a reo
 collapses each to a compact row with a drag handle (plus Move up / Move down accessibility
 actions), since dragging a tall block of set rows is unworkable. Home leads with "Start an empty
 workout". `WorkoutSummary(workoutId)` follows Finish (FR-3.8).
+
+*As built, step 5:* **History** is the paged list, newest first, a heading at each month
+(`insertSeparators`), each row the day, name, exercises, volume and duration (FR-4.1). A row
+with no volume — only reps or timed sets — shows its set count instead of "0 kg". The top bar's
+one action swaps to the **calendar** (FR-4.4): the month's totals, then its days, training days
+in a disc of the accent's soft tone. Tapping a day opens its workout, or a sheet to choose when
+there were two. Arrows or a swipe turn the month, never past the current one. The week starts
+where the locale starts it until FR-6.2's setting exists. Which view shows, and the month, live
+in the `SavedStateHandle`. `WorkoutDetail(workoutId)` reads a past workout back as the summary
+does — stats, the records it set *at the time*, every set — with Edit in the top bar and Delete
+behind the menu. `WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
+each session to its workout, so FR-4.3 leads into FR-4.2.
 
 ### 4.2 Navigation rules
 
@@ -581,7 +600,8 @@ cursors. The screen signature becomes `(state, textFieldState, onAction)`.
 | **`ActiveWorkoutViewModel`** | the active workout graph, rest timer, elapsed time | the core — §5.3 |
 | `WorkoutSummaryViewModel` | duration, volume, completed sets, new PRs | FR-3.8. Records are best-effort: if the history can't be read the summary shows without them |
 | `HistoryViewModel` | paged completed workouts, calendar month | FR-4.1, 4.4 |
-| `WorkoutDetailViewModel` | one past workout, editable | FR-4.2 |
+| `WorkoutDetailViewModel` | one past workout: sets, totals, records at the time; delete | FR-4.2 |
+| `WorkoutEditorViewModel` | a past workout's draft: name, times, notes, sets, exercises | FR-4.2 — see below |
 | `ExerciseLibraryViewModel` | query + filters → results | FR-1.1, 1.4. **Deviation:** filters in memory, no debounce — see below |
 | `ExerciseDetailViewModel` | exercise, last session, paged history, unit | FR-1.5, 4.3 |
 | `ExerciseEditorViewModel` | form state + validation | FR-1.2, 1.3 |
@@ -610,6 +630,21 @@ loaded rather than re-parsed from its rounded display text, so 80 kg viewed in p
 back as 79.9999 kg. Reordering is a drag handle (`ui/components/ReorderableList.kt`, hand-rolled
 over `LazyListState` — Compose has no drag-to-reorder and it isn't worth a library) plus Move up /
 Move down in each exercise's menu, which is also the TalkBack path.
+
+*Editing a past workout (FR-4.2) is a draft, like the routine editor, not write-through like the
+active workout.* History is edited rarely and on purpose, so Close has to be able to throw an
+edit away whole. Save builds a `WorkoutRevision` and `WorkoutRepository.saveRevision` applies it
+in one transaction, keeping row ids: kept sets and exercises are updated in place, removed ones
+deleted, new ones inserted. Every set in history is done, so a revision's sets are `SetMetrics`,
+and one missing what its type records blocks the save and is marked. With no sets left, Save
+offers Delete instead. Nothing else needs recomputing — volume and records are derived (§0.4).
+The times are a date, a start and an end (`domain/calculator/WorkoutTimes`): the date moves the
+whole workout, the start keeps the end, and the end is the first such time after the start, so a
+workout left running overnight is fixed by setting its end. Each set's `completedAt` moves with
+the start and is kept inside the workout. *Deviation:* the editor lives in `ui/feature/workout/`,
+not `history/`, because it is the workout's set table — `ExerciseBlock` and `SetRow` without the
+done toggle or rest chip, `SetFields`, `ReorderRow` — and that keeps features from importing each
+other. Exercises added in an edit start from last time, as in a workout.
 
 ### 5.3 `ActiveWorkoutViewModel` — the one that matters
 
@@ -686,6 +721,12 @@ into view once the keyboard has risen) · `StatTile` · `NoteField` · `WorkoutL
 `SetRow` (set-type button · value cells · 48 dp done toggle) · `ExerciseBlock` · `ReorderRow` ·
 `RestTimerBar` · `RestDurationDialog`. `ExercisePickerUiState` moved to `ui/components/` beside
 the sheet, now that two features use it.
+
+Step 5 moved the summary's read-back of a finished workout into `ui/components/WorkoutRecap.kt`,
+which the past-workout page shares: `WorkoutStatsRow`, `PersonalRecordsBlock`,
+`LoggedExerciseCard`, `LoggedSetLine` and `RecapExercise`. `SetRow` and `ExerciseBlock` take a
+null done toggle and rest chip for the editor. The history's own parts are in
+`ui/feature/history/`: `WorkoutHistoryRow`, `CalendarMonthHeader`, `TrainingCalendarGrid`.
 
 ### 5.5 Threading & testing
 
@@ -793,6 +834,11 @@ neighbours: rescheduling a rest alarm after a reboot (alarms don't survive one) 
 reminders slice's `BootReceiver`; PRs flagged on the set row *during* the workout are FR-5.2,
 Phase 2 — the summary shows them now.
 
+Step 5 is done, with FR-4.4 (the calendar) pulled forward on request: the History tab's list and
+calendar, the past-workout page with delete, and the editor. FR-4.3 already existed as the
+exercise page's history (FR-1.5); it now opens each session's workout. The schema is unchanged:
+history is queries over the v2 tables.
+
 ---
 
 ## 8. Open questions
@@ -841,3 +887,8 @@ Assumptions are stated so work is not blocked; confirm or correct before the fou
     if that's the plan.
 12. **Finishing drops sets never marked done.** Pre-filled but undone sets would otherwise sit in
     history as rows that never happened. The screen says how many before finishing.
+13. **What an edit to a past workout can change (FR-4.2).** *Assumed:* everything the workout
+    logged — name, date, start and end, notes, set values and types, sets and exercises added or
+    removed, their order — but not which exercise a logged set belongs to. Swapping an exercise
+    would be a remove and an add. Deleting asks first and has no undo, as for routines.
+14. **The calendar's week start (FR-4.4)** follows the locale until FR-6.2 adds the setting.

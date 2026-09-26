@@ -2,10 +2,12 @@ package com.example.liftbook.data.mapper
 
 import com.example.liftbook.data.local.entity.WorkoutSetEntity
 import com.example.liftbook.data.local.projection.WorkoutExerciseWithSets
+import com.example.liftbook.data.local.projection.WorkoutListRow
 import com.example.liftbook.data.local.projection.WorkoutWithExercises
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutExercise
+import com.example.liftbook.domain.model.WorkoutListItem
 import com.example.liftbook.domain.model.WorkoutSet
 
 fun WorkoutWithExercises.toDomain(): Workout = Workout(
@@ -27,6 +29,18 @@ fun WorkoutExerciseWithSets.toDomain(): WorkoutExercise = WorkoutExercise(
     sets = sets.sortedWith(compareBy({ it.position }, { it.id })).map(WorkoutSetEntity::toDomain),
     note = workoutExercise.note,
     restSecondsOverride = workoutExercise.restSecondsOverride,
+)
+
+fun WorkoutListRow.toListItem(): WorkoutListItem = WorkoutListItem(
+    id = workout.id,
+    name = workout.name,
+    startedAt = workout.startedAt,
+    finishedAt = workout.finishedAt ?: workout.startedAt,
+    volumeKg = volumeKg,
+    completedSets = completedSets,
+    exerciseNames = exercises
+        .sortedWith(compareBy({ it.workoutExercise.position }, { it.workoutExercise.id }))
+        .map { it.exercise.name },
 )
 
 fun WorkoutSetEntity.toDomain(): WorkoutSet = WorkoutSet(

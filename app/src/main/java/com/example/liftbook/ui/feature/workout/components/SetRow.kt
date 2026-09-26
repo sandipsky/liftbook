@@ -70,10 +70,11 @@ import com.example.liftbook.ui.theme.tabularNumbers
 
 /**
  * The column labels above a set table: Set · kg · Reps, Set · Reps, or Set · Time · km — the
- * fields each row logs (FR-3.3). Hidden from TalkBack; each cell carries its own label.
+ * fields each row logs (FR-3.3). Hidden from TalkBack; each cell carries its own label. Leave
+ * out [showDoneColumn] when the rows have no done toggle.
  */
 @Composable
-fun SetTableHeader(type: ExerciseType, weightUnit: WeightUnit, modifier: Modifier = Modifier) {
+fun SetTableHeader(type: ExerciseType, weightUnit: WeightUnit, modifier: Modifier = Modifier, showDoneColumn: Boolean = true) {
     val labels = when (type) {
         ExerciseType.STRENGTH -> listOf(stringResource(weightUnit.weightLabelRes()), stringResource(R.string.workout_column_reps))
         ExerciseType.BODYWEIGHT -> listOf(stringResource(R.string.workout_column_reps))
@@ -85,7 +86,7 @@ fun SetTableHeader(type: ExerciseType, weightUnit: WeightUnit, modifier: Modifie
     ) {
         ColumnLabel(stringResource(R.string.workout_column_set), Modifier.width(ControlSize))
         labels.forEach { ColumnLabel(it, Modifier.weight(1f)) }
-        Spacer(Modifier.width(ControlSize))
+        if (showDoneColumn) Spacer(Modifier.width(ControlSize))
     }
 }
 
@@ -108,13 +109,16 @@ private fun ColumnLabel(text: String, modifier: Modifier = Modifier) {
  * The values are real, editable fields pre-filled from last time (FR-3.4). Marking the set done
  * settles them: the fill fades and the numbers stand on the row, still editable. Trying to mark
  * it done with a value missing buzzes and outlines what's missing instead.
+ *
+ * Without [onToggleDone] — a finished workout being edited, where every set is done — there is
+ * no toggle, and the values keep their fill, ready to edit.
  */
 @Composable
 fun SetRow(
     item: ActiveSet,
     type: ExerciseType,
     weightUnit: WeightUnit,
-    onToggleDone: () -> Unit,
+    onToggleDone: (() -> Unit)?,
     onChangeType: (SetType) -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
@@ -124,7 +128,7 @@ fun SetRow(
     val title = setSpokenTitle(set.setType, item.number)
     val haptics = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
-    val missing = stringResource(R.string.set_missing_values)
+    val missing = stringResource(if (onToggleDone != null) R.string.set_missing_values else R.string.set_missing_values_edit)
     Row(
         modifier.fillMaxWidth().padding(vertical = Spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
@@ -137,7 +141,7 @@ fun SetRow(
             onChangeType = onChangeType,
             onRemove = onRemove,
         )
-        val settled = set.isCompleted
+        val settled = onToggleDone != null && set.isCompleted
         when (type) {
             ExerciseType.STRENGTH -> {
                 NumberCell(
@@ -190,7 +194,7 @@ fun SetRow(
                 )
             }
         }
-        DoneToggle(
+        if (onToggleDone != null) DoneToggle(
             done = set.isCompleted,
             label = stringResource(R.string.set_done_label, title),
             onToggle = {

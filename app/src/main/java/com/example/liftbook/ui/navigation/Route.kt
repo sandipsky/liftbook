@@ -39,4 +39,16 @@ sealed interface Route {
     /** What a workout just finished added up to (FR-3.8). */
     @Serializable
     data class WorkoutSummary(val workoutId: String) : Route
+
+    /** Every finished workout, as a list or a calendar (FR-4.1, FR-4.4). */
+    @Serializable
+    data object History : Route
+
+    /** A past workout: every set, with Edit and Delete (FR-4.2). */
+    @Serializable
+    data class WorkoutDetail(val workoutId: String) : Route
+
+    /** A past workout, opened to edit (FR-4.2). */
+    @Serializable
+    data class WorkoutEditor(val workoutId: String) : Route
 }

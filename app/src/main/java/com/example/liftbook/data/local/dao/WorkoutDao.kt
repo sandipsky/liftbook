@@ -1,11 +1,14 @@
 package com.example.liftbook.data.local.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.liftbook.data.local.entity.WorkoutEntity
 import com.example.liftbook.data.local.entity.WorkoutExerciseEntity
+import com.example.liftbook.data.local.projection.WorkoutListRow
 import com.example.liftbook.data.local.projection.WorkoutWithExercises
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -25,8 +28,24 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE id = :id")
     fun observeById(id: String): Flow<WorkoutWithExercises?>
 
+    @Query("SELECT * FROM workouts WHERE id = :id")
+    suspend fun getById(id: String): WorkoutEntity?
+
+    /** Every finished workout, newest first, with its totals (FR-4.1). */
+    @Transaction
+    @Query("$FINISHED_WORKOUTS ORDER BY w.startedAt DESC, w.id")
+    fun finishedWorkouts(): PagingSource<Int, WorkoutListRow>
+
+    /** Finished workouts that started at or after [from] and before [until], oldest first (FR-4.4). */
+    @Transaction
+    @Query("$FINISHED_WORKOUTS AND w.startedAt >= :from AND w.startedAt < :until ORDER BY w.startedAt, w.id")
+    fun observeFinishedBetween(from: Instant, until: Instant): Flow<List<WorkoutListRow>>
+
     @Insert
     suspend fun insert(workout: WorkoutEntity)
+
+    @Update
+    suspend fun update(workout: WorkoutEntity)
 
     @Insert
     suspend fun insertExercises(exercises: List<WorkoutExerciseEntity>)
@@ -34,6 +53,10 @@ interface WorkoutDao {
     /** Its exercises and their sets go with it (CASCADE). */
     @Query("DELETE FROM workouts WHERE id = :id AND finishedAt IS NULL")
     suspend fun deleteIfActive(id: String)
+
+    /** Its exercises and their sets go with it (CASCADE). */
+    @Query("DELETE FROM workouts WHERE id = :id AND finishedAt IS NOT NULL")
+    suspend fun deleteIfFinished(id: String)
 
     @Query("UPDATE workouts SET note = :note WHERE id = :id")
     suspend fun setNote(id: String, note: String?)
@@ -61,6 +84,9 @@ interface WorkoutDao {
     @Query("SELECT IFNULL(MAX(position), -1) FROM workout_exercises WHERE workoutId = :workoutId")
     suspend fun maxExercisePosition(workoutId: String): Int
 
+    @Update
+    suspend fun updateExercises(exercises: List<WorkoutExerciseEntity>)
+
     @Query("UPDATE workout_exercises SET position = :position WHERE id = :id")
     suspend fun setExercisePosition(id: String, position: Int)
 
@@ -84,3 +110,20 @@ interface WorkoutDao {
     )
     suspend fun deleteEmptyExercises(workoutId: String)
 }
+
+/*
+ * Finished workouts with what each adds up to, worked out per row so a page totals only the rows
+ * it fetches (architecture §2.9). Volume follows domain/calculator/VolumeCalculator: weight × reps
+ * over completed sets that aren't warm-ups (FR-3.10), with cardio counting nothing; a bodyweight
+ * set's weight is what was added to it. The set count includes warm-ups, as the summary's does.
+ */
+private const val FINISHED_WORKOUTS = """
+    SELECT w.*,
+        (SELECT IFNULL(SUM(s.weightKg * s.reps), 0) FROM workout_sets AS s
+            INNER JOIN exercises AS e ON e.id = s.exerciseId
+            WHERE s.workoutId = w.id AND s.isCompleted = 1 AND s.setType <> 'WARMUP' AND e.type <> 'CARDIO'
+        ) AS volumeKg,
+        (SELECT COUNT(*) FROM workout_sets AS s WHERE s.workoutId = w.id AND s.isCompleted = 1) AS completedSets
+    FROM workouts AS w
+    WHERE w.finishedAt IS NOT NULL
+"""

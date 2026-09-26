@@ -2,13 +2,13 @@ package com.example.liftbook.ui.feature.summary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.liftbook.domain.calculator.completedSets
 import com.example.liftbook.domain.calculator.summarize
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutSummary
 import com.example.liftbook.domain.repository.SettingsRepository
 import com.example.liftbook.domain.repository.WorkoutRepository
+import com.example.liftbook.ui.components.recapExercises
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -53,9 +53,7 @@ class WorkoutSummaryViewModel @AssistedInject constructor(
             isLoading = false,
             workout = workout,
             summary = summary,
-            exercises = workout.exercises.mapNotNull { exercise ->
-                exercise.completedSets().takeIf { it.isNotEmpty() }?.let { SummaryExercise(exercise.id, exercise.exercise, it) }
-            },
+            exercises = workout.recapExercises(),
             weightUnit = preferences.weightUnit,
             today = LocalDate.now(clock),
             zone = clock.zone,

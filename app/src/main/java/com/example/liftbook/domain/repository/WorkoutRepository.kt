@@ -1,5 +1,6 @@
 package com.example.liftbook.domain.repository
 
+import androidx.paging.PagingData
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
@@ -7,12 +8,15 @@ import com.example.liftbook.domain.model.SetValues
 import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
+import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutRevision
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 /**
  * Workouts, and every edit to the one in progress. Each edit is written as it happens, so the
- * workout in progress survives the app being killed (FR-3.7, architecture §5.3).
+ * workout in progress survives the app being killed (FR-3.7, architecture §5.3). A finished
+ * workout is edited as a whole instead ([saveRevision]).
  */
 interface WorkoutRepository {
 
@@ -110,4 +114,20 @@ interface WorkoutRepository {
      * (FR-5.2). Exercises never done before are missing from the map.
      */
     suspend fun previousSets(exerciseIds: Set<String>, before: Instant): Map<String, List<LoggedSet>>
+
+    /** Every finished workout, newest first (FR-4.1). Paged: this grows without bound (NFR-2). */
+    fun observeFinishedWorkouts(): Flow<PagingData<WorkoutListItem>>
+
+    /** Finished workouts that started at or after [from] and before [until], oldest first (FR-4.4). */
+    fun observeFinishedBetween(from: Instant, until: Instant): Flow<List<WorkoutListItem>>
+
+    /**
+     * Replaces a finished workout with [revision], in one transaction (FR-4.2). Exercises left
+     * with no sets and no note are dropped, as when finishing. Volume and records are derived
+     * from the sets, so they follow. Returns false if [workoutId] isn't a finished workout.
+     */
+    suspend fun saveRevision(workoutId: String, revision: WorkoutRevision): Boolean
+
+    /** Deletes a finished workout with everything in it (FR-4.2). The workout in progress is never touched. */
+    suspend fun deleteFinishedWorkout(workoutId: String)
 }
