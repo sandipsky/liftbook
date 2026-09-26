@@ -3,9 +3,10 @@
 Status: **in use.** Implemented so far: the foundation this document describes (§7 step 1, less
 what later slices need), the exercise library (FR-1.1–1.5), routines (FR-2.1–2.4), the active
 workout (FR-3.1–3.10, FR-3.10 pulled forward from Phase 2) with its summary, history
-(FR-4.1–4.4, the calendar FR-4.4 pulled forward from Phase 2), and progress and stats
-(FR-5.1–5.4, Phase 2, built on request). Where the implementation settled a detail or deviated,
-the relevant section says so.
+(FR-4.1–4.4, the calendar FR-4.4 pulled forward from Phase 2), progress and stats
+(FR-5.1–5.4, Phase 2, built on request), and settings and data (FR-6.2–6.5, on request, with
+kilograms and kilometres as the only units — FR-6.1's toggle isn't built). Where the
+implementation settled a detail or deviated, the relevant section says so.
 Scope: package layout, data entities, navigation graph, ViewModel structure.
 Spec: [`requirement.md`](requirement.md). Stack decisions: [`../CLAUDE.md`](../CLAUDE.md).
 
@@ -150,6 +151,9 @@ com.example.liftbook
 - **Weight is stored in kilograms as `Double`**, distance in metres, duration in seconds (FR-6.1).
   Conversion happens in `core/format` at display time only. Never round on write; round only on
   display, or lb→kg→lb round-trips will drift.
+  *As built:* LiftBook shows kilograms and kilometres only, on request, so FR-6.1's toggle isn't
+  built. `WeightUnit` and the display code that takes it stay — always `KG` — so adding pounds
+  later is a setting, not a rewrite.
 - Timestamps use an **injected `Clock`** (§1, `di/ClockModule`), never `Instant.now()` inline, so
   date-sensitive logic (PRs, weekly summaries, "completed earlier today") is testable.
 
@@ -391,6 +395,14 @@ Preferences DataStore, wrapped by `SettingsRepository`, exposed as `Flow<UserPre
 Preferences DataStore rather than Proto: a typed `UserPreferences` domain class mapped in the
 repository gives the same type safety at the call site without the protobuf build plumbing.
 
+*As built (FR-6.2):* `defaultRestSeconds`, `firstDayOfWeek` (`MONDAY` / `SUNDAY`) and `themeMode`
+(`SYSTEM` / `LIGHT` / `DARK`), stored by name; an unknown value reads as its default. Until the
+user picks, the week starts where the locale starts it, or Monday where that's neither.
+`weightUnit` is read but never written (§2.1). `lastExportedAt` lives in the same file but isn't a
+setting: `BackupRepository` owns it, and it isn't exported. There's no `exportFormatVersion` key —
+the version is a constant in the code that writes the file (§6.3). The reminder keys arrive with
+FR-7.
+
 ### 2.11 Domain modelling note — `SetMetrics`
 
 The Room row is flat with four nullable columns because that is what SQL wants. The **domain**
@@ -433,7 +445,7 @@ Pure, injected nowhere, called directly. This is the unit-test surface.
 | `oneRepMax(weightKg, reps)` | Epley: `weightKg * (1 + reps / 30.0)`. `30.0` — integer division here is the classic silent bug. |
 | `volume(sets)` | `Σ (weightKg × reps)` over sets that are **completed** and **not `WARMUP`** (FR-3.10). |
 | `detectPersonalRecords(history, candidate)` | Heaviest weight; most reps at a given weight; best estimated 1RM (FR-5.2). Warm-ups excluded. |
-| `weeklySummary(workouts, muscleSets, today, firstDayOfWeek, zone)` | Workout count, total volume, sets per muscle group, current + previous week (FR-5.3). Week boundary comes from the user's `firstDayOfWeek` setting (FR-6.2) — the locale's until then. |
+| `weeklySummary(workouts, muscleSets, today, firstDayOfWeek, zone)` | Workout count, total volume, sets per muscle group, current + previous week (FR-5.3). Week boundary comes from the user's `firstDayOfWeek` setting (FR-6.2). |
 | `kgToLb` / `lbToKg` | `1 lb = 0.45359237 kg` exactly. |
 
 *As built* in `domain/calculator/`: `volume` (bodyweight counts added weight only, cardio nothing —
@@ -529,8 +541,7 @@ with no volume — only reps or timed sets — shows its set count instead of "0
 one action swaps to the **calendar** (FR-4.4): the month's totals, then its days, training days
 in a disc of the accent's soft tone. Tapping a day opens its workout, or a sheet to choose when
 there were two. Arrows or a swipe turn the month, never past the current one. The week starts
-where the locale starts it until FR-6.2's setting exists. Which view shows, and the month, live
-in the `SavedStateHandle`. `WorkoutDetail(workoutId)` reads a past workout back as the summary
+on the day FR-6.2's setting says. Which view shows, and the month, live in the `SavedStateHandle`. `WorkoutDetail(workoutId)` reads a past workout back as the summary
 does — stats, the records it set *at the time*, every set — with Edit in the top bar and Delete
 behind the menu. `WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
 each session to its workout, so FR-4.3 leads into FR-4.2.
@@ -549,6 +560,20 @@ chart's metric and range live in the `SavedStateHandle`. PRs are flagged during 
 (FR-5.2): a done set holding a record trades its check for a trophy, and the exercise names its
 records ("Heaviest · Est. 1RM") under its title, announced politely to TalkBack. The summary and
 the past-workout page flag the same sets with a trophy on their line.
+
+*As built, FR-6:* there is no `SettingsGraph` node, as there's no `MainGraph`: **`Settings`** and
+**`DataManagement`** are two full-screen destinations. Settings opens from a gear in the Workout
+tab's top bar. It shows every setting at once — the default rest as a row that opens the rest
+dialog the workout uses, the week start and the theme as segmented choices — each applied as it's
+picked, and a **Backup & data** row that names the last backup. That screen leads with what's on
+the phone (workouts, routines, weigh-ins as numbers) and when it was last backed up; **Export
+backup** is its bottom action. Import and **Clear all data** are rows beneath, clearing last and
+apart, in the error colour with its icon. An empty phone shows an empty state whose action is
+Import, and no export. Importing reads the file first and opens a sheet: when it was exported,
+what's in it, and Merge or Replace — Merge first, or Replace on an empty phone — with the action
+naming which. Replace asks once more. Clearing asks for a typed word (FR-6.5); its button stays
+off until the word matches, ignoring case, and the dialog says when the last backup was.
+Every outcome is a snackbar in plain words.
 
 ### 4.2 Navigation rules
 
@@ -651,9 +676,10 @@ cursors. The screen signature becomes `(state, textFieldState, onAction)`.
 | `ProgressViewModel` | weekly summary, trained exercises, body-weight glance, log sheet | FR-5.1, 5.3, 5.4 — see below |
 | `ExerciseProgressViewModel` | chart series + metric and range selectors | FR-5.1 |
 | `BodyWeightViewModel` | weigh-ins and trend over a range, log / edit / delete | FR-5.4 |
-| `SettingsViewModel` | `UserPreferences` | FR-6.1, 6.2 |
+| `SettingsViewModel` | `UserPreferences`, last backup | FR-6.2 — no unit toggle (§2.1) |
+| `MainViewModel` | the theme setting, for `MainActivity` | FR-6.2 — see below |
 | `ReminderListViewModel` / `ReminderEditorViewModel` | schedules, permission state | FR-7.1, 7.6, 7.7 |
-| `DataManagementViewModel` | export/import/clear progress | FR-6.3–6.5 |
+| `DataManagementViewModel` | counts, last backup, the operation running, the import draft, confirmations | FR-6.3–6.5 — see below |
 
 *Library search deviates from the original plan* (a debounced DB query via `flatMapLatest`). The
 library is a few hundred rows at most, so `domain/calculator/ExerciseSearch.kt` filters the
@@ -682,6 +708,20 @@ or metric is instant. *Logging body weight* is a `BodyWeightLogger` that both th
 the body-weight screen own — the sheet's state, the weight's `TextFieldState`, and the writes — so
 the rules live once: a new day starts from the last weight, selected; a day with a weigh-in shows
 it; an untouched value is saved exactly as stored, never re-read from its rounded text.
+
+*The theme (FR-6.2) is applied above the navigation graph.* `MainViewModel` exposes the setting
+as a `StateFlow<ThemeMode?>` that is null until DataStore has been read, and `MainActivity` draws
+nothing until then — a few milliseconds, with the launch window's background showing — so the
+first frame is already in the chosen theme. The status and navigation bar icons follow the app's
+theme rather than the system's (`enableEdgeToEdge` is re-applied when it changes).
+
+*Backups run one at a time* in `DataManagementViewModel`: an export, a read, an import or a
+clear sets the operation, and every other start is ignored until it ends. Each runs in
+`NonCancellable`, so leaving the screen can't cut one short between the database and settings
+writes. A replace or a clear deletes the workout in progress with the rest, so they cancel the
+rest alert (`RestTimerScheduler.cancel`). The typed word for clearing is a `TextFieldState` the
+ViewModel owns and empties each time the dialog opens; the word itself is a string resource, so
+it's matched in the dialog.
 
 *Editing a past workout (FR-4.2) is a draft, like the routine editor, not write-through like the
 active workout.* History is edited rarely and on purpose, so Close has to be able to throw an
@@ -795,6 +835,12 @@ and letting go returns to the latest; an optional trend line with the readings a
 `ui/feature/progress/`: `ChartHeadline`, `RangeSelector`, `ProgressRow`, `ChartEmptyPanel`,
 `WeeklySummaryBlock`, `BodyWeightLogSheet`.
 
+The FR-6 slice moved `RestDurationDialog` from the workout's components to `ui/components/`, now
+that settings picks the default rest with it too. The settings feature's own parts are in
+`ui/feature/settings/`: `SettingsRow` (a tonal row with its value or a chevron; destructive rows in
+the error colour, always with an icon), `SettingChoice` (a title over a `SegmentedSelector`),
+`DataCountTiles`, `ImportBackupSheet` and `ClearDataDialog`.
+
 ### 5.5 Threading & testing
 
 - Repositories take an injected `@IoDispatcher`. Room and DataStore manage their own threads;
@@ -849,6 +895,45 @@ WorkManager. A single-user export is a few MB and completes in well under a seco
 a dependency, a worker and a constraint system for a job that does not outlive the screen. Revisit
 if exports ever get large enough to need retry-on-failure.
 
+*As built* (`data/backup/`, `BackupRepositoryImpl`, `BackupDao`):
+- **The file.** `BackupFormat.kt` holds the DTOs, apart from the entities so a schema change can't
+  silently change the format. The envelope is `format` ("liftbook-backup", so any file name
+  works), `formatVersion`, `exportedAt`, `appVersion` and `settings`, then `exercises`, `routines`
+  (each nesting its targets), `workouts` (each nesting its exercises, each nesting its sets) and
+  `bodyWeight`. Nesting replaces the planned flat `sets` list: position is list order, and a set's
+  denormalised `workoutId` / `exerciseId` are taken from its parent on import, never from the
+  file, so they can't disagree (§2.6). Values are as stored — kilograms, metres, seconds — with
+  instants in ISO-8601 UTC and dates as ISO days. Nulls are left out; unknown keys are skipped.
+- **What's in it.** Every exercise, built-ins included, since they carry the user's archiving and
+  rest times; every routine; *finished* workouts only — the one in progress isn't history yet;
+  every weigh-in; and the three FR-6.2 settings. Not the unit (§2.1), not `lastExportedAt`.
+- **Versions (NFR-6).** Reading checks the marker, then the version: newer than this app is refused
+  with "update the app", not read wrongly. Older ones go through `BackupMigrations`, one
+  `JsonObject` step per version, kept forever. There are none yet: v1 is the only format.
+- **Checked before writing.** `BackupFile.isConsistent()` rejects what the database would reject or
+  the screens couldn't show — repeated ids, a set or target of an exercise the file doesn't have,
+  negative or non-finite numbers, a workout that ends before it starts, two weigh-ins on one day —
+  so an import never starts on a file it would have to abandon. A workout's link to a routine the
+  file lacks is dropped, as deleting a routine unlinks its workouts. Problems are typed
+  (`BackupProblem`: unreadable, not a backup, newer version, damaged) and each has its own message.
+- **Replace** deletes every table, the workout in progress included, and inserts the backup's rows
+  in one transaction, then puts back any built-in the backup lacks (an older app may have shipped
+  fewer), then writes the backup's settings. A missing or unknown setting takes its default.
+- **Merge** is `planMerge`, a pure function over the backup's rows and what's on the phone: a union
+  by id in which nothing already here changes, settings included. Beyond ids, an exercise new to
+  the phone but named like one in its library (ignoring case) *is* that exercise when it records
+  the same way, so its sets join the history already here rather than splitting it across two
+  lookalikes; named like one of another type, it's added numbered ("Plank Hold 2"). A routine
+  whose name clashes is numbered as a copy is. A weigh-in on a day the phone already has is
+  skipped. The whole merge is one transaction and reports what it added.
+- **Clear** (FR-6.5) deletes every table, puts back the built-in library, and clears the settings
+  file, `lastExportedAt` with it: LiftBook is as it was installed.
+- **Files** go through `BackupDocuments` — `ContentResolver` streams on the picked URI, read up to
+  64 MB so a wrong pick like a video can't fill memory, written with `"wt"` where the provider has
+  it. Above the data layer a file is an opaque `DocumentUri`. *Deviation:* the work runs in the
+  ViewModel's scope under `NonCancellable` (§5.2) rather than an application scope — the result is
+  shown on the screen that asked, and nothing needs to outlive it.
+
 ### 6.4 Dependencies to add
 
 Room (+ `ksp`), Hilt (+ `ksp`), Navigation Compose, `kotlinx-serialization` (+ plugin), DataStore
@@ -863,6 +948,10 @@ Kotlin 2.2.10: KSP 2.3.x, Hilt 2.59.x (2.60 pulls the Kotlin 2.3 BOM), kotlinx-s
 (1.10+ needs Kotlin 2.3). The Compose BOM moved to 2026.09.00 because lifecycle-compose 2.11,
 androidx.hilt 1.4 and Navigation 2.10 all require Compose ≥ 1.11. Lint's "newer version
 available" warnings on these pins are expected until Kotlin itself is upgraded.
+
+The FR-6 slice added `kotlinx-serialization-json` (same 1.9.x line) for the backup file, and turned
+on `buildConfig` for the app version written into it. `DispatcherModule` provides `@IoDispatcher`,
+used for reading and writing backup files.
 
 ---
 
@@ -909,8 +998,13 @@ history is queries over the v2 tables.
 FR-5.1–5.4 (Phase 2) are done, on request: the Progress tab, per-exercise charts, PRs flagged on
 the set row during the workout and on the recap's set lines, the weekly summary, and the
 body-weight log with its trend. Schema v3 added `body_weight_entries`; everything else is queries
-over existing tables. FR-6.2's week-start setting doesn't exist yet, so weeks start where the
-locale starts them (`di/ClockModule` provides `WeekFields`; the setting replaces that provider).
+over existing tables.
+
+Step 6 is done as FR-6.2–6.5, on request, with FR-6.2 and FR-6.4 pulled forward from Phase 2 and
+FR-6.1 left out: the app uses kilograms and kilometres only (§2.1). Settings (default rest, week
+start, theme), export, import with merge or replace, and clearing all data. The week start
+replaced the locale's `WeekFields` that `di/ClockModule` used to provide; the calendar and the
+weekly summary read the setting and follow it as it changes. The schema is unchanged.
 
 ---
 
@@ -939,6 +1033,7 @@ Assumptions are stated so work is not blocked; confirm or correct before the fou
    migration per exercise.
 7. **Distance units follow the weight unit** — km with kg, miles with lb — since FR-6.1 is a
    single toggle "applied everywhere". Split into two settings if that's wrong.
+   *Decided in step 6:* kilograms and kilometres only, so there is no toggle to follow.
 8. **Bodyweight sets and added weight.** FR-3.3 says bodyweight logs reps only; §2.11 models
    `Bodyweight(reps, addedWeightKg?)`. History already displays added weight when present
    ("+10 kg × 8"); whether the set row offers it is for the active-workout slice to decide.
@@ -965,7 +1060,8 @@ Assumptions are stated so work is not blocked; confirm or correct before the fou
     removed, their order — but not which exercise a logged set belongs to. Swapping an exercise
     would be a remove and an add. Deleting asks first and has no undo, as for routines.
 14. **The calendar's week start (FR-4.4)** follows the locale until FR-6.2 adds the setting. The
-    weekly summary (FR-5.3) does the same.
+    weekly summary (FR-5.3) does the same. *Done:* both follow the setting; until it's picked, it
+    defaults to the locale's Monday or Sunday.
 15. **What a chart shows for types other than strength (FR-5.1).** The spec names max weight,
     estimated 1RM and volume, which only mean something for weighted sets. *Assumed:* strength
     charts those three (1RM first — it compares sets of different reps); bodyweight charts most
@@ -980,3 +1076,11 @@ Assumptions are stated so work is not blocked; confirm or correct before the fou
     everything before it, this workout included — would flag sets the summary doesn't list.
 18. **Body-weight trend** is a 7-day trailing average (calendar days). Other smoothing
     (exponential, 10-day) is a one-constant change if it reads wrong in use.
+19. **A backup holds finished workouts only (FR-6.3).** The workout in progress isn't history
+    yet, so it isn't exported; a replace or a clear does delete it. Exporting mid-workout and
+    restoring on another phone therefore leaves that session behind.
+20. **Merge keeps this phone's version of anything both have (FR-6.4)**, by id, and never changes
+    settings. An exercise matched by name joins the one here only when it records the same way;
+    say if a same-named exercise should always stay separate instead.
+21. **Clearing all data resets settings too (FR-6.5)**, since FR-6.3 counts settings as data. The
+    alternative — keeping the theme and week start — is one line in `BackupRepositoryImpl.clearAll`.

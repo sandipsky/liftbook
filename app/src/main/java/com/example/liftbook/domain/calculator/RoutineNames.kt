@@ -33,23 +33,30 @@ object RoutineNames {
      * copy of "Day 1" is "Day 2". Numbers read the same in every language, which a "(copy)"
      * suffix wouldn't, and the result is usually the name the user wanted anyway.
      */
-    fun copyName(name: String, taken: Collection<String>): String {
-        val normalized = normalize(name)
-        val numbered = TRAILING_NUMBER.matchEntire(normalized)
-        val base = numbered?.groupValues?.get(1) ?: normalized
-        var number = numbered?.groupValues?.get(2)?.toInt()?.plus(1) ?: FIRST_COPY_NUMBER
-        val takenKeys = taken.mapTo(HashSet()) { normalize(it).lowercase(Locale.ROOT) }
-        while (true) {
-            val suffix = " $number"
-            val candidate = base.take(MAX_LENGTH - suffix.length).trimEnd() + suffix
-            if (candidate.lowercase(Locale.ROOT) !in takenKeys) return candidate
-            number++
-        }
-    }
-
-    private const val FIRST_COPY_NUMBER = 2
-    private val TRAILING_NUMBER = Regex("(.*\\S)\\s+(\\d{1,4})")
+    fun copyName(name: String, taken: Collection<String>): String = numberedName(name, taken, MAX_LENGTH)
 }
+
+/**
+ * [name] with the next number that makes it unlike every name in [taken], ignoring case, and
+ * no longer than [maxLength]: "Push" → "Push 2", "Day 1" → "Day 2". Shared by routine copies
+ * and by names that clash when a backup is merged in (FR-6.4).
+ */
+internal fun numberedName(name: String, taken: Collection<String>, maxLength: Int): String {
+    val normalized = ExerciseNames.normalize(name)
+    val numbered = TRAILING_NUMBER.matchEntire(normalized)
+    val base = numbered?.groupValues?.get(1) ?: normalized
+    var number = numbered?.groupValues?.get(2)?.toInt()?.plus(1) ?: FIRST_COPY_NUMBER
+    val takenKeys = taken.mapTo(HashSet()) { ExerciseNames.normalize(it).lowercase(Locale.ROOT) }
+    while (true) {
+        val suffix = " $number"
+        val candidate = base.take(maxLength - suffix.length).trimEnd() + suffix
+        if (candidate.lowercase(Locale.ROOT) !in takenKeys) return candidate
+        number++
+    }
+}
+
+private const val FIRST_COPY_NUMBER = 2
+private val TRAILING_NUMBER = Regex("(.*\\S)\\s+(\\d{1,4})")
 
 enum class RoutineNameError {
     BLANK,

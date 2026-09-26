@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import com.example.liftbook.data.preferences.SettingsKeys
 import com.example.liftbook.data.preferences.toUserPreferences
+import com.example.liftbook.domain.model.FirstDayOfWeek
+import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
 import com.example.liftbook.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -30,5 +32,13 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setDefaultRestSeconds(seconds: Int) {
         require(seconds >= 0) { "A rest can't be negative" }
         dataStore.edit { it[SettingsKeys.defaultRestSeconds] = seconds }
+    }
+
+    override suspend fun setFirstDayOfWeek(firstDayOfWeek: FirstDayOfWeek) {
+        dataStore.edit { it[SettingsKeys.firstDayOfWeek] = firstDayOfWeek.name }
+    }
+
+    override suspend fun setThemeMode(themeMode: ThemeMode) {
+        dataStore.edit { it[SettingsKeys.themeMode] = themeMode.name }
     }
 }

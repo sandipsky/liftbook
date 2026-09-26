@@ -51,6 +51,7 @@ class HomeViewModel @Inject constructor(
             HomeAction.CreateRoutine,
             HomeAction.ResumeWorkout,
             HomeAction.DismissOtherWorkout,
+            HomeAction.OpenSettings,
             -> Unit
         }
     }

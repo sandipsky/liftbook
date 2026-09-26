@@ -75,6 +75,7 @@ class HistoryViewModel @Inject constructor(
             view = view,
             calendar = calendar,
             weightUnit = preferences.weightUnit,
+            firstDayOfWeek = preferences.firstDayOfWeek.dayOfWeek,
             today = LocalDate.now(clock),
             zone = clock.zone,
         )

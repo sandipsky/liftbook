@@ -28,6 +28,9 @@ sealed interface HomeAction {
     data object ResumeWorkout : HomeAction
 
     data object DismissOtherWorkout : HomeAction
+
+    /** Settings live behind the top bar, not in a fifth tab (architecture §4.1). */
+    data object OpenSettings : HomeAction
 }
 
 sealed interface HomeEvent {

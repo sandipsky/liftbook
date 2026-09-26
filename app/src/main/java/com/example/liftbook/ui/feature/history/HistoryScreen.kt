@@ -273,6 +273,7 @@ private fun CalendarView(state: HistoryUiState, padding: PaddingValues, onAction
         TrainingCalendarGrid(
             calendar = calendar,
             today = state.today,
+            firstDayOfWeek = state.firstDayOfWeek,
             onOpenDay = { date ->
                 val workouts = calendar.days[date].orEmpty()
                 when (workouts.size) {

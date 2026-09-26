@@ -98,6 +98,7 @@ import com.example.liftbook.ui.components.ExercisePickerSheet
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.NoteField
 import com.example.liftbook.ui.components.ReorderableItem
+import com.example.liftbook.ui.components.RestDurationDialog
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.StatTile
@@ -111,7 +112,6 @@ import com.example.liftbook.ui.components.timeOfDayText
 import com.example.liftbook.ui.components.weightLabelRes
 import com.example.liftbook.ui.feature.workout.components.ExerciseBlock
 import com.example.liftbook.ui.feature.workout.components.ReorderRow
-import com.example.liftbook.ui.feature.workout.components.RestDurationDialog
 import com.example.liftbook.ui.feature.workout.components.RestTimerBar
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.LiftBookTheme

@@ -702,4 +702,116 @@
     <string name="banner_elapsed">In progress · %1$s</string>
     <string name="banner_resting">Resting · %1$s left</string>
     <string name="banner_click_label">resume workout</string>
+
+    <!-- Settings (FR-6.2) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_open">Settings</string>
+    <string name="settings_loading">Loading settings</string>
+    <string name="settings_save_failed">Couldn’t save that. Try again.</string>
+    <string name="settings_section_training">Training</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_data">Your data</string>
+    <string name="settings_rest_title">Default rest</string>
+    <string name="settings_rest_body">For exercises without their own rest time</string>
+    <string name="settings_rest_click_label">change default rest</string>
+    <string name="settings_week_start_title">Week starts on</string>
+    <string name="settings_week_start_body">For the history calendar and the weekly summary</string>
+    <!-- Spoken by TalkBack for a week-start choice: "Weeks start on Monday" -->
+    <string name="settings_week_start_spoken">Weeks start on %1$s</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_system_spoken">Match the system theme</string>
+    <string name="settings_theme_light_spoken">Light theme</string>
+    <string name="settings_theme_dark_spoken">Dark theme</string>
+    <!-- When the last backup was: "Last backup · 3 days ago", "Last backup · 12 Sep" -->
+    <string name="settings_backup_last">Last backup · %1$s</string>
+    <string name="settings_backup_never">No backup yet</string>
+    <string name="settings_backup_click_label">open backup and data</string>
+
+    <!-- Backup & data (FR-6.3 – FR-6.5) -->
+    <string name="data_title">Backup &amp; data</string>
+    <string name="data_loading">Loading your data</string>
+    <string name="data_intro">LiftBook keeps everything on this phone, with no account and no cloud copy. Export a backup now and then, and keep the file somewhere safe.</string>
+    <string name="data_on_phone">On this phone</string>
+    <string name="data_workouts">Workouts</string>
+    <string name="data_routines">Routines</string>
+    <string name="data_weigh_ins">Weigh-ins</string>
+    <string name="data_last_backup">Last backup</string>
+    <string name="data_last_backup_never">Never</string>
+    <string name="data_export">Export backup</string>
+    <string name="data_exporting">Exporting…</string>
+    <plurals name="data_exported">
+        <item quantity="one">Backup saved · %d workout</item>
+        <item quantity="other">Backup saved · %d workouts</item>
+    </plurals>
+    <string name="data_exported_empty">Backup saved</string>
+    <string name="data_export_failed">Couldn’t save the backup there. Try another place.</string>
+    <string name="data_no_file_picker">This phone has no app for choosing files.</string>
+    <string name="data_empty_title">Nothing logged on this phone yet</string>
+    <string name="data_empty_body">Moving from another phone? Import its backup to bring your history over.</string>
+    <!-- What a phone or backup holds, joined: "142 workouts · 6 routines · 31 weigh-ins" -->
+    <plurals name="data_count_workouts">
+        <item quantity="one">%d workout</item>
+        <item quantity="other">%d workouts</item>
+    </plurals>
+    <plurals name="data_count_routines">
+        <item quantity="one">%d routine</item>
+        <item quantity="other">%d routines</item>
+    </plurals>
+    <plurals name="data_count_exercises">
+        <item quantity="one">%d exercise</item>
+        <item quantity="other">%d exercises</item>
+    </plurals>
+    <plurals name="data_count_weigh_ins">
+        <item quantity="one">%d weigh-in</item>
+        <item quantity="other">%d weigh-ins</item>
+    </plurals>
+
+    <!-- Importing a backup (FR-6.4) -->
+    <string name="import_action">Import backup</string>
+    <string name="import_row_body">Add a backup’s history to this phone, or replace what’s here with it</string>
+    <string name="import_click_label">choose a backup file</string>
+    <string name="import_title">Import backup</string>
+    <!-- "Exported Sat, 12 Sep" -->
+    <string name="import_exported_on">Exported %1$s</string>
+    <string name="import_merge_title">Merge</string>
+    <string name="import_merge_body">Adds what isn’t on this phone yet. Nothing here is changed or removed.</string>
+    <string name="import_replace_title">Replace</string>
+    <string name="import_replace_body">Deletes everything on this phone, then restores the backup and its settings.</string>
+    <string name="import_merge_action">Merge backup</string>
+    <string name="import_replace_action">Replace with backup</string>
+    <string name="import_in_progress">Importing…</string>
+    <string name="import_replace_dialog_title">Replace this phone’s data?</string>
+    <plurals name="import_replace_dialog_body">
+        <item quantity="one">The %d workout on this phone, and everything else here, is deleted and replaced by the backup. This can’t be undone.</item>
+        <item quantity="other">All %d workouts on this phone, and everything else here, are deleted and replaced by the backup. This can’t be undone.</item>
+    </plurals>
+    <string name="import_replace_dialog_body_no_workouts">Everything on this phone is deleted and replaced by the backup. This can’t be undone.</string>
+    <string name="import_replace_dialog_confirm">Replace</string>
+    <!-- After a merge: "Added 12 workouts · 2 routines" -->
+    <string name="import_merged">Added %1$s</string>
+    <string name="import_merged_nothing">Nothing to add. This phone already has everything in the backup.</string>
+    <string name="import_replaced">Backup restored</string>
+    <string name="import_failed">Couldn’t import the backup. Nothing was changed.</string>
+    <string name="import_problem_unreadable">Couldn’t open that file. Try choosing it again.</string>
+    <string name="import_problem_not_backup">That file isn’t a LiftBook backup.</string>
+    <string name="import_problem_newer">This backup is from a newer version of LiftBook. Update the app to import it.</string>
+    <string name="import_problem_damaged">Part of this backup can’t be read, so nothing was imported. The file may be damaged.</string>
+
+    <!-- Clearing all data (FR-6.5) -->
+    <string name="data_clear_title">Clear all data</string>
+    <string name="data_clear_body">Delete everything on this phone and reset settings</string>
+    <string name="data_clear_click_label">clear all data</string>
+    <string name="data_clear_dialog_title">Clear all data?</string>
+    <string name="data_clear_dialog_body">Every workout, routine, custom exercise and weigh-in on this phone is deleted, and settings go back to their defaults. This can’t be undone.</string>
+    <string name="data_clear_dialog_last_backup">Last backup · %1$s</string>
+    <string name="data_clear_dialog_no_backup">You haven’t exported a backup, so there’s no way to get this back.</string>
+    <!-- The word typed to confirm. Translate it; it's compared ignoring case. -->
+    <string name="data_clear_confirm_word">delete</string>
+    <string name="data_clear_confirm_label">Type “%1$s” to confirm</string>
+    <string name="data_clear_confirm">Clear all data</string>
+    <string name="data_cleared">All data cleared</string>
+    <string name="data_clear_failed">Couldn’t clear your data. Try again.</string>
 </resources>

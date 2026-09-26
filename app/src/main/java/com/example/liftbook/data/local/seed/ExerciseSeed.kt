@@ -1,6 +1,7 @@
 package com.example.liftbook.data.local.seed
 
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.liftbook.data.local.entity.ExerciseEntity
 import java.time.Instant
 import com.example.liftbook.domain.model.Equipment as E
 import com.example.liftbook.domain.model.ExerciseType as T
@@ -179,6 +180,25 @@ object ExerciseSeed {
                 statement.executeInsert()
             }
         }
+    }
+
+    /**
+     * The library as rows, for putting it back after data is cleared or replaced (FR-6.4, FR-6.5):
+     * a backup from an older version may not have every built-in this one ships.
+     */
+    fun entities(createdAt: Instant): List<ExerciseEntity> = exercises.map { exercise ->
+        ExerciseEntity(
+            id = exercise.id,
+            name = exercise.name,
+            primaryMuscle = exercise.primaryMuscle,
+            equipment = exercise.equipment,
+            type = exercise.type,
+            isCustom = false,
+            isArchived = false,
+            defaultRestSeconds = null,
+            notes = null,
+            createdAt = createdAt,
+        )
     }
 
     // Column names must match ExerciseEntity; LiftBookDatabaseTest reads the seed back through

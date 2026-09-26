@@ -51,4 +51,13 @@ class ExerciseNamesTest {
     fun `an archived exercise doesn't reserve its name`() {
         assertNull(ExerciseNames.validate("Spider Curl", library))
     }
+
+    @Test
+    fun `a clashing name is numbered to fit the exercise limit, not the routine one`() {
+        assertEquals("Cable Y-Raise 2", ExerciseNames.copyName("Cable Y-Raise", listOf("cable y-raise")))
+        val long = "Single-arm half-kneeling landmine press with rotation (Barbell)".take(ExerciseNames.MAX_LENGTH)
+        val copy = ExerciseNames.copyName(long, listOf(long))
+        assertEquals(ExerciseNames.MAX_LENGTH, copy.length)
+        assertNull(ExerciseNames.validate(copy, library))
+    }
 }

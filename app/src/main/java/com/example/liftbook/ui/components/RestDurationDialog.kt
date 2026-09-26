@@ -1,4 +1,4 @@
-package com.example.liftbook.ui.feature.workout.components
+package com.example.liftbook.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,10 +24,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.example.liftbook.R
 import com.example.liftbook.domain.calculator.RestTimes
-import com.example.liftbook.ui.components.restDurationSpoken
-import com.example.liftbook.ui.components.restDurationText
 import com.example.liftbook.ui.theme.LiftBookPreview
 import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
@@ -110,7 +109,7 @@ private fun Option(label: String, spoken: String, selected: Boolean, onClick: ()
     }
 }
 
-private val OptionHeight = ControlSize
+private val OptionHeight = 48.dp
 
 @ThemePreviews
 @Composable

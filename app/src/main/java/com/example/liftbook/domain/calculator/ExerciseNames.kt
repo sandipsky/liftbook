@@ -25,6 +25,9 @@ object ExerciseNames {
         }
     }
 
+    /** [name] numbered to be unlike every name in [taken]: "Zercher Squat" → "Zercher Squat 2". */
+    fun copyName(name: String, taken: Collection<String>): String = numberedName(name, taken, MAX_LENGTH)
+
     private fun Exercise.isTaking(name: String, editingId: String?) =
         id != editingId && !isArchived && normalize(this.name).equals(name, ignoreCase = true)
 

@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.history
 import com.example.liftbook.domain.calculator.WorkoutTotals
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.domain.model.WorkoutListItem
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -15,6 +16,8 @@ data class HistoryUiState(
     /** The calendar's month; null until its workouts have loaded, and while the list shows. */
     val calendar: CalendarMonth? = null,
     val weightUnit: WeightUnit = WeightUnit.KG,
+    /** Where the calendar's weeks start (FR-6.2). */
+    val firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
     val today: LocalDate = LocalDate.of(1970, 1, 1),
     /** The zone workouts are placed on a day in. */
     val zone: ZoneId = ZoneId.systemDefault(),

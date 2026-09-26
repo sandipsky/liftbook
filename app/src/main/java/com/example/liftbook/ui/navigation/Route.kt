@@ -63,4 +63,12 @@ sealed interface Route {
     /** The body-weight log and its trend (FR-5.4). */
     @Serializable
     data object BodyWeight : Route
+
+    /** Default rest, week start and theme (FR-6.2); opened from the Workout tab's top bar. */
+    @Serializable
+    data object Settings : Route
+
+    /** Export, import and clearing all data (FR-6.3–6.5). */
+    @Serializable
+    data object DataManagement : Route
 }

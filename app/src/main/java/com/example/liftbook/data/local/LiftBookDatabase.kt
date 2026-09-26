@@ -4,6 +4,7 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.liftbook.data.local.dao.BackupDao
 import com.example.liftbook.data.local.dao.BodyWeightDao
 import com.example.liftbook.data.local.dao.ExerciseDao
 import com.example.liftbook.data.local.dao.ProgressDao
@@ -50,6 +51,7 @@ abstract class LiftBookDatabase : RoomDatabase() {
     abstract fun setDao(): SetDao
     abstract fun progressDao(): ProgressDao
     abstract fun bodyWeightDao(): BodyWeightDao
+    abstract fun backupDao(): BackupDao
 
     companion object {
         const val NAME = "liftbook.db"

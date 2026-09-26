@@ -2,6 +2,7 @@ package com.example.liftbook.ui.feature.history
 
 import androidx.lifecycle.SavedStateHandle
 import com.example.liftbook.domain.calculator.WorkoutTotals
+import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.WorkoutListItem
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRoutineRepository
@@ -24,6 +25,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -40,9 +42,10 @@ class HistoryViewModelTest {
     private val workouts = FakeWorkoutRepository(FakeRoutineRepository(exercises), exercises)
     private val clock = Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC)
     private val savedState = SavedStateHandle()
+    private val settings = FakeSettingsRepository()
 
     private fun TestScope.history(): HistoryViewModel =
-        HistoryViewModel(workouts, FakeSettingsRepository(), clock, savedState).also { viewModel ->
+        HistoryViewModel(workouts, settings, clock, savedState).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         }
 
@@ -119,6 +122,16 @@ class HistoryViewModelTest {
         logBench("new", "2026-09-25T18:00:00Z")
 
         assertEquals(listOf("new"), viewModel.uiState.value.calendar!!.days[LocalDate.of(2026, 9, 25)]?.map { it.id })
+    }
+
+    @Test
+    fun `the calendar's weeks start on the day the setting says`() = runTest {
+        val viewModel = history()
+        assertEquals(DayOfWeek.MONDAY, viewModel.uiState.value.firstDayOfWeek)
+
+        settings.setFirstDayOfWeek(FirstDayOfWeek.SUNDAY)
+
+        assertEquals(DayOfWeek.SUNDAY, viewModel.uiState.value.firstDayOfWeek)
     }
 
     @Test

@@ -64,7 +64,6 @@ import com.example.liftbook.ui.theme.tabularNumbers
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
-import java.time.temporal.WeekFields
 import java.util.Locale
 
 /** The month's name with arrows to the months either side. The calendar never goes past this month. */
@@ -101,7 +100,7 @@ fun CalendarMonthHeader(
 }
 
 /**
- * A month of training days (FR-4.4), in weeks that start where the user's locale starts them.
+ * A month of training days (FR-4.4), in weeks that start on [firstDayOfWeek] (FR-6.2).
  * A day with a workout sits in a disc of the accent's soft tone, its number a weight heavier, so
  * it reads by shape and weight as well as colour; today wears a ring. Tapping a training day
  * opens what was done on it. Swiping across the grid turns the month, as the arrows do, and the
@@ -111,13 +110,13 @@ fun CalendarMonthHeader(
 fun TrainingCalendarGrid(
     calendar: CalendarMonth,
     today: LocalDate,
+    firstDayOfWeek: DayOfWeek,
     onOpenDay: (LocalDate) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    val firstDayOfWeek = remember(locale) { WeekFields.of(locale).firstDayOfWeek }
     Column(modifier.fillMaxWidth().padding(horizontal = Spacing.gutter)) {
         WeekdayRow(firstDayOfWeek = firstDayOfWeek, locale = locale)
         AnimatedContent(
@@ -278,6 +277,7 @@ private fun TrainingCalendarPreview() {
             TrainingCalendarGrid(
                 calendar = calendar,
                 today = HistoryPreviewData.today,
+                firstDayOfWeek = DayOfWeek.MONDAY,
                 onOpenDay = {},
                 onPreviousMonth = {},
                 onNextMonth = {},

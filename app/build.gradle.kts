@@ -36,6 +36,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // For the app version written into backups (FR-6.3).
+        buildConfig = true
     }
     testOptions {
         // Compose UI tests run on the JVM under Robolectric, and need the app's resources.
@@ -68,6 +70,7 @@ dependencies {
     implementation(libs.androidx.paging.compose)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.core)
+    implementation(libs.kotlinx.serialization.json)
     ksp(libs.hilt.compiler)
     ksp(libs.androidx.room.compiler)
 

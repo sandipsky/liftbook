@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -84,6 +85,7 @@ fun HomeRoute(
     onOpenRoutine: (routineId: String) -> Unit,
     onCreateRoutine: () -> Unit,
     onOpenWorkout: () -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -111,6 +113,7 @@ fun HomeRoute(
             when (action) {
                 is HomeAction.OpenRoutine -> onOpenRoutine(action.routineId)
                 HomeAction.CreateRoutine -> onCreateRoutine()
+                HomeAction.OpenSettings -> onOpenSettings()
                 HomeAction.ResumeWorkout -> {
                     otherWorkoutName = null
                     onOpenWorkout()
@@ -158,6 +161,9 @@ fun HomeScreen(
                         IconButton(onClick = { onAction(HomeAction.CreateRoutine) }) {
                             Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.home_new_routine))
                         }
+                    }
+                    IconButton(onClick = { onAction(HomeAction.OpenSettings) }) {
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_open))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

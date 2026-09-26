@@ -15,14 +15,17 @@ import com.example.liftbook.domain.repository.ProgressRepository
 import com.example.liftbook.domain.repository.SettingsRepository
 import com.example.liftbook.domain.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.LocalDate
-import java.time.temporal.WeekFields
 import javax.inject.Inject
 
 /**
@@ -31,13 +34,13 @@ import javax.inject.Inject
  * Everything is worked out from logged sets as they change, so a workout finished or edited
  * shows here straight away.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProgressViewModel @Inject constructor(
     workoutRepository: WorkoutRepository,
     progressRepository: ProgressRepository,
     bodyWeightRepository: BodyWeightRepository,
     settingsRepository: SettingsRepository,
-    weekFields: WeekFields,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -50,14 +53,17 @@ class ProgressViewModel @Inject constructor(
 
     private val today = LocalDate.now(clock)
 
-    private val week: Flow<WeeklySummary> = run {
-        val firstDayOfWeek = weekFields.firstDayOfWeek
-        val span = summaryWeeks(today, firstDayOfWeek, clock.zone)
-        combine(
-            workoutRepository.observeFinishedBetween(span.from, span.until),
-            progressRepository.observeMuscleSets(span.from, span.until),
-        ) { workouts, muscleSets -> weeklySummary(workouts, muscleSets, today, firstDayOfWeek, clock.zone) }
-    }
+    /** This week and last, from wherever the user's weeks start (FR-6.2); re-queried when that changes. */
+    private val week: Flow<WeeklySummary> = settingsRepository.userPreferences
+        .map { it.firstDayOfWeek.dayOfWeek }
+        .distinctUntilChanged()
+        .flatMapLatest { firstDayOfWeek ->
+            val span = summaryWeeks(today, firstDayOfWeek, clock.zone)
+            combine(
+                workoutRepository.observeFinishedBetween(span.from, span.until),
+                progressRepository.observeMuscleSets(span.from, span.until),
+            ) { workouts, muscleSets -> weeklySummary(workouts, muscleSets, today, firstDayOfWeek, clock.zone) }
+        }
 
     val uiState: StateFlow<ProgressUiState> = combine(
         week,

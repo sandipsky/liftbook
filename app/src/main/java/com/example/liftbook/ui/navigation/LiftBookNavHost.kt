@@ -53,6 +53,8 @@ import com.example.liftbook.ui.feature.progress.ExerciseProgressRoute
 import com.example.liftbook.ui.feature.progress.ProgressRoute
 import com.example.liftbook.ui.feature.routines.RoutineDetailRoute
 import com.example.liftbook.ui.feature.routines.RoutineEditorRoute
+import com.example.liftbook.ui.feature.settings.DataManagementRoute
+import com.example.liftbook.ui.feature.settings.SettingsRoute
 import com.example.liftbook.ui.feature.summary.WorkoutSummaryRoute
 import com.example.liftbook.ui.feature.workout.ActiveWorkoutBannerState
 import com.example.liftbook.ui.feature.workout.ActiveWorkoutBannerViewModel
@@ -108,6 +110,7 @@ fun LiftBookNavHost(
                     onOpenRoutine = { id -> entry.ifResumed { navController.navigate(Route.RoutineDetail(id)) } },
                     onCreateRoutine = { entry.ifResumed { navController.navigate(Route.RoutineEditor()) } },
                     onOpenWorkout = { entry.ifResumed { navController.navigate(Route.ActiveWorkout) { launchSingleTop = true } } },
+                    onOpenSettings = { entry.ifResumed { navController.navigate(Route.Settings) } },
                 )
             }
             composable<Route.ExerciseLibrary> { entry ->
@@ -244,6 +247,15 @@ fun LiftBookNavHost(
             }
             composable<Route.BodyWeight> { entry ->
                 BodyWeightRoute(onNavigateUp = { entry.ifResumed { navController.navigateUp() } })
+            }
+            composable<Route.Settings> { entry ->
+                SettingsRoute(
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onOpenDataManagement = { entry.ifResumed { navController.navigate(Route.DataManagement) } },
+                )
+            }
+            composable<Route.DataManagement> { entry ->
+                DataManagementRoute(onNavigateUp = { entry.ifResumed { navController.navigateUp() } })
             }
         }
     }

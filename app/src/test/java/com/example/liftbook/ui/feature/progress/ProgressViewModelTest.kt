@@ -2,6 +2,7 @@ package com.example.liftbook.ui.feature.progress
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import com.example.liftbook.domain.model.BodyWeightEntry
+import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WorkoutExercise
@@ -31,7 +32,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.time.temporal.WeekFields
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProgressViewModelTest {
@@ -48,8 +48,10 @@ class ProgressViewModelTest {
     /** Saturday 26 September; weeks start on Monday the 21st. */
     private val clock = Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC)
 
-    private fun TestScope.progress(weekFields: WeekFields = WeekFields.ISO): ProgressViewModel =
-        ProgressViewModel(workouts, FakeProgressRepository(workouts), bodyWeight, FakeSettingsRepository(), weekFields, clock).also { viewModel ->
+    private val settings = FakeSettingsRepository()
+
+    private fun TestScope.progress(): ProgressViewModel =
+        ProgressViewModel(workouts, FakeProgressRepository(workouts), bodyWeight, settings, clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         }
 
@@ -79,11 +81,18 @@ class ProgressViewModelTest {
     }
 
     @Test
-    fun `weeks start where the locale starts them`() = runTest {
+    fun `weeks start where the setting says, and move when it changes`() = runTest {
         log("sun", "2026-09-20T10:00:00Z", doneExercise("sun-b", bench, doneSet("s1", 100.0, 5)))
+        val viewModel = progress()
 
-        assertEquals(0, progress(WeekFields.ISO).uiState.value.week!!.current.workouts)
-        assertEquals(1, progress(WeekFields.SUNDAY_START).uiState.value.week!!.current.workouts)
+        // Monday-start: Sunday the 20th closed last week.
+        assertEquals(LocalDate.of(2026, 9, 21), viewModel.uiState.value.week!!.current.start)
+        assertEquals(0, viewModel.uiState.value.week!!.current.workouts)
+
+        settings.setFirstDayOfWeek(FirstDayOfWeek.SUNDAY)
+
+        assertEquals(LocalDate.of(2026, 9, 20), viewModel.uiState.value.week!!.current.start)
+        assertEquals(1, viewModel.uiState.value.week!!.current.workouts)
     }
 
     @Test
