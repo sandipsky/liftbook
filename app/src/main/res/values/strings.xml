@@ -1,3 +1,483 @@
 <resources>
     <string name="app_name">LiftBook</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_clear_search">Clear search</string>
+    <string name="action_more_options">More options</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_undo">Undo</string>
+
+    <!-- Exercise library (FR-1.1, FR-1.4) -->
+    <string name="exercises_title">Exercises</string>
+    <plurals name="exercises_search_placeholder">
+        <item quantity="one">Search %d exercise</item>
+        <item quantity="other">Search %d exercises</item>
+    </plurals>
+    <string name="exercises_search_placeholder_empty">Search exercises</string>
+    <string name="exercises_filter_muscle">Muscle</string>
+    <string name="exercises_filter_equipment">Equipment</string>
+    <string name="exercises_filter_muscle_title">Muscle group</string>
+    <string name="exercises_filter_equipment_title">Equipment</string>
+    <string name="exercises_filter_any_muscle">Any muscle</string>
+    <string name="exercises_filter_any_equipment">Any equipment</string>
+    <plurals name="exercises_result_count">
+        <item quantity="one">%d result</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+    <string name="exercises_new">New exercise</string>
+    <string name="exercises_menu_archived">Archived exercises</string>
+    <string name="exercises_clear_filters">Clear filters</string>
+    <string name="exercises_loading">Loading exercises</string>
+    <string name="exercises_empty_query_title">No matches for “%1$s”</string>
+    <string name="exercises_empty_query_body">Check the spelling, or add it as your own exercise.</string>
+    <string name="exercises_empty_query_filters_body">Try clearing the filters, or add it as your own exercise.</string>
+    <string name="exercises_empty_filters_title">Nothing matches these filters</string>
+    <string name="exercises_empty_filters_body">Try a different muscle group or piece of equipment.</string>
+    <string name="exercises_empty_library_title">Your library is empty</string>
+    <string name="exercises_empty_library_body">Every exercise is archived. Restore the ones you use, or create your own.</string>
+    <string name="exercises_empty_create">Create “%1$s”</string>
+    <string name="exercise_archived_message">“%1$s” archived</string>
+    <string name="exercise_row_click_label">view details</string>
+    <string name="exercise_meta">%1$s · %2$s</string>
+    <string name="exercise_meta_custom">%1$s · %2$s · Custom</string>
+    <string name="exercise_meta_spoken">%1$s, %2$s</string>
+    <string name="exercise_meta_custom_spoken">%1$s, %2$s, custom exercise</string>
+
+    <!-- Muscle groups -->
+    <string name="muscle_chest">Chest</string>
+    <string name="muscle_back">Back</string>
+    <string name="muscle_shoulders">Shoulders</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_forearms">Forearms</string>
+    <string name="muscle_core">Core</string>
+    <string name="muscle_quads">Quads</string>
+    <string name="muscle_hamstrings">Hamstrings</string>
+    <string name="muscle_glutes">Glutes</string>
+    <string name="muscle_calves">Calves</string>
+    <string name="muscle_full_body">Full body</string>
+    <string name="muscle_cardio">Cardio</string>
+    <string name="muscle_other">Other</string>
+
+    <!-- Equipment -->
+    <string name="equipment_barbell">Barbell</string>
+    <string name="equipment_dumbbell">Dumbbell</string>
+    <string name="equipment_kettlebell">Kettlebell</string>
+    <string name="equipment_cable">Cable</string>
+    <string name="equipment_machine">Machine</string>
+    <string name="equipment_band">Band</string>
+    <string name="equipment_none">No equipment</string>
+    <string name="equipment_cardio_machine">Cardio machine</string>
+    <string name="equipment_other">Other</string>
+
+    <!-- Exercise types, named for what a set records (FR-3.3) -->
+    <string name="exercise_type_strength">Weight &amp; reps</string>
+    <string name="exercise_type_strength_examples">Bench press, curls, rows</string>
+    <string name="exercise_type_bodyweight">Reps</string>
+    <string name="exercise_type_bodyweight_examples">Pull-ups, push-ups, crunches</string>
+    <string name="exercise_type_cardio">Time &amp; distance</string>
+    <string name="exercise_type_cardio_examples">Running, rowing, planks</string>
+
+    <!-- Exercise detail (FR-1.5) -->
+    <string name="exercise_detail_custom">Custom exercise</string>
+    <string name="exercise_fact_muscle">Muscle</string>
+    <string name="exercise_fact_equipment">Equipment</string>
+    <string name="exercise_fact_logged_as">Logged as</string>
+    <string name="exercise_detail_edit">Edit exercise</string>
+    <string name="exercise_detail_archive">Archive</string>
+    <string name="exercise_detail_archived_notice">Archived. It’s out of your library, and past workouts keep it.</string>
+    <string name="exercise_detail_last_time">Last time</string>
+    <string name="exercise_detail_session_caption">%1$s · %2$s</string>
+    <string name="exercise_detail_history">History</string>
+    <string name="exercise_detail_empty_title">No sets logged yet</string>
+    <string name="exercise_detail_empty_body">Complete a set of this in a workout and it shows up here, with what you lifted last time.</string>
+    <string name="exercise_detail_loading">Loading exercise</string>
+    <string name="exercise_detail_not_found_title">This exercise isn’t in your library</string>
+    <string name="exercise_detail_not_found_body">Go back and pick another one.</string>
+    <string name="exercise_detail_not_found_action">Back to exercises</string>
+
+    <!-- Sets -->
+    <string name="set_times">×</string>
+    <string name="set_separator">·</string>
+    <string name="set_added_weight">+%1$s</string>
+    <string name="set_marker_warmup">W</string>
+    <string name="set_marker_drop">D</string>
+    <string name="set_marker_failure">F</string>
+    <string name="set_title">Set %1$d</string>
+    <string name="set_title_warmup">Warm-up</string>
+    <string name="set_title_drop">Set %1$d · Drop</string>
+    <string name="set_title_failure">Set %1$d · Failure</string>
+    <string name="set_spoken_warmup">Warm-up set</string>
+    <string name="set_spoken_drop">Set %1$d, drop set</string>
+    <string name="set_spoken_failure">Set %1$d, to failure</string>
+    <!-- Spoken by TalkBack: "80 kg, 5 reps" -->
+    <string name="set_spoken_weighted">%1$s, %2$s</string>
+    <!-- Spoken by TalkBack: "8 reps, plus 10 kg" -->
+    <string name="set_spoken_added_weight">%1$s, plus %2$s</string>
+    <!-- Spoken by TalkBack: "25 minutes, 5.2 km" -->
+    <string name="set_spoken_distance">%1$s, %2$s</string>
+    <plurals name="reps_count">
+        <item quantity="one">%d rep</item>
+        <item quantity="other">%d reps</item>
+    </plurals>
+    <plurals name="reps_unit">
+        <item quantity="one">rep</item>
+        <item quantity="other">reps</item>
+    </plurals>
+    <string name="unit_kg">kg</string>
+    <string name="unit_lb">lb</string>
+    <string name="unit_km">km</string>
+    <string name="unit_mi">mi</string>
+    <plurals name="duration_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <plurals name="duration_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="duration_seconds">
+        <item quantity="one">%d second</item>
+        <item quantity="other">%d seconds</item>
+    </plurals>
+
+    <!-- Relative dates -->
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+    <plurals name="date_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <plurals name="date_weeks_ago">
+        <item quantity="one">%d week ago</item>
+        <item quantity="other">%d weeks ago</item>
+    </plurals>
+
+    <!-- Exercise editor (FR-1.2, FR-1.3) -->
+    <string name="editor_title_create">New exercise</string>
+    <string name="editor_title_edit">Edit exercise</string>
+    <string name="editor_name_label">Name</string>
+    <string name="editor_name_placeholder">e.g. Cable Y-Raise</string>
+    <string name="editor_muscle">Muscle group</string>
+    <string name="editor_equipment">Equipment</string>
+    <string name="editor_type">How it’s logged</string>
+    <string name="editor_type_locked">Sets are logged against it, so this can’t change.</string>
+    <string name="editor_error_name_blank">Give it a name</string>
+    <plurals name="editor_error_name_too_long">
+        <item quantity="one">Keep it to %d character</item>
+        <item quantity="other">Keep it to %d characters or fewer</item>
+    </plurals>
+    <string name="editor_error_name_duplicate">“%1$s” is already in your library</string>
+    <string name="editor_error_muscle">Pick the main muscle it works</string>
+    <string name="editor_error_equipment">Pick the equipment, or No equipment</string>
+    <string name="editor_save_create">Create exercise</string>
+    <string name="editor_save_edit">Save changes</string>
+    <string name="editor_save_failed">Couldn’t save the exercise. Try again.</string>
+    <string name="editor_discard_title">Discard changes?</string>
+    <string name="editor_discard_body_create">This exercise won’t be created.</string>
+    <string name="editor_discard_body_edit">Your edits to this exercise won’t be saved.</string>
+    <string name="editor_discard_confirm">Discard</string>
+    <string name="editor_discard_dismiss">Keep editing</string>
+    <string name="editor_unavailable_title">This exercise can’t be edited</string>
+    <string name="editor_unavailable_body">Built-in exercises stay as they are. You can archive one from its page instead.</string>
+    <string name="editor_unavailable_action">Back</string>
+    <string name="editor_loading">Loading exercise</string>
+
+    <!-- Archived exercises (FR-1.3) -->
+    <string name="archived_title">Archived</string>
+    <string name="archived_intro">Hidden from your library. Every set you logged with them is kept.</string>
+    <string name="archived_empty_title">Nothing archived</string>
+    <string name="archived_empty_body">Archive an exercise from its page and it waits here, history intact, until you restore it.</string>
+    <string name="archived_restore_description">Restore %1$s</string>
+    <string name="archived_restored_message">“%1$s” is back in your library</string>
+    <string name="archived_loading">Loading archived exercises</string>
+
+    <!-- Navigation -->
+    <string name="nav_workout">Workout</string>
+    <string name="nav_exercises">Exercises</string>
+
+    <!-- Home: routines and starting from one (FR-2.3, FR-2.4) -->
+    <string name="home_title">Workout</string>
+    <string name="home_routines">Routines</string>
+    <string name="home_new_routine">New routine</string>
+    <string name="home_loading">Loading routines</string>
+    <string name="home_empty_title">No routines yet</string>
+    <string name="home_empty_body">Save the workouts you repeat, with their sets and targets, and start them in one tap.</string>
+    <string name="home_empty_action">Create a routine</string>
+    <string name="routine_card_click_label">view routine</string>
+    <string name="routine_start_description">Start %1$s</string>
+
+    <!-- Routine labels -->
+    <plurals name="routine_exercise_count">
+        <item quantity="one">%d exercise</item>
+        <item quantity="other">%d exercises</item>
+    </plurals>
+    <string name="routine_meta">%1$s · %2$s</string>
+    <string name="routine_last_done_today">Last done today</string>
+    <string name="routine_last_done_yesterday">Last done yesterday</string>
+    <plurals name="routine_last_done_days_ago">
+        <item quantity="one">Last done %d day ago</item>
+        <item quantity="other">Last done %d days ago</item>
+    </plurals>
+    <plurals name="routine_last_done_weeks_ago">
+        <item quantity="one">Last done %d week ago</item>
+        <item quantity="other">Last done %d weeks ago</item>
+    </plurals>
+    <string name="routine_last_done_date">Last done %1$s</string>
+    <string name="routine_never_done">Not done yet</string>
+    <string name="list_separator">" · "</string>
+
+    <!-- Set targets: "3 × 10 · 80 kg" -->
+    <plurals name="sets_count">
+        <item quantity="one">%d set</item>
+        <item quantity="other">%d sets</item>
+    </plurals>
+    <plurals name="sets_unit">
+        <item quantity="one">set</item>
+        <item quantity="other">sets</item>
+    </plurals>
+    <!-- Spoken by TalkBack: "3 sets of 10 reps" -->
+    <string name="target_spoken_of">%1$s of %2$s</string>
+    <!-- Spoken by TalkBack: "3 sets of 10 reps, 80 kg" -->
+    <string name="target_spoken_with">%1$s, %2$s</string>
+
+    <!-- Routine detail (FR-2.2, FR-2.3) -->
+    <string name="routine_fact_exercises">Exercises</string>
+    <string name="routine_fact_sets">Sets</string>
+    <string name="routine_fact_last_done">Last done</string>
+    <string name="routine_fact_never">Not yet</string>
+    <string name="routine_detail_edit">Edit routine</string>
+    <string name="routine_detail_duplicate">Duplicate</string>
+    <string name="routine_detail_delete">Delete</string>
+    <string name="routine_detail_start">Start workout</string>
+    <string name="routine_detail_loading">Loading routine</string>
+    <string name="routine_detail_not_found_title">This routine no longer exists</string>
+    <string name="routine_detail_not_found_body">It may have been deleted. Go back and pick another.</string>
+    <string name="routine_detail_not_found_action">Back to routines</string>
+    <string name="routine_detail_empty_title">No exercises yet</string>
+    <string name="routine_detail_empty_body">Edit the routine to add the exercises you do, in order.</string>
+    <string name="routine_detail_empty_action">Add exercises</string>
+    <string name="routine_exercise_click_label">view exercise</string>
+    <string name="routine_duplicated_message">Saved a copy as “%1$s”</string>
+    <string name="routine_duplicated_open">Open</string>
+    <string name="routine_duplicate_failed">Couldn’t copy the routine. Try again.</string>
+    <string name="routine_delete_title">Delete “%1$s”?</string>
+    <string name="routine_delete_body">Workouts you did from it stay in your history.</string>
+    <string name="routine_delete_confirm">Delete</string>
+    <string name="routine_delete_dismiss">Cancel</string>
+
+    <!-- Starting a workout (FR-2.3, FR-3.1) -->
+    <string name="start_other_active_title">“%1$s” is still in progress</string>
+    <string name="start_other_active_body">Only one workout runs at a time. Resume it, or discard it to start this one.</string>
+    <string name="start_other_active_resume">Resume</string>
+    <string name="start_other_active_dismiss">Cancel</string>
+    <string name="start_failed">Couldn’t start the workout. Try again.</string>
+    <string name="start_routine_missing">That routine no longer exists.</string>
+
+    <!-- Routine editor (FR-2.1, FR-2.2) -->
+    <string name="routine_editor_title_create">New routine</string>
+    <string name="routine_editor_title_edit">Edit routine</string>
+    <string name="routine_editor_name_label">Name</string>
+    <string name="routine_editor_name_placeholder">e.g. Push day</string>
+    <string name="routine_editor_exercises">Exercises</string>
+    <string name="routine_editor_exercises_empty">Add the exercises you do, in the order you do them.</string>
+    <string name="routine_editor_add_exercises">Add exercises</string>
+    <string name="routine_editor_error_name_blank">Give it a name</string>
+    <plurals name="routine_editor_error_name_too_long">
+        <item quantity="one">Keep it to %d character</item>
+        <item quantity="other">Keep it to %d characters or fewer</item>
+    </plurals>
+    <string name="routine_editor_error_name_duplicate">You already have a routine called “%1$s”</string>
+    <string name="routine_editor_error_no_exercises">Add at least one exercise</string>
+    <!-- Quantity follows the upper bound: "Between 1 and 20 sets" -->
+    <plurals name="routine_editor_error_sets">
+        <item quantity="one">Between %1$d and %2$d set</item>
+        <item quantity="other">Between %1$d and %2$d sets</item>
+    </plurals>
+    <string name="routine_editor_save_create">Create routine</string>
+    <string name="routine_editor_save_edit">Save changes</string>
+    <string name="routine_editor_save_failed">Couldn’t save the routine. Try again.</string>
+    <string name="routine_editor_discard_body_create">This routine won’t be created.</string>
+    <string name="routine_editor_discard_body_edit">Your edits to this routine won’t be saved.</string>
+    <string name="routine_editor_loading">Loading routine</string>
+    <string name="routine_editor_options">Options for %1$s</string>
+    <string name="routine_editor_move_up">Move up</string>
+    <string name="routine_editor_move_down">Move down</string>
+    <string name="routine_editor_remove">Remove</string>
+    <string name="target_sets">Sets</string>
+    <string name="target_reps">Reps</string>
+    <string name="target_weight">Weight</string>
+    <string name="target_time">Time</string>
+    <string name="target_distance">Distance</string>
+    <string name="number_field_empty">–</string>
+    <string name="duration_field_empty">0:00</string>
+
+    <!-- Exercise picker -->
+    <string name="picker_title">Add exercises</string>
+    <plurals name="picker_confirm">
+        <item quantity="one">Add %d exercise</item>
+        <item quantity="other">Add %d exercises</item>
+    </plurals>
+    <string name="picker_confirm_none">Pick exercises to add</string>
+    <string name="picker_selected">Selected, number %1$d</string>
+    <string name="picker_not_selected">Not selected</string>
+    <string name="picker_empty_body">Check the spelling, or add it as your own exercise in Exercises first.</string>
+
+    <!-- Home: starting an empty workout (FR-3.1) -->
+    <string name="home_start_empty">Start an empty workout</string>
+    <!-- An empty workout is named for when it starts -->
+    <string name="workout_name_morning">Morning workout</string>
+    <string name="workout_name_afternoon">Afternoon workout</string>
+    <string name="workout_name_evening">Evening workout</string>
+    <string name="workout_name_night">Night workout</string>
+
+    <!-- Active workout (FR-3.1 – FR-3.10) -->
+    <string name="workout_in_progress">In progress</string>
+    <string name="workout_started_at">Started %1$s</string>
+    <string name="workout_stat_time">Time</string>
+    <string name="workout_stat_volume">Volume</string>
+    <string name="workout_stat_sets">Sets</string>
+    <!-- Sets done out of the workout's total: "8 / 18" -->
+    <string name="workout_sets_progress">%1$d / %2$d</string>
+    <!-- Spoken by TalkBack. Quantity follows the total: "8 of 18 sets done" -->
+    <plurals name="workout_sets_progress_spoken">
+        <item quantity="one">%1$d of %2$d set done</item>
+        <item quantity="other">%1$d of %2$d sets done</item>
+    </plurals>
+    <string name="workout_finish">Finish</string>
+    <string name="workout_note_placeholder">Add a note about this workout</string>
+    <string name="workout_note_label">Workout note</string>
+    <string name="workout_column_set">Set</string>
+    <string name="workout_column_reps">Reps</string>
+    <string name="workout_column_time">Time</string>
+    <string name="workout_add_set">Add set</string>
+    <string name="workout_add_set_description">Add a set of %1$s</string>
+    <string name="workout_add_exercises">Add exercises</string>
+    <string name="workout_empty_title">Nothing added yet</string>
+    <string name="workout_empty_body">Add what you’re training. Each exercise starts with what you did last time.</string>
+    <string name="workout_menu_default_rest">Default rest timer</string>
+    <string name="workout_menu_reorder">Reorder exercises</string>
+    <string name="workout_discard">Discard workout</string>
+    <string name="workout_discard_title">Discard this workout?</string>
+    <string name="workout_discard_body">Nothing from it will be saved to your history.</string>
+    <string name="workout_discard_confirm">Discard</string>
+    <string name="workout_discard_dismiss">Keep workout</string>
+    <string name="workout_none_title">No workout in progress</string>
+    <string name="workout_none_body">Start one from the Workout tab.</string>
+    <string name="workout_none_action">Back</string>
+    <string name="workout_loading">Loading workout</string>
+    <string name="workout_action_failed">Couldn’t save that. Try again.</string>
+
+    <!-- An exercise in the workout -->
+    <string name="workout_exercise_options">Options for %1$s</string>
+    <string name="workout_exercise_note_placeholder">Add a note</string>
+    <string name="workout_exercise_note_label">Note on %1$s</string>
+    <string name="workout_exercise_add_note">Add note</string>
+    <string name="workout_exercise_remove">Remove exercise</string>
+    <!-- Spoken by TalkBack for the rest chip: "Rest 1 minute 30 seconds" -->
+    <string name="workout_exercise_rest_spoken">Rest %1$s</string>
+    <string name="workout_exercise_rest_click_label">change rest timer</string>
+    <string name="workout_remove_exercise_title">Remove %1$s?</string>
+    <string name="workout_remove_exercise_body">Its completed sets go with it.</string>
+    <string name="workout_remove_exercise_confirm">Remove</string>
+    <string name="workout_remove_exercise_dismiss">Cancel</string>
+
+    <!-- Reordering exercises (FR-3.2) -->
+    <string name="workout_reorder_title">Reorder</string>
+    <string name="workout_reorder_done">Done</string>
+    <string name="workout_reorder_hint">Drag an exercise by its handle to move it.</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
+
+    <!-- A set row (FR-3.3, FR-3.10) -->
+    <string name="set_type_normal">Normal</string>
+    <string name="set_type_warmup">Warm-up</string>
+    <string name="set_type_drop">Drop set</string>
+    <string name="set_type_failure">Failure</string>
+    <string name="set_remove">Remove set</string>
+    <string name="set_type_click_label">change set type</string>
+    <!-- TalkBack label for a set's complete toggle: "Set 2 done" -->
+    <string name="set_done_label">%1$s done</string>
+    <!-- TalkBack labels for a set's fields: "Set 2, weight in kg" -->
+    <string name="set_field_weight">%1$s, weight in %2$s</string>
+    <string name="set_field_reps">%1$s, reps</string>
+    <string name="set_field_time">%1$s, time</string>
+    <string name="set_field_distance">%1$s, distance in %2$s</string>
+    <string name="set_missing_values">Fill in the set to mark it done</string>
+
+    <!-- Rest timer (FR-3.5) -->
+    <string name="rest_label">Rest</string>
+    <string name="rest_over">Rest over</string>
+    <!-- Spoken by TalkBack: "1 minute 20 seconds of rest left" -->
+    <string name="rest_remaining_spoken">%1$s of rest left</string>
+    <string name="rest_subtract">−%1$ds</string>
+    <string name="rest_add">+%1$ds</string>
+    <plurals name="rest_subtract_description">
+        <item quantity="one">Take %d second off the rest</item>
+        <item quantity="other">Take %d seconds off the rest</item>
+    </plurals>
+    <plurals name="rest_add_description">
+        <item quantity="one">Add %d second to the rest</item>
+        <item quantity="other">Add %d seconds to the rest</item>
+    </plurals>
+    <string name="rest_skip">Skip</string>
+    <string name="rest_done">Done</string>
+    <string name="rest_off">Off</string>
+    <string name="rest_option_default">Default · %1$s</string>
+    <string name="rest_dialog_title">Rest timer</string>
+    <string name="rest_dialog_body_exercise">After each set of %1$s, in every workout.</string>
+    <string name="rest_dialog_title_default">Default rest timer</string>
+    <string name="rest_dialog_body_default">For exercises without a rest time of their own.</string>
+    <string name="rest_dialog_dismiss">Cancel</string>
+    <string name="rest_alerts_notifications_off">Notifications are off, so the rest alert can’t reach you with the screen off.</string>
+    <string name="rest_alerts_alarms_off">Alarms are off, so the rest alert may arrive late.</string>
+    <string name="rest_alerts_fix">Turn on</string>
+    <string name="rest_notification_title">Rest over</string>
+    <string name="rest_notification_text">Time for your next set.</string>
+    <string name="rest_notification_next">Next up: %1$s</string>
+    <string name="channel_rest_timer">Rest timer</string>
+    <string name="channel_rest_timer_description">Tells you when the rest between sets is over.</string>
+
+    <!-- Finishing (FR-3.8) -->
+    <string name="finish_incomplete_title">Finish workout?</string>
+    <plurals name="finish_incomplete_body">
+        <item quantity="one">%d set isn’t marked done and won’t be saved.</item>
+        <item quantity="other">%d sets aren’t marked done and won’t be saved.</item>
+    </plurals>
+    <string name="finish_confirm">Finish</string>
+    <string name="finish_dismiss">Keep going</string>
+    <string name="finish_nothing_title">No sets done yet</string>
+    <string name="finish_nothing_body">Mark a set done to save this workout, or discard it.</string>
+    <string name="finish_nothing_discard">Discard workout</string>
+
+    <!-- Workout summary (FR-3.8) -->
+    <string name="summary_complete">Workout complete</string>
+    <!-- "Thu, 25 Sep · 18:30–19:32" -->
+    <string name="summary_when">%1$s · %2$s–%3$s</string>
+    <string name="summary_stat_duration">Duration</string>
+    <string name="summary_stat_volume">Volume</string>
+    <string name="summary_stat_sets">Sets</string>
+    <string name="summary_records">New records</string>
+    <string name="summary_exercises">Exercises</string>
+    <string name="summary_note">Note</string>
+    <string name="summary_done">Done</string>
+    <string name="summary_loading">Loading summary</string>
+    <string name="summary_not_found_title">This workout isn’t available</string>
+    <string name="summary_not_found_body">It may have been discarded.</string>
+    <string name="summary_not_found_action">Back</string>
+    <string name="record_heaviest">Heaviest weight</string>
+    <string name="record_one_rep_max">Best estimated 1RM</string>
+    <string name="record_most_reps">Most reps</string>
+    <string name="record_most_reps_at">Most reps at %1$s</string>
+    <!-- A weight with its unit: "100 kg" -->
+    <string name="weight_with_unit">%1$s %2$s</string>
+    <!-- Spoken by TalkBack for one record: "Bench Press, heaviest weight, 100 kg" -->
+    <string name="record_spoken">%1$s, %2$s, %3$s</string>
+
+    <!-- Active workout banner -->
+    <string name="banner_elapsed">In progress · %1$s</string>
+    <string name="banner_resting">Resting · %1$s left</string>
+    <string name="banner_click_label">resume workout</string>
 </resources>

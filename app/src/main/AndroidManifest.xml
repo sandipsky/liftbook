@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- No INTERNET permission, ever (NFR-1). The app must work fully in airplane mode. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- The rest timer's alert (FR-3.5). Asked for in context, when the first rest starts. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- So the rest alert fires on time in Doze (NFR-3). Granted in system settings from
+         Android 14; without it the alarm is inexact and the workout screen says so. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
+        android:name=".LiftBookApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -14,7 +22,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.LiftBook"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -23,6 +30,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".notification.rest.RestTimerReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

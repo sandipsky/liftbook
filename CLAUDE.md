@@ -8,6 +8,11 @@ of truth for behaviour, and every requirement has a stable ID (`FR-x.y`, `NFR-n`
 those IDs in commit messages, TODOs and PR descriptions — e.g. `feat(workout): rest timer (FR-3.5)`.
 Section 8 of the spec defines MVP vs Phase 2 scope; do not build Phase 2 items unless asked.
 
+**The architecture is `docs/architecture.md`** — package layout, data entities, navigation graph
+and ViewModel structure, with the reasoning behind each. Follow it; if a slice needs to deviate,
+update that document in the same change rather than letting the code drift from it. Its §7 is the
+build order.
+
 ---
 
 ## Stack decisions

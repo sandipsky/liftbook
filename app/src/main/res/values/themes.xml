@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.LiftBook" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Only the window is styled here; everything else is Compose. The window background
+         matches the Compose background so there is no flash between launch and first frame. -->
+    <style name="Theme.LiftBook" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>
