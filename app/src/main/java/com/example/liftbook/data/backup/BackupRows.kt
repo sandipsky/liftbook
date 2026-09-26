@@ -6,13 +6,21 @@ import com.example.liftbook.data.local.entity.RoutineEntity
 import com.example.liftbook.data.local.entity.RoutineExerciseEntity
 import com.example.liftbook.data.local.entity.WorkoutEntity
 import com.example.liftbook.data.local.entity.WorkoutExerciseEntity
+import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
 import com.example.liftbook.data.local.entity.WorkoutSetEntity
+import com.example.liftbook.data.mapper.daysFromBits
+import com.example.liftbook.data.mapper.minutesOfDay
+import com.example.liftbook.data.mapper.toBits
 import com.example.liftbook.data.preferences.enumOrNull
+import com.example.liftbook.data.preferences.isLeadMinutes
+import com.example.liftbook.data.preferences.isSnoozeMinutes
 import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalTime
 import java.util.Locale
 
 /** A backup as database rows: what an export reads, and what an import writes. */
@@ -24,12 +32,14 @@ internal data class BackupRows(
     val workoutExercises: List<WorkoutExerciseEntity> = emptyList(),
     val sets: List<WorkoutSetEntity> = emptyList(),
     val bodyWeight: List<BodyWeightEntryEntity> = emptyList(),
+    val schedules: List<WorkoutScheduleEntity> = emptyList(),
 ) {
     fun counts(): DataCounts = DataCounts(
         workouts = workouts.size,
         routines = routines.size,
         customExercises = exercises.count { it.isCustom },
         weighIns = bodyWeight.size,
+        schedules = schedules.size,
     )
 }
 
@@ -45,6 +55,9 @@ internal fun BackupRows.toBackupFile(exportedAt: Instant, appVersion: String?, p
             defaultRestSeconds = preferences.defaultRestSeconds,
             firstDayOfWeek = preferences.firstDayOfWeek.name,
             themeMode = preferences.themeMode.name,
+            remindersEnabled = preferences.remindersEnabled,
+            reminderLeadMinutes = preferences.reminderLeadMinutes,
+            snoozeMinutes = preferences.snoozeMinutes,
         ),
         exercises = exercises.map { it.toBackup() },
         routines = routines.map { routine ->
@@ -58,13 +71,14 @@ internal fun BackupRows.toBackupFile(exportedAt: Instant, appVersion: String?, p
             )
         },
         bodyWeight = bodyWeight.map { it.toBackup() },
+        schedules = schedules.map { it.toBackup() },
     )
 }
 
 /**
  * The rows for this file. Positions come from list order, and each set's workout and exercise
- * from the workout-exercise it's under, never from the file. A workout keeps its routine only
- * if the file has it, as deleting a routine unlinks its workouts.
+ * from the workout-exercise it's under, never from the file. A workout or a schedule entry keeps
+ * its routine only if the file has it, as deleting a routine unlinks both.
  */
 internal fun BackupFile.toRows(): BackupRows {
     val routineIds = routines.mapTo(HashSet()) { it.id }
@@ -84,6 +98,7 @@ internal fun BackupFile.toRows(): BackupRows {
             }
         },
         bodyWeight = bodyWeight.map { it.toEntity() },
+        schedules = schedules.map { it.toEntity().copy(routineId = it.routineId?.takeIf(routineIds::contains)) },
     )
 }
 
@@ -95,6 +110,9 @@ internal fun BackupSettings.toUserPreferences(locale: Locale = Locale.getDefault
     defaultRestSeconds = defaultRestSeconds?.takeIf { it >= 0 } ?: UserPreferences.DEFAULT_REST_SECONDS,
     firstDayOfWeek = enumOrNull<FirstDayOfWeek>(firstDayOfWeek) ?: FirstDayOfWeek.defaultFor(locale),
     themeMode = enumOrNull<ThemeMode>(themeMode) ?: ThemeMode.SYSTEM,
+    remindersEnabled = remindersEnabled ?: true,
+    reminderLeadMinutes = reminderLeadMinutes?.takeIf(::isLeadMinutes) ?: UserPreferences.DEFAULT_REMINDER_LEAD_MINUTES,
+    snoozeMinutes = snoozeMinutes?.takeIf(::isSnoozeMinutes) ?: UserPreferences.DEFAULT_SNOOZE_MINUTES,
 )
 
 private fun ExerciseEntity.toBackup() = BackupExercise(
@@ -222,6 +240,31 @@ private fun BackupSet.toEntity(workoutId: String, exercise: BackupWorkoutExercis
     distanceMeters = distanceMeters,
     completedAt = completedAt,
 )
+
+private fun WorkoutScheduleEntity.toBackup() = BackupSchedule(
+    id = id,
+    days = daysFromBits(daysOfWeek).map { it.name },
+    startTime = LocalTime.of(startTimeMinutes / MINUTES_PER_HOUR, startTimeMinutes % MINUTES_PER_HOUR),
+    routineId = routineId,
+    leadMinutes = leadTimeMinutes,
+    isEnabled = isEnabled,
+    createdAt = createdAt,
+)
+
+// isConsistent() has checked the day names, so each one is a DayOfWeek.
+private fun BackupSchedule.toEntity() = WorkoutScheduleEntity(
+    id = id,
+    daysOfWeek = days.mapTo(HashSet(), DayOfWeek::valueOf).toBits(),
+    startTimeMinutes = startTime.minutesOfDay(),
+    routineId = routineId,
+    leadTimeMinutes = leadMinutes,
+    isEnabled = isEnabled,
+    snoozedUntil = null,
+    skippedOn = null,
+    createdAt = createdAt,
+)
+
+private const val MINUTES_PER_HOUR = 60
 
 private fun BodyWeightEntryEntity.toBackup() = BackupWeighIn(id = id, weightKg = weightKg, date = recordedOn, note = note)
 

@@ -24,6 +24,13 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE finishedAt IS NULL ORDER BY startedAt DESC LIMIT 1")
     suspend fun getActive(): WorkoutEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM workouts WHERE finishedAt IS NULL)")
+    suspend fun hasActive(): Boolean
+
+    /** When the latest workout finished (FR-7.5); null if none has. */
+    @Query("SELECT MAX(finishedAt) FROM workouts")
+    suspend fun lastFinishedAt(): Instant?
+
     @Transaction
     @Query("SELECT * FROM workouts WHERE id = :id")
     fun observeById(id: String): Flow<WorkoutWithExercises?>

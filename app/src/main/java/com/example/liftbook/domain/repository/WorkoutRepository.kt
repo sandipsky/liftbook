@@ -115,6 +115,12 @@ interface WorkoutRepository {
      */
     suspend fun previousSets(exerciseIds: Set<String>, before: Instant): Map<String, List<LoggedSet>>
 
+    /** Whether a workout is in progress (FR-3.1) — without loading it, for a reminder about to go out (FR-7.5). */
+    suspend fun hasActiveWorkout(): Boolean
+
+    /** When the most recent workout finished, or null if none has (FR-7.5). */
+    suspend fun lastFinishedAt(): Instant?
+
     /** Every finished workout, newest first (FR-4.1). Paged: this grows without bound (NFR-2). */
     fun observeFinishedWorkouts(): Flow<PagingData<WorkoutListItem>>
 

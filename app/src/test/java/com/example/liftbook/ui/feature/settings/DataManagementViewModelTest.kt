@@ -10,6 +10,7 @@ import com.example.liftbook.domain.model.ImportMode
 import com.example.liftbook.testing.FakeBackupRepository
 import com.example.liftbook.testing.FakeRestTimerScheduler
 import com.example.liftbook.testing.MainDispatcherRule
+import com.example.liftbook.testing.testReminders
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -48,7 +49,7 @@ class DataManagementViewModelTest {
     }
 
     private fun TestScope.dataManagement(): DataManagementViewModel =
-        DataManagementViewModel(backups, restTimer, clock).also { viewModel ->
+        DataManagementViewModel(backups, restTimer, testReminders(clock = clock), clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.collect { events += it } }
         }

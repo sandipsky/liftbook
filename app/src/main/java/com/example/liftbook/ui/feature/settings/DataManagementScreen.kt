@@ -64,6 +64,7 @@ import com.example.liftbook.ui.components.ConfirmDialog
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.Fact
 import com.example.liftbook.ui.components.LiftBookTopBar
+import com.example.liftbook.ui.components.SettingsRow
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.StatTile

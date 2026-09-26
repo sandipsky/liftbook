@@ -47,7 +47,8 @@ import javax.inject.Singleton
 /**
  * Export, import and clearing (FR-6.3–6.5). Every change to the database is one transaction, so
  * an import that fails leaves this phone exactly as it was. Settings live in DataStore and are
- * written after the database, which is what matters most.
+ * written after the database, which is what matters most. The schedule changes with the rest, so
+ * the caller brings the reminders in step afterwards (FR-7.6).
  */
 @Singleton
 class BackupRepositoryImpl @Inject constructor(
@@ -130,6 +131,7 @@ class BackupRepositoryImpl @Inject constructor(
         workoutExercises = backupDao.getFinishedWorkoutExercises(),
         sets = backupDao.getFinishedWorkoutSets(),
         bodyWeight = backupDao.getBodyWeight(),
+        schedules = backupDao.getSchedules(),
     )
 
     private suspend fun readLocal() = LocalRows(
@@ -137,6 +139,7 @@ class BackupRepositoryImpl @Inject constructor(
         routines = backupDao.getRoutines(),
         workoutIds = backupDao.getWorkoutIds().toHashSet(),
         bodyWeight = backupDao.getBodyWeight(),
+        schedules = backupDao.getSchedules(),
     )
 
     /** Parents before children, as the foreign keys need. */
@@ -148,10 +151,12 @@ class BackupRepositoryImpl @Inject constructor(
         backupDao.insertWorkoutExercises(rows.workoutExercises)
         backupDao.insertSets(rows.sets)
         backupDao.insertBodyWeight(rows.bodyWeight)
+        backupDao.insertSchedules(rows.schedules)
     }
 
     /** Everything, the workout in progress included. */
     private suspend fun deleteAll() {
+        backupDao.deleteSchedules()
         backupDao.deleteSets()
         backupDao.deleteWorkoutExercises()
         backupDao.deleteWorkouts()

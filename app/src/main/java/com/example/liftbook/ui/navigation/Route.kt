@@ -71,4 +71,12 @@ sealed interface Route {
     /** Export, import and clearing all data (FR-6.3–6.5). */
     @Serializable
     data object DataManagement : Route
+
+    /** The weekly schedule and its reminders, with the global switch (FR-7.1, 7.2, 7.4, 7.7); opened from Settings. */
+    @Serializable
+    data object Reminders : Route
+
+    /** A null [scheduleId] schedules a new workout (FR-7.1). */
+    @Serializable
+    data class ReminderEditor(val scheduleId: String? = null) : Route
 }

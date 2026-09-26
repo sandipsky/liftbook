@@ -13,6 +13,10 @@ data class SettingsUiState(
     val defaultRestSeconds: Int = UserPreferences.DEFAULT_REST_SECONDS,
     val firstDayOfWeek: FirstDayOfWeek = FirstDayOfWeek.MONDAY,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** The global reminder switch (FR-7.7). */
+    val remindersEnabled: Boolean = true,
+    /** Scheduled workouts a week across the entries that are on (FR-7.1). */
+    val remindersPerWeek: Int = 0,
     /** When a backup was last exported; null if never. */
     val lastExportedAt: Instant? = null,
     val today: LocalDate = LocalDate.of(1970, 1, 1),
@@ -27,6 +31,8 @@ sealed interface SettingsAction {
     data class SetTheme(val themeMode: ThemeMode) : SettingsAction
 
     // Navigation; handled by the route.
+    data object OpenReminders : SettingsAction
+
     data object OpenDataManagement : SettingsAction
 
     data object NavigateUp : SettingsAction

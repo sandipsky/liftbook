@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import com.example.liftbook.data.local.entity.BodyWeightEntryEntity
+import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
@@ -18,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.time.Instant
 import java.time.LocalDate
 
 /**
@@ -86,6 +88,41 @@ class LiftBookDatabaseMigrationTest {
                 BodyWeightEntryEntity("e", 82.4, LocalDate.of(2026, 9, 26), null),
             )
             assertEquals(82.4, database.bodyWeightDao().getOn(LocalDate.of(2026, 9, 26))?.weightKg)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun `version 3 to 4 keeps every routine and workout and adds an empty schedule`() = runTest {
+        createFromSchema(version = 3) { db ->
+            db.execSQL("INSERT INTO routines (id, name, notes, createdAt, updatedAt) VALUES ('push', 'Push', NULL, 0, 0)")
+            db.execSQL(
+                "INSERT INTO workouts (id, name, routineId, startedAt, finishedAt, note, restStartedAt, restEndsAt) " +
+                    "VALUES ('done', 'Push', 'push', 0, 3600000, NULL, NULL, NULL)",
+            )
+        }
+
+        val database = Room.databaseBuilder(context, LiftBookDatabase::class.java, name).allowMainThreadQueries().build()
+        try {
+            // Opening runs the migration and validates the migrated schema.
+            assertEquals(emptyList<Any>(), database.scheduleDao().getAll())
+            assertEquals("push", database.workoutDao().getById("done")?.routineId)
+            // The new table works, and links to a routine.
+            database.scheduleDao().insert(
+                WorkoutScheduleEntity(
+                    id = "s",
+                    daysOfWeek = 1,
+                    startTimeMinutes = 18 * 60,
+                    routineId = "push",
+                    leadTimeMinutes = null,
+                    isEnabled = true,
+                    snoozedUntil = null,
+                    skippedOn = null,
+                    createdAt = Instant.EPOCH,
+                ),
+            )
+            assertEquals("Push", database.scheduleDao().getAll().single().routineName)
         } finally {
             database.close()
         }

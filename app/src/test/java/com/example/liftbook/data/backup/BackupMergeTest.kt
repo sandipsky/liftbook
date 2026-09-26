@@ -11,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** Merging a backup into a phone that has data of its own (FR-6.4). */
 class BackupMergeTest {
@@ -64,14 +65,26 @@ class BackupMergeTest {
         routines: List<BackupRoutine> = emptyList(),
         workouts: List<BackupWorkout> = emptyList(),
         bodyWeight: List<BackupWeighIn> = emptyList(),
-    ) = BackupFile(exportedAt = created, exercises = exercises, routines = routines, workouts = workouts, bodyWeight = bodyWeight).toRows()
+        schedules: List<BackupSchedule> = emptyList(),
+    ) = BackupFile(
+        exportedAt = created,
+        exercises = exercises,
+        routines = routines,
+        workouts = workouts,
+        bodyWeight = bodyWeight,
+        schedules = schedules,
+    ).toRows()
 
     private fun local(
         exercises: List<BackupExercise> = emptyList(),
         routines: List<RoutineEntity> = emptyList(),
         workoutIds: Set<String> = emptySet(),
         bodyWeight: List<BodyWeightEntryEntity> = emptyList(),
-    ) = LocalRows(exercises.map { it.toLocal() }, routines, workoutIds, bodyWeight)
+        schedules: List<BackupSchedule> = emptyList(),
+    ) = LocalRows(exercises.map { it.toLocal() }, routines, workoutIds, bodyWeight, backup(emptyList(), schedules = schedules).schedules)
+
+    private fun schedule(id: String, vararg days: String, at: LocalTime = LocalTime.of(18, 0), routineId: String? = null) =
+        BackupSchedule(id = id, days = days.toList(), startTime = at, routineId = routineId, createdAt = created)
 
     private val squat = exercise("squat", "Squat (Barbell)", isCustom = false)
 
@@ -187,5 +200,29 @@ class BackupMergeTest {
 
         assertEquals(listOf("arriving"), added.routines.map { it.id })
         assertEquals(listOf("here", "arriving", null), added.workouts.map { it.routineId })
+    }
+
+    @Test
+    fun `a scheduled workout is added, unless one here already reminds at that day and time`() {
+        val added = planMerge(
+            backup(
+                exercises = listOf(squat),
+                routines = listOf(routine("legs", "Legs", "squat")),
+                schedules = listOf(
+                    // Shares Monday at 18:00 with the entry here, so it would double that reminder.
+                    schedule("clash", "MONDAY", "WEDNESDAY"),
+                    // Same days, another time.
+                    schedule("morning", "MONDAY", at = LocalTime.of(7, 0), routineId = "legs"),
+                    // Another day at the same time, for a routine the file doesn't have.
+                    schedule("tuesday", "TUESDAY", routineId = "deleted"),
+                    // Already here.
+                    schedule("here", "MONDAY"),
+                ),
+            ),
+            local(exercises = listOf(squat), schedules = listOf(schedule("here", "MONDAY", "FRIDAY"))),
+        )
+
+        assertEquals(listOf("morning", "tuesday"), added.schedules.map { it.id })
+        assertEquals(listOf("legs", null), added.schedules.map { it.routineId })
     }
 }

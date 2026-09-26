@@ -6,4 +6,5 @@ data class DataCountsRow(
     val routines: Int,
     val customExercises: Int,
     val weighIns: Int,
+    val schedules: Int,
 )

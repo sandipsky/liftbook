@@ -1,6 +1,5 @@
 package com.example.liftbook.ui.feature.workout
 
-import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,10 +45,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,7 +58,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -89,6 +84,7 @@ import com.example.liftbook.ui.components.ReorderableItem
 import com.example.liftbook.ui.components.SectionHeader
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
+import com.example.liftbook.ui.components.TimeOfDayPickerDialog
 import com.example.liftbook.ui.components.TopBarNavigation
 import com.example.liftbook.ui.components.rememberReorderableListState
 import com.example.liftbook.ui.components.timeOfDayText
@@ -288,7 +284,7 @@ fun WorkoutEditorScreen(
         }
         TimeField.Start, TimeField.End -> if (span != null) {
             val shown = if (field == TimeField.Start) span.start else span.end
-            WorkoutTimePicker(
+            TimeOfDayPickerDialog(
                 title = stringResource(if (field == TimeField.Start) R.string.workout_editor_pick_start else R.string.workout_editor_pick_end),
                 selected = shown.atZone(state.zone).toLocalTime(),
                 onPick = { time ->
@@ -568,29 +564,6 @@ private fun PickerField(label: String, value: String, onClick: () -> Unit, modif
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyLarge.tabularNumbers(), color = colors.onSurface, maxLines = 1)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WorkoutTimePicker(title: String, selected: LocalTime, onPick: (LocalTime) -> Unit, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val state = rememberTimePickerState(
-        initialHour = selected.hour,
-        initialMinute = selected.minute,
-        is24Hour = DateFormat.is24HourFormat(context),
-    )
-    TimePickerDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        confirmButton = {
-            TextButton(onClick = { onPick(LocalTime.of(state.hour, state.minute)) }) {
-                Text(stringResource(R.string.workout_editor_pick_confirm))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.workout_editor_pick_dismiss)) } },
-    ) {
-        TimePicker(state = state)
     }
 }
 

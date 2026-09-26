@@ -16,8 +16,10 @@ data class DataCounts(
     val routines: Int = 0,
     val customExercises: Int = 0,
     val weighIns: Int = 0,
+    /** Entries in the weekly workout schedule (FR-7.1). */
+    val schedules: Int = 0,
 ) {
-    val isEmpty: Boolean get() = workouts == 0 && routines == 0 && customExercises == 0 && weighIns == 0
+    val isEmpty: Boolean get() = workouts == 0 && routines == 0 && customExercises == 0 && weighIns == 0 && schedules == 0
 }
 
 /** A backup file, read but not yet imported (FR-6.4). */

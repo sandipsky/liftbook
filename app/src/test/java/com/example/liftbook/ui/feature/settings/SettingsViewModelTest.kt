@@ -5,8 +5,10 @@ import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
 import com.example.liftbook.testing.FakeBackupRepository
+import com.example.liftbook.testing.FakeScheduleRepository
 import com.example.liftbook.testing.FakeSettingsRepository
 import com.example.liftbook.testing.MainDispatcherRule
+import com.example.liftbook.testing.testReminders
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -29,11 +31,12 @@ class SettingsViewModelTest {
 
     private val settings = FakeSettingsRepository(UserPreferences(defaultRestSeconds = 120, firstDayOfWeek = FirstDayOfWeek.MONDAY))
     private val backups = FakeBackupRepository()
+    private val schedules = FakeScheduleRepository()
     private val clock = Clock.fixed(Instant.parse("2026-09-26T10:00:00Z"), ZoneOffset.UTC)
     private val events = mutableListOf<SettingsEvent>()
 
     private fun TestScope.settingsScreen(): SettingsViewModel =
-        SettingsViewModel(settings, backups, clock).also { viewModel ->
+        SettingsViewModel(settings, backups, schedules, clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.collect { events += it } }
         }
@@ -78,7 +81,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `the app follows the theme setting as it changes`() = runTest {
-        val main = MainViewModel(settings)
+        val main = MainViewModel(settings, testReminders(settings = settings, clock = clock))
 
         assertEquals(ThemeMode.SYSTEM, main.themeMode.value)
 

@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -45,6 +46,8 @@ import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.RestDurationDialog
 import com.example.liftbook.ui.components.SectionHeader
+import com.example.liftbook.ui.components.SettingChoice
+import com.example.liftbook.ui.components.SettingsRow
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.TopBarNavigation
@@ -60,6 +63,7 @@ import java.time.ZoneOffset
 @Composable
 fun SettingsRoute(
     onNavigateUp: () -> Unit,
+    onOpenReminders: () -> Unit,
     onOpenDataManagement: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -81,6 +85,7 @@ fun SettingsRoute(
         onAction = { action ->
             when (action) {
                 SettingsAction.NavigateUp -> onNavigateUp()
+                SettingsAction.OpenReminders -> onOpenReminders()
                 SettingsAction.OpenDataManagement -> onOpenDataManagement()
                 else -> viewModel.onAction(action)
             }
@@ -91,8 +96,8 @@ fun SettingsRoute(
 /**
  * Settings (FR-6.2). Few enough to see at once, so every choice is in view rather than behind a
  * dialog of its own; only the rest, with its long list of durations, opens one. Each applies as
- * it's picked. Backups have their own screen, one step further, because what's there can't be
- * undone.
+ * it's picked. Reminders (FR-7) and backups have their own screens, one step further: one is a
+ * schedule to edit, and what the other does can't be undone.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,6 +206,27 @@ private fun SettingsList(
             )
         }
 
+        item(key = "remindersHeader", contentType = "sectionHeader") {
+            SectionHeader(
+                title = stringResource(R.string.settings_section_reminders),
+                modifier = Modifier.padding(top = Spacing.lg, bottom = Spacing.xxs),
+            )
+        }
+        item(key = "reminders", contentType = "row") {
+            SettingsRow(
+                title = stringResource(R.string.settings_reminders_title),
+                supporting = when {
+                    !state.remindersEnabled -> stringResource(R.string.settings_reminders_off)
+                    state.remindersPerWeek == 0 -> stringResource(R.string.settings_reminders_none)
+                    else -> pluralStringResource(R.plurals.settings_reminders_per_week, state.remindersPerWeek, state.remindersPerWeek)
+                },
+                showsChevron = true,
+                onClick = { onAction(SettingsAction.OpenReminders) },
+                clickLabel = stringResource(R.string.settings_reminders_click_label),
+                modifier = row,
+            )
+        }
+
         item(key = "appearanceHeader", contentType = "sectionHeader") {
             SectionHeader(
                 title = stringResource(R.string.settings_section_appearance),
@@ -255,6 +281,8 @@ private fun SettingsSkeleton(modifier: Modifier = Modifier) {
             SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonRowHeight), MaterialTheme.shapes.large)
             SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonChoiceHeight), MaterialTheme.shapes.large)
             SkeletonBlock(Modifier.padding(top = Spacing.lg, bottom = Spacing.xxs).fillMaxWidth(0.3f).height(Spacing.md))
+            SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonRowHeight), MaterialTheme.shapes.large)
+            SkeletonBlock(Modifier.padding(top = Spacing.lg, bottom = Spacing.xxs).fillMaxWidth(0.3f).height(Spacing.md))
             SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonChoiceHeight), MaterialTheme.shapes.large)
         }
     }
@@ -276,6 +304,7 @@ private fun SettingsScreenPreview() {
                 defaultRestSeconds = 120,
                 firstDayOfWeek = FirstDayOfWeek.MONDAY,
                 themeMode = ThemeMode.SYSTEM,
+                remindersPerWeek = 4,
                 lastExportedAt = Instant.parse("2026-09-23T19:00:00Z"),
                 today = previewToday,
                 zone = ZoneOffset.UTC,

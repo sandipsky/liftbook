@@ -4,7 +4,10 @@ import java.time.DayOfWeek
 import java.time.temporal.WeekFields
 import java.util.Locale
 
-/** User settings (§2.10 of the architecture), changed on the settings screen (FR-6.2). */
+/**
+ * User settings (§2.10 of the architecture), changed on the settings screen (FR-6.2) and the
+ * reminders screen (FR-7.2, FR-7.4, FR-7.7).
+ */
 data class UserPreferences(
     val weightUnit: WeightUnit = WeightUnit.KG,
     /** Rest after a set, for exercises without their own rest time; 0 turns the timer off (FR-3.5). */
@@ -12,9 +15,17 @@ data class UserPreferences(
     /** Where the history calendar's weeks and the weekly summary start (FR-6.2). */
     val firstDayOfWeek: FirstDayOfWeek = FirstDayOfWeek.MONDAY,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** Every workout reminder, on or off at once (FR-7.7). Each schedule entry has its own switch too. */
+    val remindersEnabled: Boolean = true,
+    /** How long before a scheduled workout to remind, for entries without their own (FR-7.2). */
+    val reminderLeadMinutes: Int = DEFAULT_REMINDER_LEAD_MINUTES,
+    /** How long Snooze puts a reminder off (FR-7.4). */
+    val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
 ) {
     companion object {
         const val DEFAULT_REST_SECONDS = 90
+        const val DEFAULT_REMINDER_LEAD_MINUTES = 10
+        const val DEFAULT_SNOOZE_MINUTES = 10
     }
 }
 

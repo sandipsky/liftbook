@@ -3,15 +3,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- The rest timer's alert (FR-3.5). Asked for in context, when the first rest starts. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- So the rest alert fires on time in Doze (NFR-3). Granted in system settings from
-         Android 14; without it the alarm is inexact and the workout screen says so. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- NFR-1, enforced: if a library ever asks for network access, the merged manifest drops it. -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
+    <!-- The rest timer's alert (FR-3.5) and workout reminders (FR-7.2). Asked for in context:
+         when the first rest starts, and when the first reminder is scheduled (FR-7.6). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- So the rest alert and reminders fire on time in Doze (NFR-3, FR-7.6). Granted in system
+         settings from Android 14; without it alarms are inexact and the app says so. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Alarms don't survive a restart; BootReceiver sets them again (FR-7.6). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- No cloud backup: the data stays on this phone, and the JSON export is the backup (FR-6.3).
+         Moving to a new phone by cable or nearby transfer stays on-device, so from Android 12 it's
+         still allowed (data_extraction_rules). -->
     <application
         android:name=".LiftBookApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -34,6 +48,24 @@
         <receiver
             android:name=".notification.rest.RestTimerReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".notification.reminder.ReminderAlarmReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".notification.reminder.ReminderActionReceiver"
+            android:exported="false" />
+        <!-- Exported for the system's broadcasts, which only the system can send; it checks the action. -->
+        <receiver
+            android:name=".notification.reminder.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

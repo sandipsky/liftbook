@@ -40,7 +40,7 @@ import com.example.liftbook.domain.calculator.RestTimes
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.ui.components.restSecondsLeft
 import com.example.liftbook.ui.components.spokenDuration
-import com.example.liftbook.ui.feature.workout.RestAlertIssue
+import com.example.liftbook.ui.components.AlertIssue
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.LiftBookPreview
 import com.example.liftbook.ui.theme.Spacing
@@ -60,7 +60,7 @@ import java.time.Instant
 fun RestTimerBar(
     rest: RestTimer,
     now: () -> Instant,
-    alertIssue: RestAlertIssue?,
+    alertIssue: AlertIssue?,
     onAdjust: (seconds: Int) -> Unit,
     onSkip: () -> Unit,
     onFixAlerts: () -> Unit,
@@ -153,7 +153,7 @@ fun RestTimerBar(
 
 /** Why the alert may not reach the user with the screen off, and the setting that fixes it. */
 @Composable
-private fun AlertHint(issue: RestAlertIssue, onFix: () -> Unit) {
+private fun AlertHint(issue: AlertIssue, onFix: () -> Unit) {
     val textColor = MaterialTheme.colorScheme.inverseOnSurface
     Row(
         Modifier
@@ -164,8 +164,8 @@ private fun AlertHint(issue: RestAlertIssue, onFix: () -> Unit) {
     ) {
         Icon(
             when (issue) {
-                RestAlertIssue.NotificationsOff -> Icons.Outlined.NotificationsOff
-                RestAlertIssue.AlarmsOff -> Icons.Outlined.AlarmOff
+                AlertIssue.NotificationsOff -> Icons.Outlined.NotificationsOff
+                AlertIssue.AlarmsOff -> Icons.Outlined.AlarmOff
             },
             contentDescription = null,
             tint = textColor,
@@ -174,8 +174,8 @@ private fun AlertHint(issue: RestAlertIssue, onFix: () -> Unit) {
         Text(
             text = stringResource(
                 when (issue) {
-                    RestAlertIssue.NotificationsOff -> R.string.rest_alerts_notifications_off
-                    RestAlertIssue.AlarmsOff -> R.string.rest_alerts_alarms_off
+                    AlertIssue.NotificationsOff -> R.string.rest_alerts_notifications_off
+                    AlertIssue.AlarmsOff -> R.string.rest_alerts_alarms_off
                 },
             ),
             style = MaterialTheme.typography.bodySmall,
@@ -213,7 +213,7 @@ private fun RestTimerBarPreview() {
             RestTimerBar(
                 rest = RestTimer(now.minusSeconds(80), now.plusSeconds(40)),
                 now = { now },
-                alertIssue = RestAlertIssue.NotificationsOff,
+                alertIssue = AlertIssue.NotificationsOff,
                 onAdjust = {},
                 onSkip = {},
                 onFixAlerts = {},

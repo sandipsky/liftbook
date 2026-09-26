@@ -19,6 +19,12 @@ class FakeSettingsRepository(initial: UserPreferences = UserPreferences()) : Set
 
     override suspend fun setThemeMode(themeMode: ThemeMode) = write { it.copy(themeMode = themeMode) }
 
+    override suspend fun setRemindersEnabled(enabled: Boolean) = write { it.copy(remindersEnabled = enabled) }
+
+    override suspend fun setReminderLeadMinutes(minutes: Int) = write { it.copy(reminderLeadMinutes = minutes) }
+
+    override suspend fun setSnoozeMinutes(minutes: Int) = write { it.copy(snoozeMinutes = minutes) }
+
     private fun write(change: (UserPreferences) -> UserPreferences) {
         failure?.let { throw it }
         userPreferences.update(change)

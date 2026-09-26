@@ -8,6 +8,7 @@ import com.example.liftbook.domain.model.BackupException
 import com.example.liftbook.domain.model.ImportMode
 import com.example.liftbook.domain.repository.BackupRepository
 import com.example.liftbook.domain.repository.RestTimerScheduler
+import com.example.liftbook.domain.usecase.WorkoutReminders
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -29,12 +30,14 @@ import javax.inject.Inject
 
 /**
  * Backups and clearing (FR-6.3–6.5). One thing runs at a time. A replace or a clear takes the
- * workout in progress with it, so the rest alert it may have scheduled goes too.
+ * workout in progress with it, so the rest alert it may have scheduled goes too. Every import
+ * and clear changes the schedule, so the reminders follow it (FR-7.6).
  */
 @HiltViewModel
 class DataManagementViewModel @Inject constructor(
     private val backupRepository: BackupRepository,
     private val restTimerScheduler: RestTimerScheduler,
+    private val reminders: WorkoutReminders,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -101,6 +104,7 @@ class DataManagementViewModel @Inject constructor(
                 perform(BackupOperation.CLEARING, failure = DataManagementEvent.ClearFailed) {
                     backupRepository.clearAll()
                     restTimerScheduler.cancel()
+                    syncReminders()
                     DataManagementEvent.Cleared
                 }
             }
@@ -113,6 +117,7 @@ class DataManagementViewModel @Inject constructor(
     private fun importBackup(draft: ImportDraft) = perform(BackupOperation.IMPORTING, failure = DataManagementEvent.ImportFailed) {
         val added = backupRepository.import(draft.source, draft.mode)
         session.update { it.copy(importing = null) }
+        syncReminders()
         when (draft.mode) {
             ImportMode.MERGE -> DataManagementEvent.Merged(added)
             ImportMode.REPLACE -> {
@@ -146,6 +151,20 @@ class DataManagementViewModel @Inject constructor(
                 }
             }
             event?.let { _events.send(it) }
+        }
+    }
+
+    /**
+     * The data is in; the alarm following it is secondary. If setting it fails, the next sync
+     * — at the latest when the app opens — sets it, so it doesn't fail what already succeeded.
+     */
+    private suspend fun syncReminders() {
+        try {
+            reminders.sync()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // See above.
         }
     }
 

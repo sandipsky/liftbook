@@ -1,4 +1,4 @@
-package com.example.liftbook.ui.feature.settings
+package com.example.liftbook.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +30,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.liftbook.ui.components.SegmentedSelector
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.LiftBookPreview
 import com.example.liftbook.ui.theme.Spacing
@@ -138,6 +139,41 @@ fun <T> SettingChoice(
     }
 }
 
+/**
+ * A setting that's on or off. The whole row is the switch, a 64dp target, so it's hard to miss;
+ * TalkBack hears it as one switch, named by [title] and [supporting].
+ */
+@Composable
+fun SettingsSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = RowMinHeight)
+            .clip(MaterialTheme.shapes.large)
+            .background(colors.surfaceContainerLow)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.rowTitle, color = colors.onSurface)
+            if (supporting != null) {
+                Text(supporting, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            }
+        }
+        // The row takes the tap; the switch only shows the state.
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
 private val RowMinHeight = 64.dp
 private const val DISABLED_ALPHA = 0.38f
 
@@ -162,6 +198,7 @@ private fun SettingsRowPreview() {
                 label = { it },
                 spokenLabel = { it },
             )
+            SettingsSwitchRow(title = "Remind me before workouts", supporting = "Next · Wed 18:00, Push", checked = true, onCheckedChange = {})
             SettingsRow(title = "Backup & data", supporting = "Last backup · 3 days ago", showsChevron = true, onClick = {}, clickLabel = "open")
             SettingsRow(
                 title = "Clear all data",

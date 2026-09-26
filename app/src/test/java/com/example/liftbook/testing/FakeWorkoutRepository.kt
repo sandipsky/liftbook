@@ -243,6 +243,10 @@ class FakeWorkoutRepository(
     override suspend fun previousSets(exerciseIds: Set<String>, before: Instant): Map<String, List<LoggedSet>> =
         history.filterKeys { it in exerciseIds }
 
+    override suspend fun hasActiveWorkout(): Boolean = active.value != null
+
+    override suspend fun lastFinishedAt(): Instant? = finished.value.values.mapNotNull { it.finishedAt }.maxOrNull()
+
     override fun observeFinishedWorkouts(): Flow<PagingData<WorkoutListItem>> =
         finished.map { done -> PagingData.from(done.values.sortedByDescending { it.startedAt }.map { it.toListItem() }) }
 

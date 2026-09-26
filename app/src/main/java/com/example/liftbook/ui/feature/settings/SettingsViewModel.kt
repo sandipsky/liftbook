@@ -2,7 +2,9 @@ package com.example.liftbook.ui.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.liftbook.domain.calculator.ReminderTimes
 import com.example.liftbook.domain.repository.BackupRepository
+import com.example.liftbook.domain.repository.ScheduleRepository
 import com.example.liftbook.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -20,24 +22,28 @@ import javax.inject.Inject
 
 /**
  * Settings (FR-6.2): the default rest, where weeks start and the theme — each applied as it's
- * picked, with nothing to save — and the way to backups (FR-6.3–6.5).
+ * picked, with nothing to save — and the ways to reminders (FR-7) and backups (FR-6.3–6.5).
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     backupRepository: BackupRepository,
+    scheduleRepository: ScheduleRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.userPreferences,
         backupRepository.lastExportedAt,
-    ) { preferences, lastExportedAt ->
+        scheduleRepository.observeSchedules(),
+    ) { preferences, lastExportedAt, schedules ->
         SettingsUiState(
             isLoading = false,
             defaultRestSeconds = preferences.defaultRestSeconds,
             firstDayOfWeek = preferences.firstDayOfWeek,
             themeMode = preferences.themeMode,
+            remindersEnabled = preferences.remindersEnabled,
+            remindersPerWeek = ReminderTimes.perWeek(schedules),
             lastExportedAt = lastExportedAt,
             today = LocalDate.now(clock),
             zone = clock.zone,
@@ -57,7 +63,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.SetFirstDayOfWeek -> save { settingsRepository.setFirstDayOfWeek(action.firstDayOfWeek) }
             is SettingsAction.SetTheme -> save { settingsRepository.setThemeMode(action.themeMode) }
             // Navigation; handled by the route.
-            SettingsAction.OpenDataManagement, SettingsAction.NavigateUp -> Unit
+            SettingsAction.OpenReminders, SettingsAction.OpenDataManagement, SettingsAction.NavigateUp -> Unit
         }
     }
 

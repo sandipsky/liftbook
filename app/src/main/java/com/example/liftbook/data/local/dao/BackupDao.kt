@@ -10,6 +10,7 @@ import com.example.liftbook.data.local.entity.RoutineEntity
 import com.example.liftbook.data.local.entity.RoutineExerciseEntity
 import com.example.liftbook.data.local.entity.WorkoutEntity
 import com.example.liftbook.data.local.entity.WorkoutExerciseEntity
+import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
 import com.example.liftbook.data.local.entity.WorkoutSetEntity
 import com.example.liftbook.data.local.projection.DataCountsRow
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +29,8 @@ interface BackupDao {
             (SELECT COUNT(*) FROM workouts WHERE finishedAt IS NOT NULL) AS workouts,
             (SELECT COUNT(*) FROM routines) AS routines,
             (SELECT COUNT(*) FROM exercises WHERE isCustom = 1) AS customExercises,
-            (SELECT COUNT(*) FROM body_weight_entries) AS weighIns
+            (SELECT COUNT(*) FROM body_weight_entries) AS weighIns,
+            (SELECT COUNT(*) FROM workout_schedules) AS schedules
         """,
     )
     fun observeCounts(): Flow<DataCountsRow>
@@ -68,6 +70,9 @@ interface BackupDao {
     @Query("SELECT * FROM body_weight_entries ORDER BY recordedOn")
     suspend fun getBodyWeight(): List<BodyWeightEntryEntity>
 
+    @Query("SELECT * FROM workout_schedules ORDER BY startTimeMinutes, createdAt, id")
+    suspend fun getSchedules(): List<WorkoutScheduleEntity>
+
     /** Every workout's id, the one in progress included. */
     @Query("SELECT id FROM workouts")
     suspend fun getWorkoutIds(): List<String>
@@ -97,7 +102,13 @@ interface BackupDao {
     @Insert
     suspend fun insertBodyWeight(entries: List<BodyWeightEntryEntity>)
 
+    @Insert
+    suspend fun insertSchedules(schedules: List<WorkoutScheduleEntity>)
+
     // Children before parents: exercises are RESTRICT, so they go only once nothing refers to them.
+
+    @Query("DELETE FROM workout_schedules")
+    suspend fun deleteSchedules()
 
     @Query("DELETE FROM workout_sets")
     suspend fun deleteSets()

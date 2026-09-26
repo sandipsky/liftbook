@@ -7,6 +7,7 @@ import com.example.liftbook.domain.model.ExerciseType
 import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.ThemeMode
+import com.example.liftbook.domain.model.UserPreferences
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -21,6 +22,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** The backup file's format (FR-6.3, FR-6.4, NFR-6): what's written, and what's refused. */
 class BackupCodecTest {
@@ -48,7 +50,14 @@ class BackupCodecTest {
     private val backup = BackupFile(
         exportedAt = Instant.parse("2026-09-26T10:15:30.123Z"),
         appVersion = "1.0",
-        settings = BackupSettings(defaultRestSeconds = 120, firstDayOfWeek = "SUNDAY", themeMode = "DARK"),
+        settings = BackupSettings(
+            defaultRestSeconds = 120,
+            firstDayOfWeek = "SUNDAY",
+            themeMode = "DARK",
+            remindersEnabled = false,
+            reminderLeadMinutes = 15,
+            snoozeMinutes = 5,
+        ),
         exercises = listOf(bench, zercher),
         routines = listOf(
             BackupRoutine(
@@ -80,6 +89,16 @@ class BackupCodecTest {
             ),
         ),
         bodyWeight = listOf(BackupWeighIn(id = "bw1", weightKg = 82.4, date = LocalDate.of(2026, 9, 25))),
+        schedules = listOf(
+            BackupSchedule(
+                id = "mon-thu",
+                days = listOf("MONDAY", "THURSDAY"),
+                startTime = LocalTime.of(18, 30),
+                routineId = "push",
+                leadMinutes = 30,
+                createdAt = Instant.parse("2026-06-01T12:00:00Z"),
+            ),
+        ),
     )
 
     private fun encoded(): JsonObject = Json.parseToJsonElement(BackupCodec.encode(backup)).jsonObject
@@ -162,6 +181,34 @@ class BackupCodecTest {
         damaged(backup.copy(workouts = listOf(negative)))
         // A workout that ended before it started.
         damaged(backup.copy(workouts = listOf(backup.workouts[0].copy(finishedAt = Instant.parse("2026-09-25T17:00:00Z")))))
+        // A scheduled workout on no day, on a day that isn't one, or reminded more than a day ahead.
+        val schedule = backup.schedules[0]
+        damaged(backup.copy(schedules = listOf(schedule.copy(days = emptyList()))))
+        damaged(backup.copy(schedules = listOf(schedule.copy(days = listOf("FUNDAY")))))
+        damaged(backup.copy(schedules = listOf(schedule.copy(leadMinutes = 2 * 24 * 60))))
+    }
+
+    @Test
+    fun `a schedule is written as days and a local time, and the reminder settings with it`() {
+        val json = encoded()
+
+        val schedule = json["schedules"]!!.jsonArray[0].jsonObject
+        assertEquals(listOf("MONDAY", "THURSDAY"), schedule["days"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("18:30", schedule["startTime"]!!.jsonPrimitive.content)
+        val preferences = BackupCodec.decode(BackupCodec.encode(backup)).settings.toUserPreferences()
+        assertFalse(preferences.remindersEnabled)
+        assertEquals(15, preferences.reminderLeadMinutes)
+        assertEquals(5, preferences.snoozeMinutes)
+    }
+
+    @Test
+    fun `a backup from before schedules were added reads with none, and default reminder settings`() {
+        val older = encoded().let { JsonObject(it - "schedules" + ("settings" to JsonObject(mapOf("themeMode" to JsonPrimitive("DARK"))))) }
+
+        val read = BackupCodec.decode(older.toString())
+
+        assertEquals(emptyList<BackupSchedule>(), read.schedules)
+        assertEquals(UserPreferences(firstDayOfWeek = read.settings.toUserPreferences().firstDayOfWeek, themeMode = ThemeMode.DARK), read.settings.toUserPreferences())
     }
 
     @Test
@@ -195,10 +242,11 @@ class BackupCodecTest {
     }
 
     @Test
-    fun `a workout's link to a routine the file doesn't have is dropped`() {
+    fun `a workout's or a schedule's link to a routine the file doesn't have is dropped`() {
         val rows = backup.copy(routines = emptyList()).toRows()
 
         assertEquals(listOf(null), rows.workouts.map { it.routineId })
+        assertEquals(listOf(null), rows.schedules.map { it.routineId })
     }
 
     @Test
@@ -209,5 +257,6 @@ class BackupCodecTest {
         assertEquals(setOf("w1"), rows.sets.map { it.workoutId }.toSet())
         assertEquals(setOf("bench"), rows.sets.map { it.exerciseId }.toSet())
         assertEquals(backup.workouts, rows.toBackupFile(backup.exportedAt, null, backup.settings.toUserPreferences()).workouts)
+        assertEquals(backup.schedules, rows.toBackupFile(backup.exportedAt, null, backup.settings.toUserPreferences()).schedules)
     }
 }

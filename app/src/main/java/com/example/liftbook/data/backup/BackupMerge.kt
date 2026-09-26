@@ -3,6 +3,7 @@ package com.example.liftbook.data.backup
 import com.example.liftbook.data.local.entity.BodyWeightEntryEntity
 import com.example.liftbook.data.local.entity.ExerciseEntity
 import com.example.liftbook.data.local.entity.RoutineEntity
+import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
 import com.example.liftbook.domain.calculator.ExerciseNames
 import com.example.liftbook.domain.calculator.RoutineNames
 import java.util.Locale
@@ -14,6 +15,7 @@ internal data class LocalRows(
     /** Every workout, the one in progress included. */
     val workoutIds: Set<String>,
     val bodyWeight: List<BodyWeightEntryEntity>,
+    val schedules: List<WorkoutScheduleEntity> = emptyList(),
 )
 
 /**
@@ -26,7 +28,9 @@ internal data class LocalRows(
  *   added with a number ("Zercher Squat 2"), since library names are unique.
  * - A new routine named like one here is numbered the same way.
  * - A weigh-in on a day this phone already has one for is skipped: one a day, and this phone's wins.
- * - A workout keeps its routine only if that routine is here or arriving with it.
+ * - A schedule entry that shares a day and a start time with one here is skipped, so a merge
+ *   never doubles a reminder.
+ * - A workout or a schedule entry keeps its routine only if that routine is here or arriving with it.
  */
 internal fun planMerge(backup: BackupRows, local: LocalRows): BackupRows {
     val localExerciseIds = local.exercises.mapTo(HashSet()) { it.id }
@@ -91,7 +95,14 @@ internal fun planMerge(backup: BackupRows, local: LocalRows): BackupRows {
             .filter { it.workoutId in newWorkoutIds }
             .map { it.copy(exerciseId = exerciseIds.getValue(it.exerciseId)) },
         bodyWeight = backup.bodyWeight.filterNot { it.id in localWeighInIds || it.recordedOn in localDays },
+        schedules = backup.schedules
+            .filterNot { schedule -> local.schedules.any { it.id == schedule.id || it.remindsWith(schedule) } }
+            .map { it.copy(routineId = it.routineId?.takeIf { id -> id in knownRoutineIds }) },
     )
 }
+
+/** Whether the two entries would remind at the same time on some day. */
+private fun WorkoutScheduleEntity.remindsWith(other: WorkoutScheduleEntity): Boolean =
+    startTimeMinutes == other.startTimeMinutes && (daysOfWeek and other.daysOfWeek) != 0
 
 private fun String.nameKey(): String = ExerciseNames.normalize(this).lowercase(Locale.ROOT)

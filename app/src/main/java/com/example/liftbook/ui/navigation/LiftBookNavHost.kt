@@ -23,14 +23,21 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -40,6 +47,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.liftbook.ui.components.ActiveWorkoutBanner
+import com.example.liftbook.ui.components.WorkoutInProgressDialog
 import com.example.liftbook.ui.feature.exercises.ArchivedExercisesRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseDetailRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseEditorRoute
@@ -51,6 +59,12 @@ import com.example.liftbook.ui.feature.home.HomeRoute
 import com.example.liftbook.ui.feature.progress.BodyWeightRoute
 import com.example.liftbook.ui.feature.progress.ExerciseProgressRoute
 import com.example.liftbook.ui.feature.progress.ProgressRoute
+import com.example.liftbook.ui.feature.reminders.ReminderEditorRoute
+import com.example.liftbook.ui.feature.reminders.ReminderListRoute
+import com.example.liftbook.ui.feature.reminders.ScheduledWorkoutAction
+import com.example.liftbook.ui.feature.reminders.ScheduledWorkoutEvent
+import com.example.liftbook.ui.feature.reminders.ScheduledWorkoutSheet
+import com.example.liftbook.ui.feature.reminders.ScheduledWorkoutViewModel
 import com.example.liftbook.ui.feature.routines.RoutineDetailRoute
 import com.example.liftbook.ui.feature.routines.RoutineEditorRoute
 import com.example.liftbook.ui.feature.settings.DataManagementRoute
@@ -73,6 +87,8 @@ fun LiftBookNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     bannerViewModel: ActiveWorkoutBannerViewModel = hiltViewModel(),
+    /** The activity's own instance, which MainActivity hands each reminder that opens the app. */
+    scheduledViewModel: ScheduledWorkoutViewModel = hiltViewModel(),
 ) {
     val entry by navController.currentBackStackEntryAsState()
     val currentTab = TopLevelDestination.of(entry?.destination)
@@ -251,13 +267,76 @@ fun LiftBookNavHost(
             composable<Route.Settings> { entry ->
                 SettingsRoute(
                     onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onOpenReminders = { entry.ifResumed { navController.navigate(Route.Reminders) } },
                     onOpenDataManagement = { entry.ifResumed { navController.navigate(Route.DataManagement) } },
                 )
             }
             composable<Route.DataManagement> { entry ->
                 DataManagementRoute(onNavigateUp = { entry.ifResumed { navController.navigateUp() } })
             }
+            composable<Route.Reminders> { entry ->
+                ReminderListRoute(
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onOpenSchedule = { id -> entry.ifResumed { navController.navigate(Route.ReminderEditor(id)) } },
+                    onAddSchedule = { entry.ifResumed { navController.navigate(Route.ReminderEditor()) } },
+                )
+            }
+            composable<Route.ReminderEditor> { entry ->
+                val route = entry.toRoute<Route.ReminderEditor>()
+                ReminderEditorRoute(
+                    scheduleId = route.scheduleId,
+                    onClose = { entry.ifResumed { navController.navigateUp() } },
+                    onDone = { entry.ifResumed { navController.navigateUp() } },
+                )
+            }
         }
+    }
+
+    ScheduledWorkout(
+        viewModel = scheduledViewModel,
+        onOpenWorkout = { navController.navigate(Route.ActiveWorkout) { launchSingleTop = true } },
+    )
+}
+
+/**
+ * A reminder's tap answered over whatever the app is showing (FR-7.3, FR-7.4): the workout it
+ * was for, offered with a one-tap start, or — if another is in progress — that one, to resume.
+ */
+@Composable
+private fun ScheduledWorkout(viewModel: ScheduledWorkoutViewModel, onOpenWorkout: () -> Unit) {
+    val prompt by viewModel.prompt.collectAsStateWithLifecycle()
+    var otherWorkoutName by rememberSaveable { mutableStateOf<String?>(null) }
+    val currentOnOpenWorkout by rememberUpdatedState(onOpenWorkout)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    LaunchedEffect(viewModel, lifecycle) {
+        // Only while the app is on screen: navigating from the background would land unseen.
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    ScheduledWorkoutEvent.OpenWorkout -> currentOnOpenWorkout()
+                    is ScheduledWorkoutEvent.OtherWorkoutActive -> otherWorkoutName = event.workoutName
+                }
+            }
+        }
+    }
+
+    prompt?.let {
+        ScheduledWorkoutSheet(
+            prompt = it,
+            onStart = { viewModel.onAction(ScheduledWorkoutAction.Start) },
+            onDismiss = { viewModel.onAction(ScheduledWorkoutAction.Dismiss) },
+        )
+    }
+    otherWorkoutName?.let { name ->
+        WorkoutInProgressDialog(
+            workoutName = name,
+            onResume = {
+                otherWorkoutName = null
+                currentOnOpenWorkout()
+            },
+            onDismiss = { otherWorkoutName = null },
+        )
     }
 }
 

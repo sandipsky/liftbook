@@ -4,8 +4,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import com.example.liftbook.domain.repository.RestTimerScheduler
+import com.example.liftbook.notification.setWakeUpAlarm
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import javax.inject.Inject
@@ -17,7 +17,8 @@ import javax.inject.Singleton
  * alternative, rejected because Android 14's short-service type caps at three minutes.
  *
  * Exact alarms need the user's permission from Android 14 on. Without it the alarm is inexact —
- * it can arrive late — and the workout screen offers the setting (see RestAlerts).
+ * it can arrive late — and the workout screen offers the setting (see AlertPermissions). Alarms
+ * don't survive a reboot; BootReceiver sets the rest's again.
  */
 @Singleton
 class AlarmRestTimerScheduler @Inject constructor(
@@ -29,19 +30,7 @@ class AlarmRestTimerScheduler @Inject constructor(
     override fun schedule(endsAt: Instant, nextExerciseName: String?) {
         // A new rest makes the last one's alert stale.
         RestTimerNotification.cancel(context)
-        val alarms = alarmManager ?: return
-        val operation = alarmIntent(nextExerciseName)
-        val at = endsAt.toEpochMilli()
-        try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()) {
-                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, operation)
-            } else {
-                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, operation)
-            }
-        } catch (e: SecurityException) {
-            // Revoked between the check and the call.
-            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, operation)
-        }
+        alarmManager?.setWakeUpAlarm(endsAt, alarmIntent(nextExerciseName))
     }
 
     override fun cancel() {

@@ -1,36 +1,11 @@
 package com.example.liftbook.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import com.example.liftbook.R
 import com.example.liftbook.domain.calculator.RestTimes
 import com.example.liftbook.ui.theme.LiftBookPreview
-import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
-import com.example.liftbook.ui.theme.tabularNumbers
 
 /**
  * Picks a rest duration (FR-3.5): for one exercise — every time it's done — or for the default.
@@ -50,66 +25,18 @@ fun RestDurationDialog(
     /** Offered as the first choice, for an exercise; null when picking the default itself. */
     defaultSeconds: Int? = null,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Column(
-                    Modifier
-                        .padding(top = Spacing.sm)
-                        .verticalScroll(rememberScrollState())
-                        .selectableGroup(),
-                ) {
-                    if (defaultSeconds != null) {
-                        val label = stringResource(R.string.rest_option_default, restDurationText(defaultSeconds))
-                        val spoken = stringResource(R.string.rest_option_default, restDurationSpoken(defaultSeconds))
-                        Option(label = label, spoken = spoken, selected = selected == null, onClick = { onSelect(null) })
-                    }
-                    RestTimes.OPTIONS.forEach { seconds ->
-                        Option(
-                            label = restDurationText(seconds),
-                            spoken = restDurationSpoken(seconds),
-                            selected = selected == seconds,
-                            onClick = { onSelect(seconds) },
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.rest_dialog_dismiss)) }
-        },
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-    )
-}
-
-@Composable
-private fun Option(label: String, spoken: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = OptionHeight)
-            .clip(MaterialTheme.shapes.medium)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = spoken }
-            .padding(horizontal = Spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        // Selection in ink, not the accent, as for chips.
-        RadioButton(
-            selected = selected,
-            onClick = null,
-            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.onSurface),
+    val defaultOption = defaultSeconds?.let {
+        DialogOption<Int?>(
+            value = null,
+            label = stringResource(R.string.rest_option_default, restDurationText(it)),
+            spoken = stringResource(R.string.rest_option_default, restDurationSpoken(it)),
         )
-        Text(label, style = MaterialTheme.typography.bodyLarge.tabularNumbers(), color = MaterialTheme.colorScheme.onSurface)
     }
+    val options = listOfNotNull(defaultOption) + RestTimes.OPTIONS.map { seconds ->
+        DialogOption<Int?>(seconds, label = restDurationText(seconds), spoken = restDurationSpoken(seconds))
+    }
+    OptionDialog(title = title, body = body, options = options, selected = selected, onSelect = onSelect, onDismiss = onDismiss)
 }
-
-private val OptionHeight = 48.dp
 
 @ThemePreviews
 @Composable

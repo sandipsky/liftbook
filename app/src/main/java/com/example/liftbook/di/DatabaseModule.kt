@@ -8,6 +8,7 @@ import com.example.liftbook.data.local.dao.BodyWeightDao
 import com.example.liftbook.data.local.dao.ExerciseDao
 import com.example.liftbook.data.local.dao.ProgressDao
 import com.example.liftbook.data.local.dao.RoutineDao
+import com.example.liftbook.data.local.dao.ScheduleDao
 import com.example.liftbook.data.local.dao.SetDao
 import com.example.liftbook.data.local.dao.WorkoutDao
 import com.example.liftbook.data.local.seed.ExerciseSeedCallback
@@ -50,4 +51,7 @@ object DatabaseModule {
 
     @Provides
     fun provideBackupDao(database: LiftBookDatabase): BackupDao = database.backupDao()
+
+    @Provides
+    fun provideScheduleDao(database: LiftBookDatabase): ScheduleDao = database.scheduleDao()
 }

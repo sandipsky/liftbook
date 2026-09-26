@@ -1,5 +1,6 @@
 package com.example.liftbook.data.backup
 
+import com.example.liftbook.data.preferences.isLeadMinutes
 import com.example.liftbook.domain.model.BackupException
 import com.example.liftbook.domain.model.BackupProblem
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -9,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
+import java.time.DayOfWeek
 
 /**
  * Turns a [BackupFile] into text and back (FR-6.3, FR-6.4, NFR-6). Reading checks, in order,
@@ -87,7 +89,7 @@ internal object BackupMigrations {
 /**
  * What the database would reject, or what would make no sense on screen, caught before an
  * import writes anything: ids that repeat, sets of an exercise the backup doesn't have, numbers
- * no set could hold, two weigh-ins on one day.
+ * no set could hold, two weigh-ins on one day, a schedule entry on no day at all.
  */
 internal fun BackupFile.isConsistent(): Boolean {
     val exerciseIds = exercises.map { it.id }
@@ -119,7 +121,15 @@ internal fun BackupFile.isConsistent(): Boolean {
     if (!validSets) return false
 
     if (!bodyWeight.map { it.id }.allDistinct() || !bodyWeight.map { it.date }.allDistinct()) return false
-    return bodyWeight.all { it.weightKg > 0.0 && it.weightKg.isFinite() }
+    if (!bodyWeight.all { it.weightKg > 0.0 && it.weightKg.isFinite() }) return false
+
+    if (!schedules.map { it.id }.allDistinct()) return false
+    return schedules.all { schedule ->
+        schedule.days.isNotEmpty() &&
+            schedule.days.allDistinct() &&
+            schedule.days.all { name -> DayOfWeek.entries.any { it.name == name } } &&
+            (schedule.leadMinutes == null || isLeadMinutes(schedule.leadMinutes))
+    }
 }
 
 private fun <T> List<T>.allDistinct(): Boolean = toHashSet().size == size

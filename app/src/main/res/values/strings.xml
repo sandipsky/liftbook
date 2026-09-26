@@ -148,6 +148,7 @@
     <!-- Relative dates -->
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
+    <string name="date_tomorrow">Tomorrow</string>
     <plurals name="date_days_ago">
         <item quantity="one">%d day ago</item>
         <item quantity="other">%d days ago</item>
@@ -437,7 +438,6 @@
     <string name="rest_dialog_body_exercise">After each set of %1$s, in every workout.</string>
     <string name="rest_dialog_title_default">Default rest timer</string>
     <string name="rest_dialog_body_default">For exercises without a rest time of their own.</string>
-    <string name="rest_dialog_dismiss">Cancel</string>
     <string name="rest_alerts_notifications_off">Notifications are off, so the rest alert can’t reach you with the screen off.</string>
     <string name="rest_alerts_alarms_off">Alarms are off, so the rest alert may arrive late.</string>
     <string name="rest_alerts_fix">Turn on</string>
@@ -560,8 +560,6 @@
     <string name="workout_editor_field_click_label">change</string>
     <string name="workout_editor_pick_start">Started at</string>
     <string name="workout_editor_pick_end">Ended at</string>
-    <string name="workout_editor_pick_confirm">OK</string>
-    <string name="workout_editor_pick_dismiss">Cancel</string>
     <string name="workout_editor_exercises">Exercises</string>
     <string name="workout_editor_empty">Add what you did in this workout.</string>
     <string name="workout_editor_save">Save changes</string>
@@ -764,6 +762,10 @@
         <item quantity="one">%d exercise</item>
         <item quantity="other">%d exercises</item>
     </plurals>
+    <plurals name="data_count_reminders">
+        <item quantity="one">%d reminder</item>
+        <item quantity="other">%d reminders</item>
+    </plurals>
     <plurals name="data_count_weigh_ins">
         <item quantity="one">%d weigh-in</item>
         <item quantity="other">%d weigh-ins</item>
@@ -814,4 +816,119 @@
     <string name="data_clear_confirm">Clear all data</string>
     <string name="data_cleared">All data cleared</string>
     <string name="data_clear_failed">Couldn’t clear your data. Try again.</string>
+
+    <!-- Workout reminders in Settings (FR-7.7) -->
+    <string name="settings_section_reminders">Reminders</string>
+    <string name="settings_reminders_title">Workout reminders</string>
+    <string name="settings_reminders_off">Off</string>
+    <string name="settings_reminders_none">Nothing scheduled</string>
+    <plurals name="settings_reminders_per_week">
+        <item quantity="one">%d workout a week</item>
+        <item quantity="other">%d workouts a week</item>
+    </plurals>
+    <string name="settings_reminders_click_label">open workout reminders</string>
+
+    <!-- The reminders screen (FR-7.1, FR-7.2, FR-7.4, FR-7.7) -->
+    <string name="reminders_title">Reminders</string>
+    <string name="reminders_loading">Loading reminders</string>
+    <string name="reminders_master_title">Remind me before workouts</string>
+    <string name="reminders_master_off">No reminders are sent</string>
+    <string name="reminders_master_idle">Schedule a workout to be reminded before it</string>
+    <string name="reminders_master_all_off">Every workout on the schedule is switched off</string>
+    <!-- The next scheduled workout: "Next · Wed at 18:00" -->
+    <string name="reminders_next">Next · %1$s at %2$s</string>
+    <!-- …with its routine: "Next · Wed at 18:00, Push" -->
+    <string name="reminders_next_routine">Next · %1$s at %2$s, %3$s</string>
+    <string name="reminders_section_schedule">Schedule</string>
+    <!-- Trailing the schedule's heading: "3 a week" -->
+    <plurals name="reminders_per_week">
+        <item quantity="one">%d a week</item>
+        <item quantity="other">%d a week</item>
+    </plurals>
+    <string name="reminders_empty_title">No workouts scheduled</string>
+    <string name="reminders_empty_body">Pick the days and time you train, and LiftBook reminds you before each one.</string>
+    <string name="reminders_add">Schedule a workout</string>
+    <string name="reminders_entry_click_label">edit reminder</string>
+    <!-- Spoken by TalkBack for an entry's switch: "Reminder, 18:00, Monday, Wednesday, Friday" -->
+    <string name="reminders_entry_switch">Reminder, %1$s, %2$s</string>
+    <string name="reminders_skipped_today">Skipped today</string>
+    <string name="reminders_section_defaults">Defaults</string>
+    <string name="reminders_lead_title">Remind me</string>
+    <string name="reminders_lead_body">For workouts without a reminder time of their own</string>
+    <string name="reminders_lead_click_label">change when to remind</string>
+    <string name="reminders_snooze_title">Snooze for</string>
+    <string name="reminders_snooze_body">When you tap Snooze on a reminder</string>
+    <!-- A snooze length: "10 min" -->
+    <string name="reminders_snooze_option">%d min</string>
+    <plurals name="reminders_snooze_spoken">
+        <item quantity="one">Snooze for %d minute</item>
+        <item quantity="other">Snooze for %d minutes</item>
+    </plurals>
+    <string name="reminders_notifications_off">Notifications are off, so reminders can’t reach you.</string>
+    <string name="reminders_alarms_off">Alarms are off, so reminders may arrive late.</string>
+
+    <!-- The days a workout is on -->
+    <string name="days_every_day">Every day</string>
+    <string name="days_weekdays">Weekdays</string>
+    <string name="days_weekends">Weekends</string>
+
+    <!-- When to remind: "At the start", "10 min before", "1 h 30 min before" -->
+    <string name="lead_at_start">At the start</string>
+    <string name="lead_before">%1$s before</string>
+    <!-- For an entry that follows the default: "Default · 10 min before" -->
+    <string name="lead_default">Default · %1$s</string>
+
+    <!-- Scheduling a workout (FR-7.1, FR-7.2) -->
+    <string name="reminder_editor_new">New reminder</string>
+    <string name="reminder_editor_edit">Edit reminder</string>
+    <string name="reminder_editor_loading">Loading reminder</string>
+    <string name="reminder_editor_starts_at">Starts at</string>
+    <string name="reminder_editor_time_click_label">change start time</string>
+    <string name="reminder_editor_days">Days</string>
+    <string name="reminder_editor_days_error">Pick at least one day</string>
+    <string name="reminder_editor_routine">Routine</string>
+    <string name="reminder_editor_routine_body">Its reminder offers to start it</string>
+    <string name="reminder_editor_routine_none">None</string>
+    <string name="reminder_editor_routine_click_label">choose a routine</string>
+    <string name="reminder_editor_routine_dialog_body">A reminder for a routine offers to start it in one tap.</string>
+    <string name="reminder_editor_routine_none_option">No routine</string>
+    <string name="reminder_editor_lead">Remind me</string>
+    <string name="reminder_editor_lead_click_label">change when to remind</string>
+    <string name="reminder_editor_lead_dialog_body">How long before the workout starts.</string>
+    <string name="reminder_editor_save">Save</string>
+    <string name="reminder_editor_save_failed">Couldn’t save the reminder. Try again.</string>
+    <string name="reminder_editor_missing">That reminder no longer exists.</string>
+    <string name="reminder_editor_delete">Delete reminder</string>
+    <string name="reminder_editor_delete_title">Delete this reminder?</string>
+    <string name="reminder_editor_delete_body">You won’t be reminded about this workout any more.</string>
+    <string name="reminder_editor_delete_confirm">Delete</string>
+    <string name="reminder_editor_discard_body_create">This reminder won’t be saved.</string>
+    <string name="reminder_editor_discard_body_edit">Your changes to this reminder won’t be saved.</string>
+
+    <!-- Opening the app from a reminder (FR-7.3) -->
+    <!-- When the workout starts: "Today · 18:00", "Tue · 00:05" -->
+    <string name="scheduled_when">%1$s · %2$s</string>
+    <string name="scheduled_title_plain">Scheduled workout</string>
+    <string name="scheduled_body_plain">Start an empty workout and add exercises as you go.</string>
+    <string name="scheduled_start">Start workout</string>
+    <string name="scheduled_not_now">Not now</string>
+
+    <!-- The reminder notification (FR-7.2 – FR-7.4) -->
+    <string name="channel_workout_reminders">Workout reminders</string>
+    <string name="channel_workout_reminders_description">Tells you when a scheduled workout is about to start.</string>
+    <!-- "Push at 18:00" -->
+    <string name="reminder_notification_title_routine">%1$s at %2$s</string>
+    <!-- "Workout at 18:00" -->
+    <string name="reminder_notification_title">Workout at %1$s</string>
+    <plurals name="reminder_notification_starts_in">
+        <item quantity="one">Starts in %d minute</item>
+        <item quantity="other">Starts in %d minutes</item>
+    </plurals>
+    <string name="reminder_notification_starting">Time to start</string>
+    <!-- The expanded notification: when it starts, then the routine's exercises -->
+    <string name="reminder_notification_expanded">%1$s\n%2$s</string>
+    <string name="reminder_action_start">Start now</string>
+    <!-- "Snooze 10 min" -->
+    <string name="reminder_action_snooze">Snooze %1$d min</string>
+    <string name="reminder_action_skip">Skip today</string>
 </resources>

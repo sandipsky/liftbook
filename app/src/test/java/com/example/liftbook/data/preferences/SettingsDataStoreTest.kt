@@ -67,10 +67,38 @@ class SettingsDataStoreTest {
     }
 
     @Test
-    fun `restoring a backup's settings writes all three, and they read back`() {
-        val preferences = UserPreferences(defaultRestSeconds = 120, firstDayOfWeek = FirstDayOfWeek.SUNDAY, themeMode = ThemeMode.LIGHT)
+    fun `restoring a backup's settings writes them all, and they read back`() {
+        val preferences = UserPreferences(
+            defaultRestSeconds = 120,
+            firstDayOfWeek = FirstDayOfWeek.SUNDAY,
+            themeMode = ThemeMode.LIGHT,
+            remindersEnabled = false,
+            reminderLeadMinutes = 30,
+            snoozeMinutes = 5,
+        )
         val stored = mutablePreferencesOf().apply { setBackedUpSettings(preferences) }
 
         assertEquals(preferences, stored.toUserPreferences(Locale.UK))
+    }
+
+    @Test
+    fun `reminders are on, 10 minutes ahead, with a 10-minute snooze, until set`() {
+        val defaults = emptyPreferences().toUserPreferences()
+
+        assertEquals(true, defaults.remindersEnabled)
+        assertEquals(10, defaults.reminderLeadMinutes)
+        assertEquals(10, defaults.snoozeMinutes)
+    }
+
+    @Test
+    fun `a reminder time or snooze no reminder could have falls back to its default`() {
+        val stored = preferencesOf(
+            SettingsKeys.reminderLeadMinutes to -1,
+            SettingsKeys.snoozeMinutes to 0,
+        ).toUserPreferences()
+
+        assertEquals(10, stored.reminderLeadMinutes)
+        assertEquals(10, stored.snoozeMinutes)
+        assertEquals(0, preferencesOf(SettingsKeys.reminderLeadMinutes to 0).toUserPreferences().reminderLeadMinutes)
     }
 }

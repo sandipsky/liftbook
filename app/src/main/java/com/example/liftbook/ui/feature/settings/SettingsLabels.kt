@@ -52,4 +52,5 @@ fun Resources.dataCountsText(counts: DataCounts): String = listOfNotNull(
     counts.routines.takeIf { it > 0 }?.let { getQuantityString(R.plurals.data_count_routines, it, it) },
     counts.customExercises.takeIf { it > 0 }?.let { getQuantityString(R.plurals.data_count_exercises, it, it) },
     counts.weighIns.takeIf { it > 0 }?.let { getQuantityString(R.plurals.data_count_weigh_ins, it, it) },
+    counts.schedules.takeIf { it > 0 }?.let { getQuantityString(R.plurals.data_count_reminders, it, it) },
 ).joinToString(getString(R.string.list_separator))

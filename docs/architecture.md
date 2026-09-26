@@ -4,9 +4,11 @@ Status: **in use.** Implemented so far: the foundation this document describes (
 what later slices need), the exercise library (FR-1.1–1.5), routines (FR-2.1–2.4), the active
 workout (FR-3.1–3.10, FR-3.10 pulled forward from Phase 2) with its summary, history
 (FR-4.1–4.4, the calendar FR-4.4 pulled forward from Phase 2), progress and stats
-(FR-5.1–5.4, Phase 2, built on request), and settings and data (FR-6.2–6.5, on request, with
-kilograms and kilometres as the only units — FR-6.1's toggle isn't built). Where the
-implementation settled a detail or deviated, the relevant section says so.
+(FR-5.1–5.4, Phase 2, built on request), settings and data (FR-6.2–6.5, on request, with
+kilograms and kilometres as the only units — FR-6.1's toggle isn't built), and workout reminders
+(FR-7.1–7.7, FR-7.4 and 7.5 pulled forward from Phase 2), with the NFRs of spec §9 checked
+against the build. Where the implementation settled a detail or deviated, the relevant section
+says so.
 Scope: package layout, data entities, navigation graph, ViewModel structure.
 Spec: [`requirement.md`](requirement.md). Stack decisions: [`../CLAUDE.md`](../CLAUDE.md).
 
@@ -126,8 +128,22 @@ com.example.liftbook
         ├── exercises/                library, detail, editor, archived list
         ├── routines/                 detail, editor
         ├── progress/                 dashboard, per-exercise charts, body weight
-        └── settings/                 settings, reminders, data management
+        ├── settings/                 settings, data management
+        └── reminders/                schedule list and editor, the scheduled-workout sheet (FR-7)
 ```
+
+*As built, FR-7:*
+- `domain/usecase/` holds one class, `WorkoutReminders` (§6.2), which grew past rescheduling
+  into sending, snoozing and skipping. The other planned use cases stayed out: their rules live
+  inside a repository's transaction (§2.4, §6.3). Being pure domain, it has no `@Inject`;
+  `di/NotificationModule` provides it, one instance for the whole app.
+- `notification/` has `Alarms.kt` (the exact-or-inexact wake-up alarm the rest timer and
+  reminders share) and `Receivers.kt` (the receivers' Hilt entry point and `goAsync` helper) at
+  its root. `reminder/` holds `AlarmReminderAlarm`, `SystemReminderNotifier`, `ReminderIntents`
+  and `ReminderReceivers.kt` — `ReminderAlarmReceiver`, `ReminderActionReceiver`, `BootReceiver`.
+  There's no `ui/navigation/DeepLinks.kt`: reminders reach the app as intent extras (§4.2).
+- Reminders got their own feature package, as `CLAUDE.md` lays it out, rather than living in
+  `settings/`; the rows both use moved to `ui/components/` (§5.4).
 
 **Dependency direction is strictly one-way:** `ui → domain ← data`, with `core` usable by all.
 `ui` never imports from `data`; `domain` imports nothing from either. If a `ui` file ever needs an
@@ -341,6 +357,15 @@ subquery in §2.9 (`WHERE s.workoutId = w.id`) needs.
 | `snoozedUntil` | Long? | FR-7.4, Phase 2 |
 | `skippedOnDate` | Long? | epoch day; FR-7.4, Phase 2 |
 
+*As built (schema v4):* **one entry covers several days**, as an alarm clock's does — "Mon, Wed,
+Fri at 18:00, Push" is one row, and a different routine per day is one entry each. So
+`dayOfWeek` became `daysOfWeek`, a set of ISO days as bits (Monday 1 … Sunday 64, never 0),
+with no index: the table is a handful of rows, read whole. `skippedOnDate` is `skippedOn`, and
+a `createdAt` orders entries at the same time. Snooze and skip are the state of one day's
+reminder, not the plan: saving an edit clears both — and turns the entry on, as setting an
+alarm does — switching an entry off clears its snooze, and backups leave them out. Deleting the
+linked routine keeps the entry, unlinked (`SET NULL`), as it does workouts.
+
 ### 2.8 `body_weight_entries` (FR-5.4, Phase 2)
 
 `id` PK · `weightKg` Double · `recordedOn` Long (epoch day, **unique** — one per day) · `note` String?
@@ -400,8 +425,14 @@ repository gives the same type safety at the call site without the protobuf buil
 user picks, the week starts where the locale starts it, or Monday where that's neither.
 `weightUnit` is read but never written (§2.1). `lastExportedAt` lives in the same file but isn't a
 setting: `BackupRepository` owns it, and it isn't exported. There's no `exportFormatVersion` key —
-the version is a constant in the code that writes the file (§6.3). The reminder keys arrive with
-FR-7.
+the version is a constant in the code that writes the file (§6.3).
+
+*As built (FR-7):* `remindersEnabled` (on until switched off), `defaultReminderLeadMinutes` (10;
+0 to a day) and `snoozeMinutes` (10; the reminders screen offers 5, 10, 15 and 30). A value no
+reminder could have reads as its default. `reminderAlarmAt` sits beside them but isn't a
+setting: it's when the reminder alarm is set for, the alarm's own bookkeeping (§6.2), and isn't
+exported. There's no `restTimerVibrate`: the rest channel's vibration is the user's to change
+in system settings, per channel.
 
 ### 2.11 Domain modelling note — `SetMetrics`
 
@@ -429,7 +460,8 @@ with their slices as additive changes, which Room's declared `AutoMigration` han
 
 **v2** adds `workouts.restStartedAt` / `restEndsAt` through `AutoMigration(1, 2)`.
 **v3** adds `body_weight_entries` (FR-5.4) through `AutoMigration(2, 3)`.
-`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` / `2.json`,
+**v4** adds `workout_schedules` (FR-7.1) through `AutoMigration(3, 4)`.
+`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `3.json`,
 inserts rows, and opens it with Room, which runs the migrations and validates the result against
 the current schema. `room-testing`'s `MigrationTestHelper` isn't used: it reads schemas from instrumentation
 assets, which JVM (Robolectric) tests don't have.
@@ -472,6 +504,14 @@ read is a single query of earlier working sets per exercise, loaded once per sum
   volume computed the same way as history, so it's reused). `summaryWeeks` gives the span to query.
 - **`BodyWeightTrend.kt`** — a 7-calendar-day trailing average at each weigh-in, and its change.
   Calendar days, not a count of entries, so irregular logging isn't averaged across gaps.
+
+*As built, FR-7:* **`ReminderTimes.kt`** — `nextAfter(schedules, after, zone, defaultLead)`, the
+next reminder due (a regular one or a snooze); `due(schedules, from, until, …)`, what came due in
+a window, ends included, one per entry — its latest — skipped days left out, and anything more
+than an hour after its workout started dropped (a snooze never is: the user asked for it);
+`nextStart` for the reminders screen; `perWeek`. Times are local: 18:00 stays 18:00 across a
+change of the clocks, and a start in the hour the clocks skip moves to just after it. A lead time
+can reach into the day before (00:05 is reminded at 23:55).
 
 ---
 
@@ -575,6 +615,23 @@ naming which. Replace asks once more. Clearing asks for a typed word (FR-6.5); i
 off until the word matches, ignoring case, and the dialog says when the last backup was.
 Every outcome is a snackbar in plain words.
 
+*As built, FR-7:* there's no `ReminderList` inside a `SettingsGraph`; **`Reminders`** and
+**`ReminderEditor(scheduleId?)`** are full-screen destinations. Settings has a **Reminders**
+section whose one row says what's on — "Off", "Nothing scheduled", "4 workouts a week" — and
+opens `Reminders`: the global switch first (FR-7.7), whose line says what's next ("Next · Wed at
+18:00, Push"); what's stopping alerts, if anything, with the fix; the schedule, each entry its
+time in large tabular figures, its days, its routine and its own lead time, with a switch of its
+own; then the defaults, the lead time (a dialog) and the snooze (a segmented choice). **Schedule
+a workout** is the bottom action, or the empty state's. The editor leads with the start time,
+the largest thing on it, opening the clock dial; then seven round day toggles in the order the
+user's week runs (FR-6.2); then the routine and the lead time, each a row opening a dialog.
+Save at the bottom; Delete in the top bar, asking first; Close asks before losing an edit.
+
+**Answering a reminder (FR-7.3)** isn't a destination: `ScheduledWorkoutSheet` rises over
+whatever the app was showing — when it starts, the routine and its exercises, **Start workout**
+and Not now — so a reminder never costs the user their place. It lives at the shell, beside
+the `NavHost`, fed by the activity-scoped `ScheduledWorkoutViewModel` (§5.2).
+
 ### 4.2 Navigation rules
 
 - **Active-workout banner.** While `finishedAt IS NULL`, every `MainGraph` screen shows a persistent
@@ -600,6 +657,16 @@ Every outcome is a snackbar in plain words.
 - **Deep links for notifications (FR-7.3).** `liftbook://active` and
   `liftbook://start?routineId={id}` as `navDeepLink` entries, reached by `PendingIntent` into
   `MainActivity`. A custom scheme, so this works with no `INTERNET` permission (NFR-1).
+  *Deviation:* reminders reach the app as an explicit intent with extras (`ReminderIntents`),
+  not a deep link, and navigation never handles them itself. Navigation answers a deep link that
+  arrives with `FLAG_ACTIVITY_NEW_TASK`, as one from a notification does, by restarting the task
+  to build its back stack — losing where the user was — and starting a workout has to happen
+  before its screen is worth opening. `MainActivity`
+  reads the intent — in `onCreate` unless restored, and in `onNewIntent`, ignoring one replayed
+  from Recents — and hands it to `ScheduledWorkoutViewModel`. `CLEAR_TOP | SINGLE_TOP` bring a
+  running app forward as it was. Tapping the reminder raises the sheet over the current screen;
+  **Start now** starts the workout and opens it, navigating only while the app is resumed: the
+  one navigation made at launch without a tap, which the banner note above is why it's kept to.
 - **ViewModels never hold a `NavController`.** Screens take `onNavigateToX: (Id) -> Unit` lambdas
   wired in the `NavHost`. For navigation that a ViewModel must originate (save completes, workout
   finishes), the ViewModel exposes a `Channel`-backed `Flow<UiEvent>` collected with
@@ -678,7 +745,8 @@ cursors. The screen signature becomes `(state, textFieldState, onAction)`.
 | `BodyWeightViewModel` | weigh-ins and trend over a range, log / edit / delete | FR-5.4 |
 | `SettingsViewModel` | `UserPreferences`, last backup | FR-6.2 — no unit toggle (§2.1) |
 | `MainViewModel` | the theme setting, for `MainActivity` | FR-6.2 — see below |
-| `ReminderListViewModel` / `ReminderEditorViewModel` | schedules, permission state | FR-7.1, 7.6, 7.7 |
+| `ReminderListViewModel` / `ReminderEditorViewModel` | schedules, permission state | FR-7.1, 7.6, 7.7 — see below |
+| `ScheduledWorkoutViewModel` | the workout a reminder offered, the start under way | FR-7.3, 7.4 — activity-scoped, see below |
 | `DataManagementViewModel` | counts, last backup, the operation running, the import draft, confirmations | FR-6.3–6.5 — see below |
 
 *Library search deviates from the original plan* (a debounced DB query via `flatMapLatest`). The
@@ -722,6 +790,19 @@ writes. A replace or a clear deletes the workout in progress with the rest, so t
 rest alert (`RestTimerScheduler.cancel`). The typed word for clearing is a `TextFieldState` the
 ViewModel owns and empties each time the dialog opens; the word itself is a string resource, so
 it's matched in the dialog.
+
+*Reminders (FR-7).* The list writes each change as it's made, then calls `WorkoutReminders.sync`
+so the alarm follows (FR-7.6) — both under `NonCancellable`, so leaving can't split them.
+Permission state isn't in `UiState`: the route checks it with `rememberAlertIssue` on each
+resume, since it changes in system settings, and asks for `POST_NOTIFICATIONS` once something
+will actually remind — the moment it's for. The editor is a draft, as the routine editor is;
+a routine deleted meanwhile is dropped from the entry on save rather than failing it.
+`ScheduledWorkoutViewModel` is activity-scoped, the one `MainActivity` hands each reminder to:
+it takes the notification down, offers the workout or — for Start now — starts it, and keeps
+what it's offering in its `SavedStateHandle`. A routine deleted since the reminder is offered
+as a plain workout; another workout in progress is offered to resume (FR-3.1); a failed start
+offers it again, saying so. A workout started with no routine is named for the time of day, as
+on Home — resolved by the activity, which has the resources.
 
 *Editing a past workout (FR-4.2) is a draft, like the routine editor, not write-through like the
 active workout.* History is edited rarely and on purpose, so Close has to be able to throw an
@@ -841,6 +922,17 @@ that settings picks the default rest with it too. The settings feature's own par
 the error colour, always with an icon), `SettingChoice` (a title over a `SegmentedSelector`),
 `DataCountTiles`, `ImportBackupSheet` and `ClearDataDialog`.
 
+The FR-7 slice moved `SettingsRow` and `SettingChoice` to `ui/components/SettingsRows.kt`, with a
+new `SettingsSwitchRow` (the whole 64dp row is the switch), since reminders use them too. The
+workout's `RestAlerts` became `ui/components/AlertPermissions.kt` — `AlertIssue`,
+`rememberAlertIssue(channelId)`, `openAlertSettings` — checking whichever channel it's given.
+`OptionDialog` (one tap picks and closes) is the radio dialog `RestDurationDialog` had inside it,
+now shared by the rest, lead-time and routine pickers; `TimeOfDayPickerDialog` is the workout
+editor's clock dial, shared with the reminder editor. The reminders feature's own parts are in
+`ui/feature/reminders/`: `ScheduleCard`, `DayOfWeekPicker` (seven round toggles in the user's
+week order, picked days in ink), `ReminderAlertNotice`, `LeadTimeDialog` and
+`ScheduledWorkoutSheet`.
+
 ### 5.5 Threading & testing
 
 - Repositories take an injected `@IoDispatcher`. Room and DataStore manage their own threads;
@@ -877,6 +969,37 @@ global toggle (FR-7.6) — one path, three triggers. Permissions: `POST_NOTIFICA
 in context with rationale), `SCHEDULE_EXACT_ALARM` (13+, with a `canScheduleExactAlarms()` check and
 a settings deep-link fallback), `RECEIVE_BOOT_COMPLETED`. FR-7.5's suppression check runs at fire
 time in the receiver, not at schedule time.
+
+*As built* (`domain/usecase/WorkoutReminders`, `notification/reminder/`):
+- **One alarm for the whole schedule**, not one per entry: set for the next reminder due across
+  every entry and snooze, and replaced by each change. Nothing can outlive the entry it was for —
+  an import or a clear deletes entries without saying which, and per-entry alarms would linger —
+  and nothing needs a request code per UUID. `ReminderAlarm` sets it (exact when allowed, as the
+  rest timer's is — both through `Alarms.kt`) and writes down when it's for.
+- **`sync()` is the one path** — run by the alarm, by `BootReceiver`, by every change on the
+  reminders screens, after an import or a clear, and each time the app opens (force-stopping an
+  app clears its alarms and sends it nothing). It sends whatever came due since the alarm was
+  set, then sets the next. So an inexact alarm that's due but hasn't gone off yet is delivered
+  when something else syncs, not replaced and lost, and nothing is sent twice. A `Mutex` keeps
+  an alarm and an edit landing together from both sending.
+- **`BootReceiver`** answers `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`,
+  `TIMEZONE_CHANGED` (local times move with the zone) and the exact-alarm permission being
+  granted (an inexact alarm becomes exact). It sets the rest timer's alarm again too while a rest
+  is still running, which step 4 left for this slice (NFR-3). Receivers find their dependencies
+  through a Hilt `@EntryPoint` and work in `goAsync`.
+- **FR-7.5, as decided at send time:** nothing while a workout is in progress, or once one was
+  *finished* on the day of the scheduled workout — the reminder's day, so a 00:05 workout
+  reminded at 23:55 isn't held back by the evening before. A reminder over an hour after its
+  start (the phone was off) is dropped.
+- **The notification** (`SystemReminderNotifier`), on its own high-importance channel, tagged by
+  entry: "Push at 18:00", "Starts in 10 minutes", the routine's exercises when expanded, the start
+  time as its `when`, and gone an hour after the start. Actions (FR-7.4): **Start now** opens the
+  app starting the workout (an activity intent — Android 12 won't let a receiver open one);
+  **Snooze 10 min** (the snooze setting) and **Skip today** answer in `ReminderActionReceiver`
+  without opening the app. Skip records the day, so no later sync that day brings it back.
+- **Permissions (FR-7.6).** `POST_NOTIFICATIONS` is asked for on the reminders screen once
+  something will remind; while notifications, the channel or exact alarms are off, the screen
+  says so with a **Turn on** that opens the setting (`AlertPermissions`, shared with the rest bar).
 
 ### 6.3 Export / import (FR-6.3, 6.4, NFR-6)
 
@@ -933,6 +1056,14 @@ if exports ever get large enough to need retry-on-failure.
   it. Above the data layer a file is an opaque `DocumentUri`. *Deviation:* the work runs in the
   ViewModel's scope under `NonCancellable` (§5.2) rather than an application scope — the result is
   shown on the screen that asked, and nothing needs to outlive it.
+- **Schedules (FR-7).** The file gained `schedules` — each entry's days as ISO names, its local
+  start time ("18:30"), routine, lead time and on/off, but not today's snooze or skip — and the
+  three reminder settings joined `settings`. Both are optional fields with defaults, so the
+  format stays version 1, as the file's own rule says: an older backup reads with no schedule
+  and default reminder settings, and an older app skips the new keys. An entry on no day, on a day
+  that isn't one, or reminded more than a day ahead is damage. A merge adds an entry unless one
+  here shares a day and a start time with it, so it never doubles a reminder. Import and clear
+  sync the reminders afterwards; a sync that fails there doesn't fail the import.
 
 ### 6.4 Dependencies to add
 
@@ -985,10 +1116,9 @@ tables.
 Step 4 is done, with FR-3.10 (set types) pulled forward on request: empty and routine starts, the
 set row and logging, add / remove / reorder exercises, pre-fill, the rest timer and its alarm,
 elapsed time, autosave, notes, Finish and the summary with PRs — which brought the volume, 1RM and
-PR calculators forward from §3. Schema v2 added the rest timer columns. Still to come from step 4's
-neighbours: rescheduling a rest alarm after a reboot (alarms don't survive one) arrives with the
-reminders slice's `BootReceiver`. PRs flagged on the set row *during* the workout (FR-5.2)
-arrived with the progress slice.
+PR calculators forward from §3. Schema v2 added the rest timer columns. Rescheduling a rest alarm
+after a reboot (alarms don't survive one) arrived with the reminders slice's `BootReceiver`. PRs
+flagged on the set row *during* the workout (FR-5.2) arrived with the progress slice.
 
 Step 5 is done, with FR-4.4 (the calendar) pulled forward on request: the History tab's list and
 calendar, the past-workout page with delete, and the editor. FR-4.3 already existed as the
@@ -1005,6 +1135,28 @@ FR-6.1 left out: the app uses kilograms and kilometres only (§2.1). Settings (d
 start, theme), export, import with merge or replace, and clearing all data. The week start
 replaced the locale's `WeekFields` that `di/ClockModule` used to provide; the calendar and the
 weekly summary read the setting and follow it as it changes. The schema is unchanged.
+
+Step 7 is done as FR-7.1–7.7, with FR-7.4 (Start now, Snooze, Skip today) and FR-7.5 (no
+reminder while training, or once trained that day) pulled forward from Phase 2: the weekly
+schedule and its editor, the reminder with its actions, the scheduled-workout sheet, the global
+and per-entry switches, default lead time and snooze length, and rescheduling after a reboot,
+an update, a clock or time-zone change, and every edit. Schema v4 added `workout_schedules`;
+backups carry the schedule. The rest timer's alarm is now set again after a reboot, too.
+
+**Spec §8 and §9, checked against the build.** Every FR in §8, MVP and Phase 2, is built except
+FR-6.1 — kilograms and kilometres only, decided on request (§2.1). The NFRs:
+- **NFR-1** — no network permission. The manifest now also strips `INTERNET` and
+  `ACCESS_NETWORK_STATE` if a library ever merges them in (`tools:node="remove"`); the merged
+  manifest has neither. Cloud backup is off too (`allowBackup="false"`, and backup rules that
+  exclude everything), so nothing leaves the phone behind the user's back — the Backup screen's
+  "no cloud copy" is true. A device-to-device transfer from Android 12 still copies everything.
+- **NFR-2** — history is paged (§2.9); the exercise's and progress lists are bounded (§5.2).
+- **NFR-3** — the rest alert is an exact alarm, fired in Doze and after a kill, and now set again
+  after a reboot or when exact alarms are allowed.
+- **NFR-4** — `minSdk = 26`, `targetSdk = 37`.
+- **NFR-5** — every screen previews in both themes; interactive controls have TalkBack labels
+  (checked: no icon button without a description), and colour is paired with an icon or a word.
+- **NFR-6** — the backup format is versioned, with a migration path (§6.3).
 
 ---
 
@@ -1084,3 +1236,19 @@ Assumptions are stated so work is not blocked; confirm or correct before the fou
     say if a same-named exercise should always stay separate instead.
 21. **Clearing all data resets settings too (FR-6.5)**, since FR-6.3 counts settings as data. The
     alternative — keeping the theme and week start — is one line in `BackupRepositoryImpl.clearAll`.
+22. **A schedule entry is several days at one time (FR-7.1)**, like an alarm clock's, rather than
+    one day per entry. A routine per day is one entry per day. Say if one entry should carry a
+    different routine per day.
+23. **"Completed earlier that day" (FR-7.5)** means a workout *finished* on the scheduled
+    workout's own date, before the reminder goes out. One in progress holds every reminder back.
+24. **Snooze's "default 10 min" (FR-7.4)** is read as a setting that starts at 10: the reminders
+    screen offers 5, 10, 15 and 30 minutes.
+25. **"Start now" with another workout in progress** starts nothing and offers that one to
+    resume, as every other start does (§4.2). A reminder wouldn't have been sent then (FR-7.5), so
+    this is a reminder left showing from before the workout began.
+26. **A reminder more than an hour after its workout's start is dropped** — after the phone was
+    off, say. A snooze is always sent, however late.
+27. **Cloud backup is off** (NFR-1, the spec's "no sync"): Android's Auto Backup would otherwise
+    copy the database to the user's Google account, which the Backup screen says doesn't happen.
+    Device-to-device transfer, which stays local, still works from Android 12. Turning cloud
+    backup back on is `allowBackup="true"` and the two rule files; say if that's wanted.

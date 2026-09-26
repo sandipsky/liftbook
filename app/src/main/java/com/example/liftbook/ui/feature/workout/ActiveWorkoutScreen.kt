@@ -92,6 +92,8 @@ import com.example.liftbook.domain.calculator.WorkoutProgress
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.domain.model.Workout
+import com.example.liftbook.notification.channel.NotificationChannels
+import com.example.liftbook.ui.components.AlertIssue
 import com.example.liftbook.ui.components.ConfirmDialog
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.ExercisePickerSheet
@@ -105,6 +107,8 @@ import com.example.liftbook.ui.components.StatTile
 import com.example.liftbook.ui.components.TopBarNavigation
 import com.example.liftbook.ui.components.displayWeight
 import com.example.liftbook.ui.components.elapsedText
+import com.example.liftbook.ui.components.openAlertSettings
+import com.example.liftbook.ui.components.rememberAlertIssue
 import com.example.liftbook.ui.components.rememberReorderableListState
 import com.example.liftbook.ui.components.spokenDuration
 import com.example.liftbook.ui.components.elapsedSeconds
@@ -135,7 +139,7 @@ fun ActiveWorkoutRoute(
     val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
-    val alerts = rememberRestAlertIssue()
+    val alerts = rememberAlertIssue(NotificationChannels.REST_TIMER)
     val currentState by rememberUpdatedState(state)
     val currentOnDiscarded by rememberUpdatedState(onDiscarded)
     val currentOnFinished by rememberUpdatedState(onFinished)
@@ -180,7 +184,7 @@ fun ActiveWorkoutRoute(
         alertIssue = alerts.issue,
         snackbarHostState = snackbarHostState,
         listState = listState,
-        onFixAlerts = { issue -> openRestAlertSettings(context, issue) },
+        onFixAlerts = { issue -> openAlertSettings(context, issue) },
         onAction = { action ->
             if (action == ActiveWorkoutAction.NavigateUp) onNavigateUp() else viewModel.onAction(action)
         },
@@ -199,10 +203,10 @@ fun ActiveWorkoutScreen(
     pickerQueryState: TextFieldState,
     now: () -> Instant,
     onAction: (ActiveWorkoutAction) -> Unit,
-    alertIssue: RestAlertIssue? = null,
+    alertIssue: AlertIssue? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     listState: LazyListState = rememberLazyListState(),
-    onFixAlerts: (RestAlertIssue) -> Unit = {},
+    onFixAlerts: (AlertIssue) -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val headerScrolledAway by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
@@ -632,9 +636,9 @@ private fun AddExercises(isEmpty: Boolean, onAdd: () -> Unit) {
 private fun RestSlot(
     rest: RestTimer?,
     now: () -> Instant,
-    alertIssue: RestAlertIssue?,
+    alertIssue: AlertIssue?,
     onAction: (ActiveWorkoutAction) -> Unit,
-    onFixAlerts: (RestAlertIssue) -> Unit,
+    onFixAlerts: (AlertIssue) -> Unit,
 ) {
     val visible = rest != null && now().isBefore(rest.endsAt.plusSeconds(REST_LINGER_SECONDS))
     val shown = remember { LastRest() }
@@ -800,7 +804,7 @@ private fun ActiveWorkoutAlertsOffPreview() {
             state = WorkoutPreviewData.state(unit = WeightUnit.LB),
             pickerQueryState = rememberTextFieldState(),
             now = { WorkoutPreviewData.now },
-            alertIssue = RestAlertIssue.NotificationsOff,
+            alertIssue = AlertIssue.NotificationsOff,
             onAction = {},
         )
     }

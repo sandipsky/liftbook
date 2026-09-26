@@ -14,4 +14,13 @@ interface SettingsRepository {
     suspend fun setFirstDayOfWeek(firstDayOfWeek: FirstDayOfWeek)
 
     suspend fun setThemeMode(themeMode: ThemeMode)
+
+    /** Every workout reminder on or off (FR-7.7). */
+    suspend fun setRemindersEnabled(enabled: Boolean)
+
+    /** How long before a scheduled workout to remind, for entries without their own (FR-7.2). */
+    suspend fun setReminderLeadMinutes(minutes: Int)
+
+    /** How long Snooze puts a reminder off (FR-7.4). */
+    suspend fun setSnoozeMinutes(minutes: Int)
 }

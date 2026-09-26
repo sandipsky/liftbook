@@ -213,6 +213,10 @@ class WorkoutRepositoryImpl @Inject constructor(
             .mapValues { (_, sets) -> sets.filterNotNull() }
     }
 
+    override suspend fun hasActiveWorkout(): Boolean = workoutDao.hasActive()
+
+    override suspend fun lastFinishedAt(): Instant? = workoutDao.lastFinishedAt()
+
     override fun observeFinishedWorkouts(): Flow<PagingData<WorkoutListItem>> =
         Pager(PagingConfig(pageSize = HISTORY_PAGE_SIZE, enablePlaceholders = false)) { workoutDao.finishedWorkouts() }
             .flow

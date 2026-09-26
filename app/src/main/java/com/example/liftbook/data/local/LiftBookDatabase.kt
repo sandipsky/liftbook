@@ -9,6 +9,7 @@ import com.example.liftbook.data.local.dao.BodyWeightDao
 import com.example.liftbook.data.local.dao.ExerciseDao
 import com.example.liftbook.data.local.dao.ProgressDao
 import com.example.liftbook.data.local.dao.RoutineDao
+import com.example.liftbook.data.local.dao.ScheduleDao
 import com.example.liftbook.data.local.dao.SetDao
 import com.example.liftbook.data.local.dao.WorkoutDao
 import com.example.liftbook.data.local.entity.BodyWeightEntryEntity
@@ -17,6 +18,7 @@ import com.example.liftbook.data.local.entity.RoutineEntity
 import com.example.liftbook.data.local.entity.RoutineExerciseEntity
 import com.example.liftbook.data.local.entity.WorkoutEntity
 import com.example.liftbook.data.local.entity.WorkoutExerciseEntity
+import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
 import com.example.liftbook.data.local.entity.WorkoutSetEntity
 
 /**
@@ -33,14 +35,17 @@ import com.example.liftbook.data.local.entity.WorkoutSetEntity
         WorkoutExerciseEntity::class,
         WorkoutSetEntity::class,
         BodyWeightEntryEntity::class,
+        WorkoutScheduleEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         // v2: the workout's rest timer (FR-3.5) — two nullable columns on workouts.
         AutoMigration(from = 1, to = 2),
         // v3: the body-weight log (FR-5.4) — a new table.
         AutoMigration(from = 2, to = 3),
+        // v4: the workout schedule behind reminders (FR-7.1) — a new table.
+        AutoMigration(from = 3, to = 4),
     ],
 )
 @TypeConverters(Converters::class)
@@ -52,6 +57,7 @@ abstract class LiftBookDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
     abstract fun bodyWeightDao(): BodyWeightDao
     abstract fun backupDao(): BackupDao
+    abstract fun scheduleDao(): ScheduleDao
 
     companion object {
         const val NAME = "liftbook.db"

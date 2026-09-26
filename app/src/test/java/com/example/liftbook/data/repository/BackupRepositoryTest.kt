@@ -21,6 +21,7 @@ import com.example.liftbook.domain.model.ImportMode
 import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.RoutineDraft
 import com.example.liftbook.domain.model.RoutineExerciseDraft
+import com.example.liftbook.domain.model.ScheduleDraft
 import com.example.liftbook.domain.model.SetTarget
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.SetValues
@@ -43,8 +44,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** Export, import and clearing (FR-6.3–6.5) against real, in-memory Room databases: one per phone. */
 @RunWith(RobolectricTestRunner::class)
@@ -72,6 +75,7 @@ class BackupRepositoryTest {
         val routines = RoutineRepositoryImpl(database, database.routineDao(), clock)
         val exercises = ExerciseRepositoryImpl(database, database.exerciseDao(), database.setDao(), clock)
         val bodyWeight = BodyWeightRepositoryImpl(database, database.bodyWeightDao())
+        val schedules = ScheduleRepositoryImpl(database.scheduleDao(), clock)
 
         suspend fun rows(): BackupRows = database.withTransaction {
             val dao = database.backupDao()
@@ -83,6 +87,7 @@ class BackupRepositoryTest {
                 workoutExercises = dao.getFinishedWorkoutExercises(),
                 sets = dao.getFinishedWorkoutSets(),
                 bodyWeight = dao.getBodyWeight(),
+                schedules = dao.getSchedules(),
             )
         }
 
@@ -109,7 +114,7 @@ class BackupRepositoryTest {
         /** A bit of everything a backup carries, including a built-in's archiving and rest time. */
         suspend fun fill() {
             val zercher = exercises.createCustomExercise(ExerciseDraft("Zercher Squat", MuscleGroup.QUADS, Equipment.BARBELL, ExerciseType.STRENGTH))
-            routines.createRoutine(
+            val push = routines.createRoutine(
                 RoutineDraft(
                     "Push",
                     listOf(
@@ -132,6 +137,9 @@ class BackupRepositoryTest {
             settings.setDefaultRestSeconds(120)
             settings.setFirstDayOfWeek(FirstDayOfWeek.SUNDAY)
             settings.setThemeMode(ThemeMode.DARK)
+            schedules.create(ScheduleDraft(setOf(DayOfWeek.MONDAY, DayOfWeek.THURSDAY), LocalTime.of(18, 0), routineId = push, leadMinutes = 30))
+            settings.setReminderLeadMinutes(15)
+            settings.setSnoozeMinutes(5)
             clock.instant = Instant.parse("2026-09-26T10:00:00Z")
         }
     }
@@ -160,7 +168,7 @@ class BackupRepositoryTest {
         assertEquals(DataCounts(), phone.counts())
         val restored = phone.backup.import(file, ImportMode.REPLACE)
 
-        assertEquals(DataCounts(workouts = 2, routines = 1, customExercises = 1, weighIns = 2), exported)
+        assertEquals(DataCounts(workouts = 2, routines = 1, customExercises = 1, weighIns = 2, schedules = 1), exported)
         assertEquals(exported, restored)
         assertEquals(before, phone.rows())
         assertEquals(settings, phone.settings.userPreferences.first())
@@ -177,8 +185,8 @@ class BackupRepositoryTest {
 
         val added = new.backup.import(file, ImportMode.MERGE)
 
-        assertEquals(DataCounts(workouts = 2, routines = 1, customExercises = 1, weighIns = 2), added)
-        assertEquals(DataCounts(workouts = 3, routines = 1, customExercises = 1, weighIns = 2), new.counts())
+        assertEquals(DataCounts(workouts = 2, routines = 1, customExercises = 1, weighIns = 2, schedules = 1), added)
+        assertEquals(DataCounts(workouts = 3, routines = 1, customExercises = 1, weighIns = 2, schedules = 1), new.counts())
         val oldRows = old.rows()
         val newRows = new.rows()
         assertTrue(newRows.sets.containsAll(oldRows.sets))
@@ -277,7 +285,7 @@ class BackupRepositoryTest {
         val summary = new.backup.inspect(file)
 
         assertEquals(clock.instant(), summary.exportedAt)
-        assertEquals(DataCounts(workouts = 2, routines = 1, customExercises = 1, weighIns = 2), summary.counts)
+        assertEquals(DataCounts(workouts = 2, routines = 1, customExercises = 1, weighIns = 2, schedules = 1), summary.counts)
         assertEquals(DataCounts(), new.counts())
     }
 
