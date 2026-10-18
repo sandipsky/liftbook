@@ -22,6 +22,7 @@ import com.example.liftbook.domain.calculator.SetPrefill
 import com.example.liftbook.domain.calculator.WorkoutNames
 import com.example.liftbook.domain.calculator.WorkoutSpan
 import com.example.liftbook.domain.calculator.WorkoutTimes
+import com.example.liftbook.domain.model.ExerciseType
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
@@ -30,6 +31,7 @@ import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
 import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.model.WorkoutRevision
 import com.example.liftbook.domain.model.toValues
 import com.example.liftbook.domain.repository.WorkoutRepository
@@ -55,7 +57,7 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override fun observeWorkout(id: String): Flow<Workout?> = workoutDao.observeById(id).map { it?.toDomain() }
 
-    override suspend fun startFromRoutine(routineId: String): StartWorkoutResult = database.withTransaction {
+    override suspend fun startFromRoutine(routineId: String, mode: WorkoutMode): StartWorkoutResult = database.withTransaction {
         // The check and the inserts share one transaction, so two starts can never both
         // succeed: Room can't express "at most one row with finishedAt IS NULL" as an index.
         workoutDao.getActive()?.let { active ->
@@ -68,7 +70,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         val routine = routineDao.getById(routineId)?.toDomain()
             ?: return@withTransaction StartWorkoutResult.RoutineNotFound
 
-        val workoutId = insertWorkout(name = routine.name, routineId = routine.id)
+        val workoutId = insertWorkout(name = routine.name, routineId = routine.id, mode = mode)
         val rows = routine.exercises.mapIndexed { position, item ->
             WorkoutExerciseEntity(
                 id = newId(),
@@ -89,11 +91,11 @@ class WorkoutRepositoryImpl @Inject constructor(
         StartWorkoutResult.Started(workoutId)
     }
 
-    override suspend fun startEmpty(name: String): StartWorkoutResult = database.withTransaction {
+    override suspend fun startEmpty(name: String, mode: WorkoutMode): StartWorkoutResult = database.withTransaction {
         workoutDao.getActive()?.let { active ->
             return@withTransaction StartWorkoutResult.OtherWorkoutActive(active.id, active.name)
         }
-        StartWorkoutResult.Started(insertWorkout(name = name, routineId = null))
+        StartWorkoutResult.Started(insertWorkout(name = name, routineId = null, mode = mode))
     }
 
     override suspend fun discardActiveWorkout(workoutId: String) = workoutDao.deleteIfActive(workoutId)
@@ -200,10 +202,34 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun finishWorkout(workoutId: String, finishedAt: Instant): Boolean = database.withTransaction {
-        if (workoutDao.getActive()?.id != workoutId) return@withTransaction false
+        val active = workoutDao.getActive()?.takeIf { it.id == workoutId } ?: return@withTransaction false
+        if (active.mode == WorkoutMode.RECORD) completeRecordedSets(workoutId, finishedAt)
         setDao.deleteIncomplete(workoutId)
         workoutDao.deleteEmptyExercises(workoutId)
         workoutDao.finish(workoutId, finishedAt) > 0
+    }
+
+    /**
+     * A recorded workout's sets are typed in, never marked done (FR-3.11): finishing marks
+     * complete every set holding what its type records, stamped [completedAt], and leaves the
+     * rest for the finish to drop. Values the type doesn't record are cleared, as completing
+     * a live set clears them.
+     */
+    private suspend fun completeRecordedSets(workoutId: String, completedAt: Instant) {
+        val types = HashMap<String, ExerciseType?>()
+        setDao.getForWorkout(workoutId).forEach { set ->
+            val type = types.getOrPut(set.exerciseId) { exerciseDao.getById(set.exerciseId)?.type } ?: return@forEach
+            val values = set.values().applicableTo(type)
+            if (values.metricsFor(type) == null) return@forEach
+            setDao.complete(
+                id = set.id,
+                completedAt = completedAt,
+                weightKg = values.weightKg,
+                reps = values.reps,
+                durationSeconds = values.durationSeconds,
+                distanceMeters = values.distanceMeters,
+            )
+        }
     }
 
     override suspend fun previousSets(exerciseIds: Set<String>, before: Instant): Map<String, List<LoggedSet>> {
@@ -295,10 +321,18 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun deleteFinishedWorkout(workoutId: String) = workoutDao.deleteIfFinished(workoutId)
 
-    private suspend fun insertWorkout(name: String, routineId: String?): String {
+    private suspend fun insertWorkout(name: String, routineId: String?, mode: WorkoutMode): String {
         val id = newId()
         workoutDao.insert(
-            WorkoutEntity(id = id, name = name, routineId = routineId, startedAt = clock.instant(), finishedAt = null, note = null),
+            WorkoutEntity(
+                id = id,
+                name = name,
+                routineId = routineId,
+                startedAt = clock.instant(),
+                finishedAt = null,
+                note = null,
+                mode = mode,
+            ),
         )
         return id
     }

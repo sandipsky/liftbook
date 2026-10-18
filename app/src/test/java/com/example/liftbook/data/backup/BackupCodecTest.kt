@@ -8,6 +8,7 @@ import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
+import com.example.liftbook.domain.model.WorkoutMode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -76,6 +77,7 @@ class BackupCodecTest {
                 startedAt = Instant.parse("2026-09-25T18:00:00Z"),
                 finishedAt = Instant.parse("2026-09-25T19:02:00Z"),
                 note = "Felt strong",
+                mode = WorkoutMode.RECORD,
                 exercises = listOf(
                     BackupWorkoutExercise(
                         id = "w1-bench",

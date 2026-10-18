@@ -265,10 +265,13 @@ Reordering rewrites `position` for the affected rows inside one `@Transaction`.
 | `finishedAt` | Long? | **`NULL` ⇒ this is the active workout** |
 | `note` | String? | FR-3.9 |
 | `restStartedAt` / `restEndsAt` | Long? | the rest running now (FR-3.5); both `NULL` when none. Schema v2 |
+| `mode` | String | `LIVE` or `RECORD` (FR-3.11): how it was logged, by enum name. Schema v5, default `LIVE` |
 
 There is no `status` column and no `duration` column: active is `finishedAt IS NULL`, duration is
 `finishedAt - startedAt`. Two fewer invariants to keep in sync. The rest timer is likewise two
-instants, not a countdown (§6.1); the progress line on screen is `now` between them.
+instants, not a countdown (§6.1); the progress line on screen is `now` between them. `mode` stays
+on the row after finishing because a recorded workout's times say when it was typed in, not how
+long it took: the summary, history and detail show its day and no duration.
 
 **"Only one active workout" (FR-3.1)** is enforced in `WorkoutRepository` inside a transaction that
 asserts no other row has `finishedAt IS NULL` before inserting. Room cannot express the partial
@@ -299,6 +302,13 @@ forward the call.
   that loses something: with nothing done it offers Discard instead.
 - **Undoing a set stops the rest it started.** Completing stamps the set's `completedAt` and the
   rest's `restStartedAt` with the same instant, so a match identifies the rest without a column.
+- **Recording (FR-3.11)** is a `mode` on the start: `startFromRoutine(id, RECORD)` or
+  `startEmpty(name, RECORD)`. The workout is the same active row and is edited by the same
+  writes, so it autosaves and survives a kill like a live one (FR-3.7); nothing is ever marked
+  done. `finishWorkout` sees the mode and, first, completes every set holding what its type
+  records, stamped with the finish instant and stripped of values the type doesn't record, then
+  drops the rest as it drops undone sets. The ViewModel refuses to save while a set is missing
+  values and outlines them instead, so the drop is a safety net, not the normal path.
 
 ### 2.5 `workout_exercises`
 
@@ -461,7 +471,8 @@ with their slices as additive changes, which Room's declared `AutoMigration` han
 **v2** adds `workouts.restStartedAt` / `restEndsAt` through `AutoMigration(1, 2)`.
 **v3** adds `body_weight_entries` (FR-5.4) through `AutoMigration(2, 3)`.
 **v4** adds `workout_schedules` (FR-7.1) through `AutoMigration(3, 4)`.
-`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `3.json`,
+**v5** adds `workouts.mode` (FR-3.11), defaulting to `LIVE`, through `AutoMigration(4, 5)`.
+`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `4.json`,
 inserts rows, and opens it with Room, which runs the migrations and validates the result against
 the current schema. `room-testing`'s `MigrationTestHelper` isn't used: it reads schemas from instrumentation
 assets, which JVM (Robolectric) tests don't have.
@@ -528,7 +539,7 @@ Four bottom-bar destinations, with settings as a top-app-bar action rather than 
 RootNavHost
 │
 ├── MainGraph                          ← Scaffold with the bottom bar
-│   ├── Home                           start empty workout · routines · resume banner
+│   ├── Home                           new-workout button · routines · resume banner
 │   ├── History                        list ⇄ calendar toggle (FR-4.1, FR-4.4)
 │   ├── Progress                       weekly summary · body weight · per-exercise entry points
 │   └── ExerciseLibrary                search + muscle/equipment filters (FR-1.4)
@@ -572,8 +583,10 @@ the top bar — used once, at the end, and where a mid-set thumb won't hit it by
 rows, the done toggles and the rest controls are what sit in the lower part of the screen.
 Exercises are added from the shared `ExercisePickerSheet` and reordered in a reorder mode that
 collapses each to a compact row with a drag handle (plus Move up / Move down accessibility
-actions), since dragging a tall block of set rows is unworkable. Home leads with "Start an empty
-workout". `WorkoutSummary(workoutId)` follows Finish (FR-3.8).
+actions), since dragging a tall block of set rows is unworkable. Home's one primary action is a
+floating "New workout" button; it and each routine's play button first ask whether to start the
+workout or record one already done (`WorkoutModeSheet`, FR-3.11), and routines are created from
+the Routines heading. `WorkoutSummary(workoutId)` follows Finish (FR-3.8).
 
 *As built, step 5:* **History** is the paged list, newest first, a heading at each month
 (`insertSeparators`), each row the day, name, exercises, volume and duration (FR-4.1). A row
@@ -855,6 +868,12 @@ This screen carries most of the app's risk, so its rules are explicit.
   cut a save in half. A failed write shows "Couldn't save that. Try again."
 - **Elapsed time and the countdown** read a separate `now: StateFlow<Instant>` (`core/time/ticks`),
   passed to the clocks as a lambda, so the tick redraws only them — `uiState` never ticks.
+- **Recording (FR-3.11)** is the same projection with `isRecording` on the state: the screen
+  leaves out the clock, the "started at" line, the rest chip, the rest bar and the done toggle,
+  and shows exercises · sets · volume instead, where the volume counts every filled-in set
+  (`Workout.progress` knows the mode). Finish reads Save; with no sets it offers Discard, and
+  otherwise the ViewModel checks every set against `SetValues.metricsFor`, outlines the ones
+  missing values and says how many, or finishes. The banner says "Recording" and doesn't tick.
 - **Reorder mode** shows the new order at once and writes each move; it's shown ahead of the
   database until the database catches up, so the list never flashes back.
 - **The rest alert** goes through `domain/repository/RestTimerScheduler`, implemented by

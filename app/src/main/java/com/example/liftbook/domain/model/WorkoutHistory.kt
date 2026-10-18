@@ -18,8 +18,12 @@ data class WorkoutListItem(
     val completedSets: Int,
     /** In workout order. */
     val exerciseNames: List<String>,
+    val mode: WorkoutMode = WorkoutMode.LIVE,
 ) {
     val durationSeconds: Long get() = Duration.between(startedAt, finishedAt).seconds.coerceAtLeast(0)
+
+    /** Logged after the fact (FR-3.11), so its duration means nothing. */
+    val isRecorded: Boolean get() = mode == WorkoutMode.RECORD
 }
 
 /**

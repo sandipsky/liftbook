@@ -8,6 +8,7 @@ import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutExercise
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.model.WorkoutSet
 import com.example.liftbook.ui.feature.routines.RoutinePreviewData
 import java.time.Instant
@@ -75,6 +76,15 @@ internal object WorkoutPreviewData {
             ),
         ),
         rest = RestTimer(startedAt = now.minusSeconds(37), endsAt = now.plusSeconds(53)),
+    )
+
+    /** The same workout being recorded after the fact (FR-3.11): nothing done, no rest. */
+    val recorded = workout.copy(
+        mode = WorkoutMode.RECORD,
+        rest = null,
+        exercises = workout.exercises.map { exercise ->
+            exercise.copy(sets = exercise.sets.map { it.copy(isCompleted = false, completedAt = null) })
+        },
     )
 
     /** The screen's state for [workout]. */

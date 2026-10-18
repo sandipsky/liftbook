@@ -1,11 +1,14 @@
 package com.example.liftbook.ui.components
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -13,21 +16,30 @@ import com.example.liftbook.ui.theme.LiftBookPreview
 import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
 
-/** A section title, with optional supporting text on the trailing edge. Exposed to TalkBack as a heading. */
+/**
+ * A section title, with optional supporting text on the trailing edge and, after it, an optional
+ * [action] — a text button for what fills the section. Exposed to TalkBack as a heading.
+ */
 @Composable
 fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     trailing: String? = null,
+    action: (@Composable () -> Unit)? = null,
 ) {
-    Row(modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.gutter)) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.gutter),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Text sits on a shared baseline; beside a button, everything centres on the button instead.
+        val align = if (action == null) Modifier.alignByBaseline() else Modifier
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .weight(1f)
-                .alignByBaseline()
+                .then(align)
                 .semantics { heading() },
         )
         if (trailing != null) {
@@ -35,8 +47,12 @@ fun SectionHeader(
                 text = trailing,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.alignByBaseline(),
+                modifier = align,
             )
+        }
+        if (action != null) {
+            Spacer(Modifier.width(Spacing.xs))
+            action()
         }
     }
 }

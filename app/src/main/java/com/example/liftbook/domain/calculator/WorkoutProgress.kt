@@ -24,11 +24,31 @@ data class WorkoutProgress(
     }
 }
 
-fun Workout.progress(): WorkoutProgress = WorkoutProgress(
+fun Workout.progress(): WorkoutProgress = if (isRecorded) recordedProgress() else liveProgress()
+
+private fun Workout.liveProgress(): WorkoutProgress = WorkoutProgress(
     completedSets = exercises.sumOf { exercise -> exercise.sets.count { it.isCompleted } },
     totalSets = exercises.sumOf { it.sets.size },
     volumeKg = volume(exercises.flatMap { it.completedSets() }),
 )
+
+/**
+ * A recorded workout's sets are never marked done before it's saved (FR-3.11), so what counts
+ * is what's filled in: a set holding what its type records is as good as done, and the volume
+ * is theirs. The sets left over are what saving would drop — or, on screen, what's missing.
+ */
+private fun Workout.recordedProgress(): WorkoutProgress {
+    val filled = exercises.flatMap { exercise ->
+        exercise.sets.mapNotNull { set ->
+            set.values.metricsFor(exercise.exercise.type)?.let { LoggedSet(set.setType, it) }
+        }
+    }
+    return WorkoutProgress(
+        completedSets = filled.size,
+        totalSets = exercises.sumOf { it.sets.size },
+        volumeKg = volume(filled),
+    )
+}
 
 /** A set with the exercise it belongs to. */
 data class SetInWorkout(val exercise: WorkoutExercise, val set: WorkoutSet)

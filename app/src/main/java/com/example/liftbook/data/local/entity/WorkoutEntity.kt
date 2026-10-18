@@ -1,9 +1,11 @@
 package com.example.liftbook.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.liftbook.domain.model.WorkoutMode
 import java.time.Instant
 
 /**
@@ -12,6 +14,9 @@ import java.time.Instant
  *
  * The rest timer (FR-3.5) is the two instants that bound it rather than a countdown, so it
  * survives a process kill as is; both are null while no rest is running. Added in schema v2.
+ *
+ * [mode] says whether the workout was logged live or recorded after the fact (FR-3.11), stored
+ * by name. Added in schema v5; every earlier workout was live.
  */
 @Entity(
     tableName = "workouts",
@@ -38,4 +43,5 @@ data class WorkoutEntity(
     val note: String?,
     val restStartedAt: Instant? = null,
     val restEndsAt: Instant? = null,
+    @ColumnInfo(defaultValue = "LIVE") val mode: WorkoutMode = WorkoutMode.LIVE,
 )

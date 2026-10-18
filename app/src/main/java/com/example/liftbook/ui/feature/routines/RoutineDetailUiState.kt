@@ -2,6 +2,7 @@ package com.example.liftbook.ui.feature.routines
 
 import com.example.liftbook.domain.model.Routine
 import com.example.liftbook.domain.model.WeightUnit
+import com.example.liftbook.domain.model.WorkoutMode
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -24,7 +25,8 @@ sealed interface RoutineDetailAction {
 
     data class OpenExercise(val exerciseId: String) : RoutineDetailAction
 
-    data object Start : RoutineDetailAction
+    /** Start a workout from the routine, logged live or recorded after the fact (FR-3.11). */
+    data class Start(val mode: WorkoutMode) : RoutineDetailAction
 
     /** Go to the workout already in progress, from the "still in progress" dialog. */
     data object ResumeWorkout : RoutineDetailAction

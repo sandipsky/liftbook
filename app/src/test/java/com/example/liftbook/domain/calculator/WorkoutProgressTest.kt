@@ -8,6 +8,7 @@ import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutExercise
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.model.WorkoutSet
 import com.example.liftbook.testing.exercise
 import org.junit.Assert.assertEquals
@@ -35,6 +36,18 @@ class WorkoutProgressTest {
             WorkoutExercise("b", squat, listOf(set("4", done = true, weightKg = 100.0, reps = 5))),
         ).progress()
 
+        assertEquals(WorkoutProgress(completedSets = 3, totalSets = 4, volumeKg = 80.0 * 8 + 100.0 * 5), progress)
+        assertEquals(1, progress.incompleteSets)
+    }
+
+    @Test
+    fun `a recorded workout's progress is what's filled in, nothing being marked done`() {
+        val progress = workout(
+            WorkoutExercise("a", bench, listOf(set("1", done = false, type = SetType.WARMUP, weightKg = 40.0), set("2", done = false), set("3", done = false, reps = 0))),
+            WorkoutExercise("b", squat, listOf(set("4", done = false, weightKg = 100.0, reps = 5))),
+        ).copy(mode = WorkoutMode.RECORD).progress()
+
+        // The warm-up and the two filled sets count; the set with no reps is what saving would drop.
         assertEquals(WorkoutProgress(completedSets = 3, totalSets = 4, volumeKg = 80.0 * 8 + 100.0 * 5), progress)
         assertEquals(1, progress.incompleteSets)
     }

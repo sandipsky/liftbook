@@ -21,6 +21,7 @@ fun WorkoutWithExercises.toDomain(): Workout = Workout(
         .map(WorkoutExerciseWithSets::toDomain),
     note = workout.note,
     rest = workout.restStartedAt?.let { startedAt -> workout.restEndsAt?.let { RestTimer(startedAt, it) } },
+    mode = workout.mode,
 )
 
 fun WorkoutExerciseWithSets.toDomain(): WorkoutExercise = WorkoutExercise(
@@ -41,6 +42,7 @@ fun WorkoutListRow.toListItem(): WorkoutListItem = WorkoutListItem(
     exerciseNames = exercises
         .sortedWith(compareBy({ it.workoutExercise.position }, { it.workoutExercise.id }))
         .map { it.exercise.name },
+    mode = workout.mode,
 )
 
 fun WorkoutSetEntity.toDomain(): WorkoutSet = WorkoutSet(

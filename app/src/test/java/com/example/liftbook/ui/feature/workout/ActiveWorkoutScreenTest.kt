@@ -96,6 +96,45 @@ class ActiveWorkoutScreenTest {
     }
 
     @Test
+    fun `a set's remove button asks for exactly that set`() {
+        show()
+
+        compose.onAllNodesWithContentDescription("Remove Set 3")[0].performClick()
+
+        assertEquals(listOf(ActiveWorkoutAction.RemoveSet("b3")), actions)
+    }
+
+    @Test
+    fun `recording shows no clock, rest or done toggles, and Save saves straight away`() {
+        show(WorkoutPreviewData.state(workout = WorkoutPreviewData.recorded))
+
+        compose.onNodeWithText("Recording").assertIsDisplayed()
+        assertEquals(0, compose.onAllNodesWithContentDescription("Set 1 done").fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithContentDescription("Time, 32 minutes 14 seconds").fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithContentDescription("Rest 3 minutes", substring = true).fetchSemanticsNodes().size)
+        compose.onNodeWithContentDescription("Exercises, 4 exercises").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Sets, 11 sets").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Remove Set 1")[0].assertExists()
+
+        compose.onNodeWithText("Save").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf(ActiveWorkoutAction.Finish), actions)
+    }
+
+    @Test
+    fun `recording nothing offers to discard instead of saving`() {
+        val empty = WorkoutPreviewData.recorded.copy(exercises = emptyList())
+        show(WorkoutPreviewData.state(workout = empty))
+
+        compose.onNodeWithText("Save").performClick()
+
+        compose.onNodeWithText("Nothing to save yet").assertIsDisplayed()
+        dialogButton("Discard workout").performClick()
+        assertEquals(listOf(ActiveWorkoutAction.Discard), actions)
+    }
+
+    @Test
     fun `finishing with sets undone says they won't be saved, then finishes`() {
         show()
 

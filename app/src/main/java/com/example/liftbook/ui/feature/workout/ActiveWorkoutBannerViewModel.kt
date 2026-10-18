@@ -23,6 +23,8 @@ data class ActiveWorkoutBannerState(
     val name: String,
     val startedAt: Instant,
     val rest: RestTimer?,
+    /** Being recorded after the fact (FR-3.11): no clock to show. */
+    val isRecorded: Boolean = false,
 )
 
 /**
@@ -38,14 +40,14 @@ class ActiveWorkoutBannerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val activeWorkout: StateFlow<ActiveWorkoutBannerState?> = workoutRepository.observeActiveWorkout()
-        .map { workout -> workout?.let { ActiveWorkoutBannerState(it.name, it.startedAt, it.rest) } }
+        .map { workout -> workout?.let { ActiveWorkoutBannerState(it.name, it.startedAt, it.rest, it.isRecorded) } }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Now, once a second while there's a workout to show the time of; still otherwise. */
     val now: StateFlow<Instant> = activeWorkout
-        .map { it != null }
+        .map { it != null && !it.isRecorded }
         .distinctUntilChanged()
-        .flatMapLatest { active -> if (active) clock.ticks() else flowOf(clock.instant()) }
+        .flatMapLatest { timed -> if (timed) clock.ticks() else flowOf(clock.instant()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), clock.instant())
 }

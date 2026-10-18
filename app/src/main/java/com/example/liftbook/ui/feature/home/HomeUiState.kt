@@ -1,6 +1,7 @@
 package com.example.liftbook.ui.feature.home
 
 import com.example.liftbook.domain.model.Routine
+import com.example.liftbook.domain.model.WorkoutMode
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -18,11 +19,11 @@ sealed interface HomeAction {
 
     data object CreateRoutine : HomeAction
 
-    /** Start a workout from this routine, straight from the list (FR-2.3). */
-    data class StartRoutine(val routineId: String) : HomeAction
+    /** Start a workout from this routine, straight from the list (FR-2.3), live or recorded (FR-3.11). */
+    data class StartRoutine(val routineId: String, val mode: WorkoutMode) : HomeAction
 
-    /** Start a workout with nothing in it yet, called [name] (FR-3.1). */
-    data class StartEmpty(val name: String) : HomeAction
+    /** Start a workout with nothing in it yet, called [name] (FR-3.1), live or recorded (FR-3.11). */
+    data class StartEmpty(val name: String, val mode: WorkoutMode) : HomeAction
 
     /** Go to the workout already in progress, from the "still in progress" dialog. */
     data object ResumeWorkout : HomeAction
@@ -31,6 +32,14 @@ sealed interface HomeAction {
 
     /** Settings live behind the top bar, not in a fifth tab (architecture §4.1). */
     data object OpenSettings : HomeAction
+}
+
+/** What the user asked to start, while the way to log it is being chosen (FR-3.11). */
+sealed interface StartTarget {
+    /** A workout with nothing planned (FR-3.1). */
+    data object Empty : StartTarget
+
+    data class Routine(val routineId: String) : StartTarget
 }
 
 sealed interface HomeEvent {

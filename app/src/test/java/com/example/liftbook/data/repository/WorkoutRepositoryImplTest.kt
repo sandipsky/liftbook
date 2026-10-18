@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.liftbook.data.local.LiftBookDatabase
 import com.example.liftbook.data.local.seed.ExerciseSeed
 import com.example.liftbook.data.local.seed.ExerciseSeedCallback
+import com.example.liftbook.data.mapper.toDomain
+import com.example.liftbook.domain.model.toValues
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.RoutineDraft
@@ -17,6 +19,7 @@ import com.example.liftbook.domain.model.SetValues
 import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.MutableClock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -329,6 +332,35 @@ class WorkoutRepositoryImplTest {
     }
 
     @Test
+    fun `a recorded workout is saved from what's filled in, nothing having been marked done`() = runTest {
+        val workoutId = (repository.startFromRoutine(pushRoutine(), WorkoutMode.RECORD) as StartWorkoutResult.Started).workoutId
+        val workout = active()
+        assertTrue(workout.isRecorded)
+        // Every set starts filled from the routine; the first bench set is changed, the last emptied.
+        val benchSets = workout.exercises[0].sets
+        repository.saveEdits(
+            workoutId,
+            WorkoutEdits(setValues = mapOf(benchSets[0].id to SetValues(85.0, 5), benchSets[2].id to SetValues())),
+        )
+        val finishedAt = clock.instant().plusSeconds(600)
+
+        assertTrue(repository.finishWorkout(workoutId, finishedAt))
+
+        assertNull(repository.observeActiveWorkout().first())
+        val finished = repository.observeWorkout(workoutId).first()!!
+        assertTrue(finished.isRecorded)
+        assertEquals(finishedAt, finished.finishedAt)
+        assertEquals(listOf(bench, pullUp, plank), finished.exercises.map { it.exercise.id })
+        assertEquals(listOf(benchSets[0].id, benchSets[1].id), finished.exercises[0].sets.map { it.id })
+        assertEquals(listOf(SetValues(85.0, 5), SetValues(82.5, 5)), finished.exercises[0].sets.map { it.values })
+        assertEquals(listOf(2, 1), finished.exercises.drop(1).map { it.sets.size })
+        val sets = finished.exercises.flatMap { it.sets }
+        assertTrue(sets.all { it.isCompleted && it.completedAt == finishedAt })
+        // The recorded workout is history like any other: its sets are what the next one starts from.
+        assertEquals(listOf(SetValues(85.0, 5), SetValues(82.5, 5)), lastSessionValues(bench))
+    }
+
+    @Test
     fun `personal records are measured against earlier finished working sets`() = runTest {
         doneBefore(bench, SetType.WARMUP to SetValues(120.0, 1), SetType.NORMAL to SetValues(100.0, 5))
         val workoutId = (repository.startEmpty("Now") as StartWorkoutResult.Started).workoutId
@@ -367,6 +399,10 @@ class WorkoutRepositoryImplTest {
         assertEquals(1, rowCount("workouts"))
         assertNull(repository.observeActiveWorkout().first())
     }
+
+    /** What the exercise's last finished session holds, as the pre-fill reads it. */
+    private suspend fun lastSessionValues(exerciseId: String): List<SetValues> =
+        database.setDao().getLatestExerciseSession(exerciseId)!!.toDomain().sets.map { it.metrics.toValues() }
 
     private fun rowCount(table: String): Int = sql.query("SELECT COUNT(*) FROM $table").use { cursor ->
         cursor.moveToFirst()

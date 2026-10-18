@@ -213,6 +213,13 @@
     <string name="home_empty_action">Create a routine</string>
     <string name="routine_card_click_label">view routine</string>
     <string name="routine_start_description">Start %1$s</string>
+    <string name="home_new_workout">New workout</string>
+
+    <!-- Choosing how to log a workout, wherever one starts (FR-3.1, FR-3.11) -->
+    <string name="mode_start_title">Start workout</string>
+    <string name="mode_start_body">Log sets as you go, with the rest timer.</string>
+    <string name="mode_record_title">Record workout</string>
+    <string name="mode_record_body">Enter sets you’ve already done. No timers.</string>
 
     <!-- Routine labels -->
     <plurals name="routine_exercise_count">
@@ -332,9 +339,7 @@
     <string name="picker_not_selected">Not selected</string>
     <string name="picker_empty_body">Check the spelling, or add it as your own exercise in Exercises first.</string>
 
-    <!-- Home: starting an empty workout (FR-3.1) -->
-    <string name="home_start_empty">Start an empty workout</string>
-    <!-- An empty workout is named for when it starts -->
+    <!-- An empty workout (FR-3.1) is named for when it starts -->
     <string name="workout_name_morning">Morning workout</string>
     <string name="workout_name_afternoon">Afternoon workout</string>
     <string name="workout_name_evening">Evening workout</string>
@@ -342,10 +347,12 @@
 
     <!-- Active workout (FR-3.1 – FR-3.10) -->
     <string name="workout_in_progress">In progress</string>
+    <string name="workout_recording">Recording</string>
     <string name="workout_started_at">Started %1$s</string>
     <string name="workout_stat_time">Time</string>
     <string name="workout_stat_volume">Volume</string>
     <string name="workout_stat_sets">Sets</string>
+    <string name="workout_stat_exercises">Exercises</string>
     <!-- Sets done out of the workout's total: "8 / 18" -->
     <string name="workout_sets_progress">%1$d / %2$d</string>
     <!-- Spoken by TalkBack. Quantity follows the total: "8 of 18 sets done" -->
@@ -354,6 +361,7 @@
         <item quantity="other">%1$d of %2$d sets done</item>
     </plurals>
     <string name="workout_finish">Finish</string>
+    <string name="workout_save">Save</string>
     <string name="workout_note_placeholder">Add a note about this workout</string>
     <string name="workout_note_label">Workout note</string>
     <string name="workout_column_set">Set</string>
@@ -403,7 +411,7 @@
     <string name="set_type_warmup">Warm-up</string>
     <string name="set_type_drop">Drop set</string>
     <string name="set_type_failure">Failure</string>
-    <string name="set_remove">Remove set</string>
+    <string name="set_remove_description">Remove %1$s</string>
     <string name="set_type_click_label">change set type</string>
     <!-- TalkBack label for a set's complete toggle: "Set 2 done" -->
     <string name="set_done_label">%1$s done</string>
@@ -458,9 +466,14 @@
     <string name="finish_nothing_title">No sets done yet</string>
     <string name="finish_nothing_body">Mark a set done to save this workout, or discard it.</string>
     <string name="finish_nothing_discard">Discard workout</string>
+    <!-- Saving a recorded workout (FR-3.11) -->
+    <string name="record_nothing_title">Nothing to save yet</string>
+    <string name="record_nothing_body">Add a set to save this workout, or discard it.</string>
+    <string name="record_nothing_dismiss">Keep editing</string>
 
     <!-- Workout summary (FR-3.8) -->
     <string name="summary_complete">Workout complete</string>
+    <string name="summary_recorded">Workout recorded</string>
     <!-- "Thu, 25 Sep · 18:30–19:32" -->
     <string name="summary_when">%1$s · %2$s–%3$s</string>
     <string name="summary_stat_duration">Duration</string>
@@ -513,6 +526,7 @@
     <string name="history_error_body">Something went wrong reading it. Try again.</string>
     <string name="history_retry">Try again</string>
     <string name="history_workout_click_label">view workout</string>
+    <string name="history_recorded">Recorded</string>
     <string name="history_previous_month">Previous month</string>
     <string name="history_next_month">Next month</string>
     <string name="history_month_empty">No workouts in %1$s.</string>
@@ -699,6 +713,7 @@
     <!-- Active workout banner -->
     <string name="banner_elapsed">In progress · %1$s</string>
     <string name="banner_resting">Resting · %1$s left</string>
+    <string name="banner_recording">Recording</string>
     <string name="banner_click_label">resume workout</string>
 
     <!-- Settings (FR-6.2) -->

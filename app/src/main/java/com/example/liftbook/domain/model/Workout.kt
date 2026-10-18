@@ -3,6 +3,18 @@ package com.example.liftbook.domain.model
 import java.time.Duration
 import java.time.Instant
 
+/**
+ * How a workout is logged (FR-3.1, FR-3.11): as it happens, or after the fact. Chosen when it
+ * starts, and kept with it, since a recorded workout has no duration worth showing.
+ */
+enum class WorkoutMode {
+    /** Sets are marked done one by one, with the clock and the rest timer running. */
+    LIVE,
+
+    /** Sets already done are typed in and saved together: no clock, no rest, no done toggle. */
+    RECORD,
+}
+
 /** A workout: finished, or — while [finishedAt] is null — the one in progress (FR-3.1). */
 data class Workout(
     val id: String,
@@ -16,8 +28,12 @@ data class Workout(
     val note: String? = null,
     /** The rest period running now, if any (FR-3.5). Only an active workout has one. */
     val rest: RestTimer? = null,
+    val mode: WorkoutMode = WorkoutMode.LIVE,
 ) {
     val isActive: Boolean get() = finishedAt == null
+
+    /** Logged after the fact (FR-3.11): its times say when it was saved, not how long it took. */
+    val isRecorded: Boolean get() = mode == WorkoutMode.RECORD
 }
 
 data class WorkoutExercise(

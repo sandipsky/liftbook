@@ -186,6 +186,7 @@ private fun WorkoutEntity.toBackup(exercises: List<BackupWorkoutExercise>) = Bac
     finishedAt = checkNotNull(finishedAt) { "Only finished workouts are backed up" },
     note = note,
     exercises = exercises,
+    mode = mode,
 )
 
 // A finished workout has no rest running, so the rest timer's columns stay empty.
@@ -196,6 +197,7 @@ private fun BackupWorkout.toEntity() = WorkoutEntity(
     startedAt = startedAt,
     finishedAt = finishedAt,
     note = note,
+    mode = mode,
 )
 
 private fun WorkoutExerciseEntity.toBackup(sets: List<BackupSet>) = BackupWorkoutExercise(

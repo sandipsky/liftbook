@@ -7,6 +7,7 @@ import com.example.liftbook.domain.model.Equipment
 import com.example.liftbook.domain.model.ExerciseType
 import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.SetType
+import com.example.liftbook.domain.model.WorkoutMode
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
@@ -127,6 +128,8 @@ internal data class BackupWorkout(
     val finishedAt: Instant,
     val note: String? = null,
     val exercises: List<BackupWorkoutExercise> = emptyList(),
+    /** Live or recorded (FR-3.11). Added within version 1, so it's optional: earlier files were all live. */
+    val mode: WorkoutMode = WorkoutMode.LIVE,
 )
 
 @Serializable

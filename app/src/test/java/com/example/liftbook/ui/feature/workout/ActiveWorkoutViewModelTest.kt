@@ -14,6 +14,7 @@ import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetTarget
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.SetValues
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRestTimerScheduler
 import com.example.liftbook.testing.FakeRoutineRepository
@@ -395,6 +396,51 @@ class ActiveWorkoutViewModelTest {
     }
 
     @Test
+    fun `recording counts what's filled in, and saves it all with nothing marked done`() = runTest {
+        workouts.startFromRoutine("push", WorkoutMode.RECORD)
+        val viewModel = activeWorkout()
+        val state = viewModel.uiState.value
+        assertTrue(state.isRecording)
+        // Three bench sets of 100 × 5 and two pull-up sets of 8, all from the routine, all count.
+        assertEquals(5, state.progress.completedSets)
+        assertEquals(1_500.0, state.progress.volumeKg, 0.0)
+
+        viewModel.events.test {
+            viewModel.onAction(ActiveWorkoutAction.Finish)
+            assertEquals(ActiveWorkoutEvent.Finished("workout-1"), awaitItem())
+        }
+        val done = workouts.finished.value.getValue("workout-1")
+        assertTrue(done.isRecorded)
+        assertEquals(listOf(3, 2), done.exercises.map { it.sets.size })
+        assertTrue(done.exercises.flatMap { it.sets }.all { it.isCompleted && it.completedAt == now })
+        assertNull(workouts.active.value)
+        assertNull(alerts.scheduledAt)
+    }
+
+    @Test
+    fun `recording isn't saved while a set is missing a value, and what's missing is pointed out`() = runTest {
+        workouts.startFromRoutine("push", WorkoutMode.RECORD)
+        val viewModel = activeWorkout()
+        viewModel.set(benchSet1).fields.reps.state.setTextAndPlaceCursorAtEnd("")
+
+        viewModel.events.test {
+            viewModel.onAction(ActiveWorkoutAction.Finish)
+            assertEquals(ActiveWorkoutEvent.SetsMissing(1), awaitItem())
+        }
+        assertTrue(viewModel.set(benchSet1).showMissing)
+        assertFalse(viewModel.set(benchSet2).showMissing)
+        assertTrue(workouts.finished.value.isEmpty())
+        assertEquals("Push", workouts.active.value?.name)
+
+        // Removing the set clears the way.
+        viewModel.onAction(ActiveWorkoutAction.RemoveSet(benchSet1))
+        viewModel.events.test {
+            viewModel.onAction(ActiveWorkoutAction.Finish)
+            assertEquals(ActiveWorkoutEvent.Finished("workout-1"), awaitItem())
+        }
+    }
+
+    @Test
     fun `a failed save says so`() = runTest {
         workouts.startFromRoutine("push")
         val viewModel = activeWorkout()
@@ -417,6 +463,16 @@ class ActiveWorkoutViewModelTest {
 
         // The fake starts workouts at the epoch.
         assertEquals(ActiveWorkoutBannerState("Push", Instant.EPOCH, rest = null), banner.activeWorkout.value)
+    }
+
+    @Test
+    fun `the banner says when the workout is being recorded`() = runTest {
+        val banner = ActiveWorkoutBannerViewModel(workouts, clock)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { banner.activeWorkout.collect {} }
+
+        workouts.startFromRoutine("push", WorkoutMode.RECORD)
+
+        assertEquals(ActiveWorkoutBannerState("Push", Instant.EPOCH, rest = null, isRecorded = true), banner.activeWorkout.value)
     }
 
     private fun ActiveWorkoutViewModel.addExercises(vararg ids: String) {

@@ -42,6 +42,7 @@ import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.Workout
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.ui.components.BottomActionBar
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.LiftBookTopBar
@@ -194,6 +195,10 @@ fun WorkoutSummaryScreen(
 
 private enum class SummaryContent { Loading, None, Summary }
 
+/**
+ * What the workout was and when. A recorded workout (FR-3.11) has a day but no span — its times
+ * say when it was typed in, not when it was done — so it shows the day alone, and no duration.
+ */
 @Composable
 private fun SummaryHeader(workout: Workout, state: WorkoutSummaryUiState) {
     val summary = state.summary ?: return
@@ -207,7 +212,7 @@ private fun SummaryHeader(workout: Workout, state: WorkoutSummaryUiState) {
     ) {
         // The accent marks the moment; the label says what it is, so colour isn't carrying it.
         Text(
-            text = stringResource(R.string.summary_complete),
+            text = stringResource(if (workout.isRecorded) R.string.summary_recorded else R.string.summary_complete),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -219,17 +224,21 @@ private fun SummaryHeader(workout: Workout, state: WorkoutSummaryUiState) {
             modifier = Modifier.semantics { heading() },
         )
         Text(
-            text = stringResource(
-                R.string.summary_when,
-                workoutDateText(start.toLocalDate(), state.today),
-                timeOfDayText(start.toLocalTime()),
-                timeOfDayText(end.toLocalTime()),
-            ),
+            text = if (workout.isRecorded) {
+                workoutDateText(start.toLocalDate(), state.today)
+            } else {
+                stringResource(
+                    R.string.summary_when,
+                    workoutDateText(start.toLocalDate(), state.today),
+                    timeOfDayText(start.toLocalTime()),
+                    timeOfDayText(end.toLocalTime()),
+                )
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Spacing.lg))
-        WorkoutStatsRow(summary = summary, weightUnit = state.weightUnit)
+        WorkoutStatsRow(summary = summary, weightUnit = state.weightUnit, showDuration = !workout.isRecorded)
     }
 }
 
@@ -292,6 +301,15 @@ private fun previewState(): WorkoutSummaryUiState {
 private fun WorkoutSummaryPreview() {
     LiftBookTheme {
         WorkoutSummaryScreen(state = previewState(), onAction = {})
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun WorkoutSummaryRecordedPreview() {
+    val state = previewState()
+    LiftBookTheme {
+        WorkoutSummaryScreen(state = state.copy(workout = state.workout?.copy(mode = WorkoutMode.RECORD)), onAction = {})
     }
 }
 

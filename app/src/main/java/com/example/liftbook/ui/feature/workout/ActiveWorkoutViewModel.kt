@@ -56,10 +56,11 @@ import java.time.Instant
 import javax.inject.Inject
 
 /**
- * The workout in progress (FR-3.1 – FR-3.10). It holds no authoritative state: the screen is a
+ * The workout in progress (FR-3.1 – FR-3.11). It holds no authoritative state: the screen is a
  * projection of the active workout in the database, and every action writes straight through
  * to it (architecture §5.3). Kill the process mid-set and the next launch shows the same
- * screen (FR-3.7).
+ * screen (FR-3.7). A workout being recorded after the fact is the same projection with the
+ * clock, the rest timer and the done toggle left out; saving it completes what's filled in.
  *
  * What the user types lives in text states owned here ([SetFields], [NoteText]) and is saved
  * shortly after typing stops. Anything that depends on those values — completing a set, adding
@@ -301,11 +302,25 @@ class ActiveWorkoutViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Finishes the workout (FR-3.8). A recorded one (FR-3.11) has no done toggle to say which
+     * sets count, so every set must hold what its type records — or be removed — before it's
+     * saved; the ones that don't are pointed out instead.
+     */
     private fun finish() {
         val workout = workout?.takeIf { it.isActive } ?: return
         if (local.value.isClosing) return
         write(onFailure = { local.update { it.copy(isClosing = false) } }) {
             saveEdits()
+            if (workout.isRecorded) {
+                // Against the workout as it is now: a set removed since the tap isn't missing.
+                val missing = missingSets(this@ActiveWorkoutViewModel.workout?.takeIf { it.id == workout.id } ?: workout)
+                if (missing.isNotEmpty()) {
+                    local.update { it.copy(missing = it.missing + missing) }
+                    _events.send(ActiveWorkoutEvent.SetsMissing(missing.size))
+                    return@write
+                }
+            }
             local.update { it.copy(isClosing = true) }
             if (workoutRepository.finishWorkout(workout.id, clock.instant())) {
                 restTimerScheduler.cancel()
@@ -314,6 +329,14 @@ class ActiveWorkoutViewModel @Inject constructor(
                 local.update { it.copy(isClosing = false) }
             }
         }
+    }
+
+    /** The sets not holding what their type records (FR-3.3), as typed. */
+    private fun missingSets(workout: Workout): List<String> = workout.exercises.flatMap { exercise ->
+        val type = exercise.exercise.type
+        exercise.sets
+            .filter { set -> (setFields[set.id]?.values() ?: set.values).applicableTo(type).metricsFor(type) == null }
+            .map { it.id }
     }
 
     private fun discard() {

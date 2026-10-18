@@ -74,16 +74,24 @@ fun Workout.recapExercises(recordSetIds: Set<String> = emptySet()): List<RecapEx
 
 /** The three numbers that sum a workout up: how long, how much, how many sets. */
 @Composable
-fun WorkoutStatsRow(summary: WorkoutSummary, weightUnit: WeightUnit, modifier: Modifier = Modifier) {
+fun WorkoutStatsRow(
+    summary: WorkoutSummary,
+    weightUnit: WeightUnit,
+    modifier: Modifier = Modifier,
+    /** Off for a workout recorded after the fact (FR-3.11), whose duration means nothing. */
+    showDuration: Boolean = true,
+) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-        val duration = summary.durationSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        StatTile(
-            label = stringResource(R.string.summary_stat_duration),
-            value = formatDuration(duration),
-            spokenValue = spokenDuration(duration),
-            valueStyle = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.weight(1f),
-        )
+        if (showDuration) {
+            val duration = summary.durationSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            StatTile(
+                label = stringResource(R.string.summary_stat_duration),
+                value = formatDuration(duration),
+                spokenValue = spokenDuration(duration),
+                valueStyle = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f),
+            )
+        }
         StatTile(
             label = stringResource(R.string.summary_stat_volume),
             value = displayWeight(summary.volumeKg, weightUnit, maxFractionDigits = 0),

@@ -314,18 +314,23 @@ private fun DetailHeader(workout: Workout, state: WorkoutDetailUiState) {
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.semantics { heading() },
         )
+        // A recorded workout (FR-3.11) has a day but no span, and so no duration.
         Text(
-            text = stringResource(
-                R.string.summary_when,
-                workoutDateText(start.toLocalDate(), state.today),
-                timeOfDayText(start.toLocalTime()),
-                timeOfDayText(end.toLocalTime()),
-            ),
+            text = if (workout.isRecorded) {
+                workoutDateText(start.toLocalDate(), state.today)
+            } else {
+                stringResource(
+                    R.string.summary_when,
+                    workoutDateText(start.toLocalDate(), state.today),
+                    timeOfDayText(start.toLocalTime()),
+                    timeOfDayText(end.toLocalTime()),
+                )
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Spacing.lg))
-        WorkoutStatsRow(summary = summary, weightUnit = state.weightUnit)
+        WorkoutStatsRow(summary = summary, weightUnit = state.weightUnit, showDuration = !workout.isRecorded)
     }
 }
 

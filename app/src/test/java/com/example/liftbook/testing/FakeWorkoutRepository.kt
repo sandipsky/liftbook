@@ -15,6 +15,7 @@ import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
 import com.example.liftbook.domain.model.WorkoutExercise
 import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.model.WorkoutRevision
 import com.example.liftbook.domain.model.WorkoutSet
 import com.example.liftbook.domain.model.toValues
@@ -75,7 +76,7 @@ class FakeWorkoutRepository(
     override fun observeWorkout(id: String): Flow<Workout?> =
         combine(active, finished) { current, done -> current?.takeIf { it.id == id } ?: done[id] }
 
-    override suspend fun startFromRoutine(routineId: String): StartWorkoutResult {
+    override suspend fun startFromRoutine(routineId: String, mode: WorkoutMode): StartWorkoutResult {
         if (failNextStart) {
             failNextStart = false
             throw IllegalStateException("Simulated write failure")
@@ -100,18 +101,19 @@ class FakeWorkoutRepository(
                 val planned = SetPrefill.forRoutineExercise(item.target, item.exercise.type, lastSessions[item.exercise.id].orEmpty())
                 exerciseOf("$id-e$index", item.exercise, planned).copy(restSecondsOverride = item.restSecondsOverride)
             },
+            mode = mode,
         )
         return StartWorkoutResult.Started(id)
     }
 
-    override suspend fun startEmpty(name: String): StartWorkoutResult {
+    override suspend fun startEmpty(name: String, mode: WorkoutMode): StartWorkoutResult {
         if (failNextStart) {
             failNextStart = false
             throw IllegalStateException("Simulated write failure")
         }
         active.value?.let { return StartWorkoutResult.OtherWorkoutActive(it.id, it.name) }
         val id = "workout-${++workoutCount}"
-        active.value = Workout(id = id, name = name, routineId = null, startedAt = now, finishedAt = null, exercises = emptyList())
+        active.value = Workout(id = id, name = name, routineId = null, startedAt = now, finishedAt = null, exercises = emptyList(), mode = mode)
         return StartWorkoutResult.Started(id)
     }
 
@@ -232,7 +234,18 @@ class FakeWorkoutRepository(
             finishedAt = finishedAt,
             rest = null,
             exercises = workout.exercises
-                .map { exercise -> exercise.copy(sets = exercise.sets.filter { it.isCompleted }) }
+                .map { exercise ->
+                    // A recorded workout's filled-in sets count as done when it's saved (FR-3.11).
+                    val sets = if (workout.isRecorded) {
+                        exercise.sets.mapNotNull { set ->
+                            set.values.applicableTo(exercise.exercise.type).metricsFor(exercise.exercise.type)
+                                ?.let { set.withValues(it.toValues()).copy(isCompleted = true, completedAt = finishedAt) }
+                        }
+                    } else {
+                        exercise.sets.filter { it.isCompleted }
+                    }
+                    exercise.copy(sets = sets)
+                }
                 .filter { it.sets.isNotEmpty() || it.note != null },
         )
         active.value = null
@@ -314,6 +327,7 @@ class FakeWorkoutRepository(
         volumeKg = volume(exercises.flatMap { it.completedSets() }),
         completedSets = exercises.sumOf { exercise -> exercise.sets.count { it.isCompleted } },
         exerciseNames = exercises.map { it.exercise.name },
+        mode = mode,
     )
 
     private fun exerciseOf(id: String, exercise: Exercise, planned: List<PlannedSet>) =

@@ -47,6 +47,7 @@ import java.time.ZoneId
  * A finished workout in the history (FR-4.1). The day sits on the leading edge, where the eye
  * runs down the list; what the workout was fills the middle; and the trailing edge holds the two
  * numbers it came to — the volume, or the sets done when nothing was lifted, and how long it took.
+ * A workout recorded after the fact (FR-3.11) took no time to speak of, so it says so instead.
  * Among workouts of one day, [showDay] off trades the day for the time each started.
  */
 @Composable
@@ -66,7 +67,8 @@ fun WorkoutHistoryRow(
     val exercises = remember(workout.exerciseNames, separator, startTime) {
         (listOfNotNull(startTime) + workout.exerciseNames).joinToString(separator)
     }
-    val durationSpoken = workoutDurationSpoken(workout.durationSeconds)
+    val duration = if (workout.isRecorded) stringResource(R.string.history_recorded) else workoutDurationText(workout.durationSeconds)
+    val durationSpoken = if (workout.isRecorded) duration else workoutDurationSpoken(workout.durationSeconds)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -99,7 +101,7 @@ fun WorkoutHistoryRow(
         Column(horizontalAlignment = Alignment.End) {
             WorkoutAmount(workout, weightUnit)
             Text(
-                text = workoutDurationText(workout.durationSeconds),
+                text = duration,
                 style = MaterialTheme.typography.bodyMedium.tabularNumbers(),
                 color = colors.onSurfaceVariant,
                 maxLines = 1,

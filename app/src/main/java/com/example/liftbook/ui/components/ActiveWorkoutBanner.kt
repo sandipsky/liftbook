@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
@@ -40,6 +41,7 @@ import java.time.Instant
  * button, because a workout under way is a progress moment. This is what keeps an unfinished
  * workout from ever being lost from view (FR-3.1).
  *
+ * A workout being recorded after the fact (FR-3.11) has no clock to show, so it says so instead.
  * [now] is read here rather than above, so the once-a-second tick redraws only the banner.
  */
 @Composable
@@ -50,14 +52,15 @@ fun ActiveWorkoutBanner(
     now: () -> Instant,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isRecorded: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val at = now()
-    val resting = rest != null && !rest.isOver(at)
-    val status = if (resting) {
-        stringResource(R.string.banner_resting, formatDuration(restSecondsLeft(rest, at)))
-    } else {
-        stringResource(R.string.banner_elapsed, elapsedText(startedAt, at))
+    val resting = !isRecorded && rest != null && !rest.isOver(at)
+    val status = when {
+        isRecorded -> stringResource(R.string.banner_recording)
+        resting -> stringResource(R.string.banner_resting, formatDuration(restSecondsLeft(rest, at)))
+        else -> stringResource(R.string.banner_elapsed, elapsedText(startedAt, at))
     }
     Row(
         modifier = modifier
@@ -71,7 +74,11 @@ fun ActiveWorkoutBanner(
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         Icon(
-            if (resting) Icons.Outlined.Timer else Icons.Outlined.FitnessCenter,
+            when {
+                isRecorded -> Icons.Outlined.Checklist
+                resting -> Icons.Outlined.Timer
+                else -> Icons.Outlined.FitnessCenter
+            },
             contentDescription = null,
             tint = colors.onPrimaryContainer,
             modifier = Modifier.size(IconSize.inline),
@@ -122,6 +129,14 @@ private fun ActiveWorkoutBannerPreview() {
                 rest = RestTimer(now.minusSeconds(10), now.plusSeconds(80)),
                 now = { now },
                 onClick = {},
+            )
+            ActiveWorkoutBanner(
+                name = "Legs",
+                startedAt = Instant.parse("2026-09-25T18:30:00Z"),
+                rest = null,
+                now = { now },
+                onClick = {},
+                isRecorded = true,
             )
         }
     }

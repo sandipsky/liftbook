@@ -21,6 +21,7 @@ data class ActiveWorkoutUiState(
     val exercises: List<ActiveExercise> = emptyList(),
     /** The workout's note (FR-3.9); null until the workout has loaded. */
     val workoutNote: TextFieldState? = null,
+    /** Sets done and the volume so far — or, while recording, the sets filled in (FR-3.11). */
     val progress: WorkoutProgress = WorkoutProgress.None,
     /** The rest running now (FR-3.5). It may already be over; the screen decides what that shows. */
     val rest: RestTimer? = null,
@@ -32,7 +33,13 @@ data class ActiveWorkoutUiState(
     val isReordering: Boolean = false,
     /** The exercise picker, while it's open (FR-3.2). */
     val picker: ExercisePickerUiState? = null,
-)
+) {
+    /**
+     * Recording a workout after the fact (FR-3.11): no clock, no rest timer, no done toggle.
+     * Every set holding what its type records is saved when the workout is.
+     */
+    val isRecording: Boolean get() = workout?.isRecorded == true
+}
 
 /** An exercise in the workout, with its sets ready to edit. */
 data class ActiveExercise(
@@ -72,7 +79,10 @@ sealed interface ActiveWorkoutAction {
     /** Delete the workout, once the screen has confirmed it (FR-3.8). */
     data object Discard : ActiveWorkoutAction
 
-    /** Finish it, once the screen has confirmed any sets left undone will be dropped (FR-3.8). */
+    /**
+     * Finish it, once the screen has confirmed any sets left undone will be dropped (FR-3.8).
+     * While recording (FR-3.11) it saves instead, if every set is filled in.
+     */
     data object Finish : ActiveWorkoutAction
 
     /** Save what's been typed now, as the screen goes out of view (FR-3.7). */
@@ -126,6 +136,9 @@ sealed interface ActiveWorkoutEvent {
 
     /** Exercises were added; the first is the one to bring into view. */
     data class ExercisesAdded(val firstWorkoutExerciseId: String) : ActiveWorkoutEvent
+
+    /** Saving a recorded workout was tried with [count] sets missing values; they're outlined (FR-3.11). */
+    data class SetsMissing(val count: Int) : ActiveWorkoutEvent
 
     data object SaveFailed : ActiveWorkoutEvent
 }
