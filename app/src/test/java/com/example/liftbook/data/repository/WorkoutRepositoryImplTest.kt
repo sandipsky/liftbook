@@ -17,6 +17,7 @@ import com.example.liftbook.domain.model.SetValues
 import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.MutableClock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -326,6 +327,47 @@ class WorkoutRepositoryImplTest {
         assertEquals(listOf(benchSet.id), finished.exercises[0].sets.map { it.id })
         assertTrue(finished.exercises[1].sets.isEmpty())
         assertFalse(repository.finishWorkout(workoutId, finishedAt))
+    }
+
+    @Test
+    fun `a recorded workout keeps its mode, and finishing saves what was filled in`() = runTest {
+        val workoutId = (repository.startFromRoutine(pushRoutine(), WorkoutMode.RECORDED) as StartWorkoutResult.Started).workoutId
+        val workout = active()
+        assertEquals(WorkoutMode.RECORDED, workout.mode)
+        assertTrue(workout.isRecorded)
+        // Pre-filled from the routine, but nothing marks a set done while recording.
+        assertTrue(workout.exercises.flatMap { it.sets }.none { it.isCompleted })
+        val benchSets = workout.exercises[0].sets
+        val pullUpSets = workout.exercises[1].sets
+        // Bench: the first two sets keep their targets, the third loses its reps. Pull-ups are cleared out.
+        repository.saveEdits(
+            workoutId,
+            WorkoutEdits(
+                setValues = mapOf(
+                    benchSets[2].id to SetValues(weightKg = 82.5),
+                    pullUpSets[0].id to SetValues(),
+                    pullUpSets[1].id to SetValues(),
+                ),
+            ),
+        )
+        val finishedAt = clock.instant().plusSeconds(240)
+
+        assertTrue(repository.finishWorkout(workoutId, finishedAt))
+
+        val finished = repository.observeWorkout(workoutId).first()!!
+        assertEquals(WorkoutMode.RECORDED, finished.mode)
+        assertEquals(finishedAt, finished.finishedAt)
+        // Filled-in sets are saved as done, stamped with the finish; the others are gone, and so are the pull-ups.
+        assertEquals(listOf(bench, plank), finished.exercises.map { it.exercise.id })
+        assertEquals(benchSets.take(2).map { it.id }, finished.exercises[0].sets.map { it.id })
+        assertTrue(finished.exercises[0].sets.all { it.isCompleted && it.completedAt == finishedAt })
+        assertEquals(SetValues(weightKg = 82.5, reps = 5), finished.exercises[0].sets[0].values)
+        assertEquals(1, finished.exercises[1].sets.size)
+        // And it counts in the history like any other, with no duration.
+        val listed = repository.observeFinishedBetween(Instant.EPOCH, finishedAt.plusSeconds(1)).first().single()
+        assertEquals(WorkoutMode.RECORDED, listed.mode)
+        assertNull(listed.durationSeconds)
+        assertEquals(3, listed.completedSets)
     }
 
     @Test

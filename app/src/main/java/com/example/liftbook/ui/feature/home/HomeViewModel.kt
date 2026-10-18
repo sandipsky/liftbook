@@ -21,7 +21,7 @@ import javax.inject.Inject
 
 /**
  * The Workout tab: start an empty workout (FR-3.1), or one of the user's routines — each with
- * when it was last done — in one tap (FR-2.3, FR-2.4).
+ * when it was last done (FR-2.3, FR-2.4) — logged as it happens or typed in afterwards (FR-3.11).
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -44,8 +44,8 @@ class HomeViewModel @Inject constructor(
 
     fun onAction(action: HomeAction) {
         when (action) {
-            is HomeAction.StartRoutine -> start { workoutRepository.startFromRoutine(action.routineId) }
-            is HomeAction.StartEmpty -> start { workoutRepository.startEmpty(action.name) }
+            is HomeAction.StartRoutine -> start { workoutRepository.startFromRoutine(action.routineId, action.mode) }
+            is HomeAction.StartEmpty -> start { workoutRepository.startEmpty(action.name, action.mode) }
             // Navigation and dialogs; handled by the route.
             is HomeAction.OpenRoutine,
             HomeAction.CreateRoutine,

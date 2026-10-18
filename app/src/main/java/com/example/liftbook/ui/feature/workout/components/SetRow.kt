@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,8 +73,9 @@ import com.example.liftbook.ui.theme.tabularNumbers
 
 /**
  * The column labels above a set table: Set · kg · Reps, Set · Reps, or Set · Time · km — the
- * fields each row logs (FR-3.3). Hidden from TalkBack; each cell carries its own label. Leave
- * out [showDoneColumn] when the rows have no done toggle.
+ * fields each row logs (FR-3.3). Hidden from TalkBack; each cell carries its own label. The
+ * trailing space matches the rows' controls: Remove always, and Done unless [showDoneColumn]
+ * is off, for rows with no done toggle.
  */
 @Composable
 fun SetTableHeader(type: ExerciseType, weightUnit: WeightUnit, modifier: Modifier = Modifier, showDoneColumn: Boolean = true) {
@@ -91,6 +91,7 @@ fun SetTableHeader(type: ExerciseType, weightUnit: WeightUnit, modifier: Modifie
         ColumnLabel(stringResource(R.string.workout_column_set), Modifier.width(ControlSize))
         labels.forEach { ColumnLabel(it, Modifier.weight(1f)) }
         if (showDoneColumn) Spacer(Modifier.width(ControlSize))
+        Spacer(Modifier.width(ControlSize))
     }
 }
 
@@ -107,15 +108,16 @@ private fun ColumnLabel(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * One set: its type, the values it logs, and the control that marks it done — the most-used
- * control in the app, so every part of it is a 48dp target a sweaty thumb can't miss.
+ * One set: its type, the values it logs, the control that marks it done — the most-used control
+ * in the app, so every part of it is a 48dp target a sweaty thumb can't miss — and, last, the
+ * button that removes it.
  *
  * The values are real, editable fields pre-filled from last time (FR-3.4). Marking the set done
  * settles them: the fill fades and the numbers stand on the row, still editable. Trying to mark
  * it done with a value missing buzzes and outlines what's missing instead.
  *
- * Without [onToggleDone] — a finished workout being edited, where every set is done — there is
- * no toggle, and the values keep their fill, ready to edit.
+ * Without [onToggleDone] — a workout being recorded after the fact (FR-3.11), or a finished one
+ * being edited — there is no toggle, and the values keep their fill, ready to type into.
  */
 @Composable
 fun SetRow(
@@ -143,7 +145,6 @@ fun SetRow(
             number = item.number,
             spokenTitle = title,
             onChangeType = onChangeType,
-            onRemove = onRemove,
         )
         val settled = onToggleDone != null && set.isCompleted
         when (type) {
@@ -217,13 +218,21 @@ fun SetRow(
                 onToggleDone()
             },
         )
+        RemoveSetButton(
+            label = stringResource(R.string.set_remove_description, title),
+            onClick = {
+                // A field on the row may hold focus; removing the row shouldn't leave the keyboard up.
+                focusManager.clearFocus()
+                onRemove()
+            },
+        )
     }
 }
 
 /**
- * The set's marker — its number, or W / D / F — which opens the set types (FR-3.10) and Remove.
- * A normal set shows its number plainly; any other type sits in a small tonal disc, so it reads
- * by shape and letter as well as by tone.
+ * The set's marker — its number, or W / D / F — which opens the set types (FR-3.10). A normal
+ * set shows its number plainly; any other type sits in a small tonal disc, so it reads by shape
+ * and letter as well as by tone.
  */
 @Composable
 private fun SetTypeButton(
@@ -231,7 +240,6 @@ private fun SetTypeButton(
     number: Int?,
     spokenTitle: String,
     onChangeType: (SetType) -> Unit,
-    onRemove: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val clickLabel = stringResource(R.string.set_type_click_label)
@@ -276,16 +284,31 @@ private fun SetTypeButton(
                     },
                 )
             }
-            HorizontalDivider(Modifier.padding(vertical = Spacing.xxs))
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.set_remove)) },
-                leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    onRemove()
-                },
-            )
         }
+    }
+}
+
+/**
+ * Removes the set: a quiet outlined bin on the row's trailing edge, the same 48dp target as
+ * the done toggle beside it. Quiet, because it sits on every row and the numbers are what the
+ * row is for; the accent and the ink stay with the values and the toggle.
+ */
+@Composable
+private fun RemoveSetButton(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(ControlSize)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Outlined.DeleteOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(IconSize.inline),
+        )
     }
 }
 
@@ -362,7 +385,7 @@ private fun SetType.labelRes(): Int = when (this) {
 /** The order set types are offered in: the usual first, then warm-up before a set, then after. */
 private val SetTypeOrder = listOf(SetType.NORMAL, SetType.WARMUP, SetType.DROP, SetType.FAILURE)
 
-/** The set-type button and the done toggle: the minimum touch target. */
+/** The set-type button, the done toggle and the remove button: the minimum touch target. */
 internal val ControlSize = 48.dp
 private val ToggleSize = 40.dp
 private val MarkerDiscSize = 32.dp
@@ -400,6 +423,16 @@ private fun SetRowPreview() {
                     onRemove = {},
                 )
             }
+            // Recording after the fact (FR-3.11): no done toggle, just the values and Remove.
+            SetTableHeader(ExerciseType.STRENGTH, WeightUnit.KG, Modifier.padding(top = Spacing.md), showDoneColumn = false)
+            SetRow(
+                item = set("4", SetType.NORMAL, done = false, weight = 80.0, reps = 8, number = 1),
+                type = ExerciseType.STRENGTH,
+                weightUnit = WeightUnit.KG,
+                onToggleDone = null,
+                onChangeType = {},
+                onRemove = {},
+            )
         }
     }
 }

@@ -61,7 +61,8 @@ fun Workout.summarize(previousSets: Map<String, List<LoggedSet>>): WorkoutSummar
             records.takeIf { it.isNotEmpty() }?.let { ExerciseRecords(appearances.first().exercise, it) }
         }
     return WorkoutSummary(
-        durationSeconds = Duration.between(startedAt, finished).seconds.coerceAtLeast(0),
+        // A workout recorded after the fact (FR-3.11) has no duration: its times say when it was typed in.
+        durationSeconds = if (isRecorded) null else Duration.between(startedAt, finished).seconds.coerceAtLeast(0),
         volumeKg = volume(exercises.flatMap { it.completedSets() }),
         completedSets = exercises.sumOf { exercise -> exercise.sets.count { it.isCompleted } },
         records = records,

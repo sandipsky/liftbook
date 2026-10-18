@@ -70,8 +70,7 @@ import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.TopBarNavigation
 import com.example.liftbook.ui.components.WorkoutStatsRow
 import com.example.liftbook.ui.components.recapExercises
-import com.example.liftbook.ui.components.timeOfDayText
-import com.example.liftbook.ui.components.workoutDateText
+import com.example.liftbook.ui.components.workoutWhenText
 import com.example.liftbook.ui.feature.workout.WorkoutPreviewData
 import com.example.liftbook.ui.theme.LiftBookTheme
 import com.example.liftbook.ui.theme.Spacing
@@ -300,8 +299,6 @@ private fun DetailMenu(onDelete: () -> Unit) {
 @Composable
 private fun DetailHeader(workout: Workout, state: WorkoutDetailUiState) {
     val summary = state.summary ?: return
-    val start = workout.startedAt.atZone(state.zone)
-    val end = (workout.finishedAt ?: workout.startedAt).atZone(state.zone)
     Column(
         Modifier
             .fillMaxWidth()
@@ -315,12 +312,7 @@ private fun DetailHeader(workout: Workout, state: WorkoutDetailUiState) {
             modifier = Modifier.semantics { heading() },
         )
         Text(
-            text = stringResource(
-                R.string.summary_when,
-                workoutDateText(start.toLocalDate(), state.today),
-                timeOfDayText(start.toLocalTime()),
-                timeOfDayText(end.toLocalTime()),
-            ),
+            text = workoutWhenText(workout, state.zone, state.today),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

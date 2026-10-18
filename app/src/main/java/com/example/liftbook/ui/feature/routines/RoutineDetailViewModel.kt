@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.routines
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftbook.domain.model.StartWorkoutResult
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.repository.RoutineRepository
 import com.example.liftbook.domain.repository.SettingsRepository
 import com.example.liftbook.domain.repository.WorkoutRepository
@@ -55,7 +56,7 @@ class RoutineDetailViewModel @AssistedInject constructor(
 
     fun onAction(action: RoutineDetailAction) {
         when (action) {
-            RoutineDetailAction.Start -> start()
+            is RoutineDetailAction.Start -> start(action.mode)
             RoutineDetailAction.Duplicate -> viewModelScope.launch {
                 try {
                     val copyId = routineRepository.duplicateRoutine(routineId)
@@ -82,13 +83,13 @@ class RoutineDetailViewModel @AssistedInject constructor(
         }
     }
 
-    private fun start() {
+    private fun start(mode: WorkoutMode) {
         // Set before anything suspends, so a double tap can't start twice.
         if (isStarting.value) return
         isStarting.value = true
         viewModelScope.launch {
             val event = try {
-                when (val result = workoutRepository.startFromRoutine(routineId)) {
+                when (val result = workoutRepository.startFromRoutine(routineId, mode)) {
                     is StartWorkoutResult.Started, is StartWorkoutResult.Resumed -> RoutineDetailEvent.OpenWorkout
                     is StartWorkoutResult.OtherWorkoutActive -> RoutineDetailEvent.OtherWorkoutActive(result.name)
                     StartWorkoutResult.RoutineNotFound -> RoutineDetailEvent.StartFailed

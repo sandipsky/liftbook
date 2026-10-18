@@ -46,6 +46,20 @@ interface SetDao {
     @Query("SELECT * FROM workout_sets WHERE workoutId = :workoutId")
     suspend fun getForWorkout(workoutId: String): List<WorkoutSetEntity>
 
+    /** The workout's sets with their exercise types, to tell which are filled in (FR-3.3). */
+    @Query(
+        """
+        SELECT s.*, e.type AS exerciseType FROM workout_sets AS s
+        INNER JOIN exercises AS e ON e.id = s.exerciseId
+        WHERE s.workoutId = :workoutId
+        """,
+    )
+    suspend fun getForWorkoutWithType(workoutId: String): List<SetWithExerciseType>
+
+    /** Marks sets complete as they are, values untouched: finishing a recorded workout (FR-3.11). */
+    @Query("UPDATE workout_sets SET isCompleted = 1, completedAt = :completedAt WHERE id IN (:ids)")
+    suspend fun markCompleted(ids: Collection<String>, completedAt: Instant)
+
     @Update
     suspend fun updateAll(sets: List<WorkoutSetEntity>)
 

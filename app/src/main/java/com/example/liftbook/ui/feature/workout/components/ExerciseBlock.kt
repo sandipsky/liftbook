@@ -79,8 +79,8 @@ import com.example.liftbook.ui.theme.tabularNumbers
  * no rules or boxes, only the fields themselves. It grows and shrinks smoothly as sets come and
  * go.
  *
- * Editing a finished workout (FR-4.2) passes neither [onToggleDone] nor [onEditRest]: every set
- * is done, and there's no rest to time.
+ * Recording a workout after the fact (FR-3.11) and editing a finished one (FR-4.2) pass neither
+ * [onToggleDone] nor [onEditRest]: a set counts once it's filled in, and there's no rest to time.
  */
 @Composable
 fun ExerciseBlock(

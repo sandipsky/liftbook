@@ -282,7 +282,7 @@ fun WorkoutEditorScreen(
                 onDismiss = { picking = null },
             )
         }
-        TimeField.Start, TimeField.End -> if (span != null) {
+        TimeField.Start, TimeField.End -> if (span != null && !state.isRecorded) {
             val shown = if (field == TimeField.Start) span.start else span.end
             TimeOfDayPickerDialog(
                 title = stringResource(if (field == TimeField.Start) R.string.workout_editor_pick_start else R.string.workout_editor_pick_end),
@@ -409,6 +409,7 @@ private fun EditorList(
                     span = span,
                     zone = state.zone,
                     today = state.today,
+                    showTimes = !state.isRecorded,
                     onPick = onPickTime,
                     modifier = Modifier.padding(horizontal = Spacing.gutter).padding(top = Spacing.md),
                 )
@@ -499,13 +500,16 @@ private fun NameField(nameState: TextFieldState, showError: Boolean, modifier: M
 
 /**
  * When the workout was (FR-4.2): the date across the top, start and end beneath, and how long
- * that makes it. Each opens the system picker. An end before the start means past midnight.
+ * that makes it. Each opens the system picker. An end before the start means past midnight. A
+ * workout recorded after the fact (FR-3.11) has only its date: its times say when it was typed
+ * in, so [showTimes] is off.
  */
 @Composable
 private fun WhenFields(
     span: WorkoutSpan,
     zone: ZoneId,
     today: LocalDate,
+    showTimes: Boolean,
     onPick: (TimeField) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -518,6 +522,7 @@ private fun WhenFields(
             value = workoutDateText(start.toLocalDate(), today),
             onClick = { onPick(TimeField.Date) },
         )
+        if (!showTimes) return@Column
         Spacer(Modifier.height(Spacing.xs))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             PickerField(

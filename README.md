@@ -29,6 +29,8 @@ network permission, so it works the same in airplane mode as anywhere else.
 
 **Active workout**
 - Start empty or from a routine. Only one workout runs at a time
+- Or record a workout you've already done: the same screen with no clock, no rest timer and
+  nothing to tick off. A set counts once it's filled in
 - Log weight × reps, reps only, or time and distance, depending on the exercise
 - Sets are pre-filled from the last time you did that exercise
 - Set types: normal, warm-up, drop set and failure. Warm-ups don't count toward volume or PRs

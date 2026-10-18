@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.example.liftbook.domain.model.RoutineDraft
 import com.example.liftbook.domain.model.RoutineExerciseDraft
 import com.example.liftbook.domain.model.SetTarget
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRoutineRepository
 import com.example.liftbook.testing.FakeWorkoutRepository
@@ -68,10 +69,23 @@ class HomeViewModelTest {
         val viewModel = home()
 
         viewModel.events.test {
-            viewModel.onAction(HomeAction.StartRoutine(push.id))
+            viewModel.onAction(HomeAction.StartRoutine(push.id, WorkoutMode.LIVE))
             assertEquals(HomeEvent.OpenWorkout, awaitItem())
         }
         assertEquals(listOf(push.id), workouts.started)
+        assertEquals(WorkoutMode.LIVE, workouts.active.value?.mode)
+    }
+
+    @Test
+    fun `recording a routine opens a workout to type in`() = runTest {
+        val viewModel = home()
+
+        viewModel.events.test {
+            viewModel.onAction(HomeAction.StartRoutine(push.id, WorkoutMode.RECORDED))
+            assertEquals(HomeEvent.OpenWorkout, awaitItem())
+        }
+        assertEquals(WorkoutMode.RECORDED, workouts.active.value?.mode)
+        assertEquals(push.id, workouts.active.value?.routineId)
     }
 
     @Test
@@ -79,9 +93,9 @@ class HomeViewModelTest {
         val viewModel = home()
 
         viewModel.events.test {
-            viewModel.onAction(HomeAction.StartRoutine(push.id))
+            viewModel.onAction(HomeAction.StartRoutine(push.id, WorkoutMode.LIVE))
             awaitItem()
-            viewModel.onAction(HomeAction.StartRoutine(legs.id))
+            viewModel.onAction(HomeAction.StartRoutine(legs.id, WorkoutMode.LIVE))
             assertEquals(HomeEvent.OtherWorkoutActive("Push"), awaitItem())
         }
         assertEquals(listOf(push.id), workouts.started)
@@ -92,11 +106,23 @@ class HomeViewModelTest {
         val viewModel = home()
 
         viewModel.events.test {
-            viewModel.onAction(HomeAction.StartEmpty("Morning workout"))
+            viewModel.onAction(HomeAction.StartEmpty("Morning workout", WorkoutMode.LIVE))
             assertEquals(HomeEvent.OpenWorkout, awaitItem())
         }
         assertEquals("Morning workout", workouts.active.value?.name)
         assertEquals(null, workouts.active.value?.routineId)
+        assertEquals(WorkoutMode.LIVE, workouts.active.value?.mode)
+    }
+
+    @Test
+    fun `recording an empty workout opens one to type in`() = runTest {
+        val viewModel = home()
+
+        viewModel.events.test {
+            viewModel.onAction(HomeAction.StartEmpty("Morning workout", WorkoutMode.RECORDED))
+            assertEquals(HomeEvent.OpenWorkout, awaitItem())
+        }
+        assertEquals(WorkoutMode.RECORDED, workouts.active.value?.mode)
     }
 
     @Test
@@ -104,9 +130,9 @@ class HomeViewModelTest {
         val viewModel = home()
 
         viewModel.events.test {
-            viewModel.onAction(HomeAction.StartRoutine(push.id))
+            viewModel.onAction(HomeAction.StartRoutine(push.id, WorkoutMode.LIVE))
             awaitItem()
-            viewModel.onAction(HomeAction.StartEmpty("Morning workout"))
+            viewModel.onAction(HomeAction.StartEmpty("Morning workout", WorkoutMode.RECORDED))
             assertEquals(HomeEvent.OtherWorkoutActive("Push"), awaitItem())
         }
     }
@@ -116,7 +142,7 @@ class HomeViewModelTest {
         val viewModel = home()
 
         viewModel.events.test {
-            viewModel.onAction(HomeAction.StartRoutine("gone"))
+            viewModel.onAction(HomeAction.StartRoutine("gone", WorkoutMode.LIVE))
             assertEquals(HomeEvent.RoutineMissing, awaitItem())
         }
     }
@@ -127,9 +153,9 @@ class HomeViewModelTest {
         val viewModel = home()
 
         viewModel.events.test {
-            viewModel.onAction(HomeAction.StartRoutine(push.id))
+            viewModel.onAction(HomeAction.StartRoutine(push.id, WorkoutMode.LIVE))
             assertEquals(HomeEvent.StartFailed, awaitItem())
-            viewModel.onAction(HomeAction.StartRoutine(push.id))
+            viewModel.onAction(HomeAction.StartRoutine(push.id, WorkoutMode.LIVE))
             assertEquals(HomeEvent.OpenWorkout, awaitItem())
         }
     }

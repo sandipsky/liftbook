@@ -114,6 +114,7 @@ import com.example.liftbook.ui.components.spokenDuration
 import com.example.liftbook.ui.components.elapsedSeconds
 import com.example.liftbook.ui.components.timeOfDayText
 import com.example.liftbook.ui.components.weightLabelRes
+import com.example.liftbook.ui.components.workoutDateText
 import com.example.liftbook.ui.feature.workout.components.ExerciseBlock
 import com.example.liftbook.ui.feature.workout.components.ReorderRow
 import com.example.liftbook.ui.feature.workout.components.RestTimerBar
@@ -195,6 +196,9 @@ fun ActiveWorkoutRoute(
  * The workout in progress: the core screen. Everything the user does mid-set — logging a set,
  * marking it done, watching the rest — sits in the lower part of the screen, big enough to hit
  * one-handed. [now] is read only by the clocks, so the once-a-second tick redraws only them.
+ *
+ * A workout being recorded after the fact (FR-3.11) is the same screen with the clocks, the
+ * rest timer and the done toggles gone: the sets are typed in, and count once they're filled in.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -230,7 +234,7 @@ fun ActiveWorkoutScreen(
                     if (state.isReordering) onAction(ActiveWorkoutAction.StopReordering) else onAction(ActiveWorkoutAction.NavigateUp)
                 },
                 showTitle = state.isReordering || headerScrolledAway,
-                subtitle = if (workout != null && !state.isReordering) {
+                subtitle = if (workout != null && !state.isReordering && !state.isRecording) {
                     { Text(elapsedText(workout.startedAt, now()), style = MaterialTheme.typography.labelMedium.tabularNumbers()) }
                 } else {
                     null
@@ -254,7 +258,8 @@ fun ActiveWorkoutScreen(
                             }
                             WorkoutMenu(
                                 canReorder = state.exercises.size > 1,
-                                onDefaultRest = { defaultRestDialog = true },
+                                // No rest to time while recording.
+                                onDefaultRest = if (state.isRecording) null else { { defaultRestDialog = true } },
                                 onReorder = {
                                     focusManager.clearFocus()
                                     onAction(ActiveWorkoutAction.StartReordering)
@@ -272,7 +277,7 @@ fun ActiveWorkoutScreen(
             // with no rest running; the rest bar rides above the keyboard while a set is typed.
             Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
                 RestSlot(
-                    rest = state.rest?.takeUnless { state.isReordering },
+                    rest = state.rest?.takeUnless { state.isReordering || state.isRecording },
                     now = now,
                     alertIssue = alertIssue,
                     onAction = onAction,
@@ -347,6 +352,7 @@ fun ActiveWorkoutScreen(
     if (confirmFinish) {
         FinishDialog(
             progress = state.progress,
+            isRecording = state.isRecording,
             onFinish = {
                 confirmFinish = false
                 onAction(ActiveWorkoutAction.Finish)
@@ -483,11 +489,12 @@ private fun WorkoutList(
                 ExerciseBlock(
                     item = item,
                     weightUnit = state.weightUnit,
-                    onToggleDone = { onAction(ActiveWorkoutAction.ToggleSetDone(it)) },
+                    // Recording (FR-3.11): nothing to mark done, no rest to time.
+                    onToggleDone = if (state.isRecording) null else { id -> onAction(ActiveWorkoutAction.ToggleSetDone(id)) },
                     onChangeSetType = { id, type -> onAction(ActiveWorkoutAction.ChangeSetType(id, type)) },
                     onRemoveSet = { onAction(ActiveWorkoutAction.RemoveSet(it)) },
                     onAddSet = { onAction(ActiveWorkoutAction.AddSet(item.id)) },
-                    onEditRest = { onEditRest(item.id) },
+                    onEditRest = if (state.isRecording) null else { { onEditRest(item.id) } },
                     onAddNote = { onAction(ActiveWorkoutAction.ShowExerciseNote(item.id)) },
                     onReorder = {
                         focusManager.clearFocus()
@@ -502,6 +509,7 @@ private fun WorkoutList(
             item(key = "add", contentType = "add") {
                 AddExercises(
                     isEmpty = state.exercises.isEmpty(),
+                    isRecording = state.isRecording,
                     onAdd = {
                         // Otherwise focus returns to the last field when the sheet closes, and the keyboard with it.
                         focusManager.clearFocus()
@@ -515,20 +523,22 @@ private fun WorkoutList(
 
 /**
  * The top of the workout: what it is, and the numbers that say how it's going — time (FR-3.6),
- * volume and sets done — with the workout's note beneath (FR-3.9).
+ * volume and sets done — with the workout's note beneath (FR-3.9). A workout being recorded
+ * (FR-3.11) has no clock: it shows the day it's dated, and how much is filled in.
  */
 @Composable
 private fun WorkoutHeader(workout: Workout, state: ActiveWorkoutUiState, now: () -> Instant) {
-    val startedAt = timeOfDayText(workout.startedAt.atZone(state.zone).toLocalTime())
+    val started = workout.startedAt.atZone(state.zone)
+    val recording = state.isRecording
     Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.gutter)
             .padding(top = Spacing.xs, bottom = Spacing.md),
     ) {
-        // The accent marks a live workout; the label says so, so it isn't carried by colour.
+        // The accent marks a workout under way; the label says which kind, so it isn't carried by colour.
         Text(
-            text = stringResource(R.string.workout_in_progress),
+            text = stringResource(if (recording) R.string.workout_recording else R.string.workout_in_progress),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -540,15 +550,19 @@ private fun WorkoutHeader(workout: Workout, state: ActiveWorkoutUiState, now: ()
             modifier = Modifier.semantics { heading() },
         )
         Text(
-            text = stringResource(R.string.workout_started_at, startedAt),
+            text = if (recording) {
+                workoutDateText(started.toLocalDate(), state.today)
+            } else {
+                stringResource(R.string.workout_started_at, timeOfDayText(started.toLocalTime()))
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Spacing.lg))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            ElapsedStat(startedAt = workout.startedAt, now = now, modifier = Modifier.weight(1f))
+            if (!recording) ElapsedStat(startedAt = workout.startedAt, now = now, modifier = Modifier.weight(1f))
             VolumeStat(volumeKg = state.progress.volumeKg, weightUnit = state.weightUnit, modifier = Modifier.weight(1f))
-            SetsStat(progress = state.progress, modifier = Modifier.weight(1f))
+            SetsStat(progress = state.progress, isRecording = recording, modifier = Modifier.weight(1f))
         }
         state.workoutNote?.let { note ->
             Spacer(Modifier.height(Spacing.lg))
@@ -583,13 +597,14 @@ private fun VolumeStat(volumeKg: Double, weightUnit: WeightUnit, modifier: Modif
     )
 }
 
+/** Sets done of the total — or, while recording (FR-3.11), sets filled in of the total. */
 @Composable
-private fun SetsStat(progress: WorkoutProgress, modifier: Modifier = Modifier) {
+private fun SetsStat(progress: WorkoutProgress, isRecording: Boolean, modifier: Modifier = Modifier) {
     StatTile(
         label = stringResource(R.string.workout_stat_sets),
         value = stringResource(R.string.workout_sets_progress, progress.completedSets, progress.totalSets),
         spokenValue = pluralStringResource(
-            R.plurals.workout_sets_progress_spoken,
+            if (isRecording) R.plurals.workout_sets_filled_spoken else R.plurals.workout_sets_progress_spoken,
             progress.totalSets,
             progress.completedSets,
             progress.totalSets,
@@ -599,7 +614,7 @@ private fun SetsStat(progress: WorkoutProgress, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AddExercises(isEmpty: Boolean, onAdd: () -> Unit) {
+private fun AddExercises(isEmpty: Boolean, isRecording: Boolean, onAdd: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.gutter).padding(top = Spacing.xs)) {
         if (isEmpty) {
             Text(
@@ -609,7 +624,7 @@ private fun AddExercises(isEmpty: Boolean, onAdd: () -> Unit) {
             )
             Spacer(Modifier.height(Spacing.xxs))
             Text(
-                text = stringResource(R.string.workout_empty_body),
+                text = stringResource(if (isRecording) R.string.workout_empty_body_recorded else R.string.workout_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -667,10 +682,11 @@ private class LastRest {
     var value: RestTimer? = null
 }
 
+/** The workout's menu. Without [onDefaultRest] — while recording — there's no rest to set. */
 @Composable
 private fun WorkoutMenu(
     canReorder: Boolean,
-    onDefaultRest: () -> Unit,
+    onDefaultRest: (() -> Unit)?,
     onReorder: () -> Unit,
     onDiscard: () -> Unit,
 ) {
@@ -680,14 +696,16 @@ private fun WorkoutMenu(
             Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.workout_menu_default_rest)) },
-                leadingIcon = { Icon(Icons.Outlined.Timer, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    onDefaultRest()
-                },
-            )
+            if (onDefaultRest != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.workout_menu_default_rest)) },
+                    leadingIcon = { Icon(Icons.Outlined.Timer, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onDefaultRest()
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.workout_menu_reorder)) },
                 leadingIcon = { Icon(Icons.Outlined.SwapVert, contentDescription = null) },
@@ -712,19 +730,21 @@ private fun WorkoutMenu(
 /**
  * Asks before finishing only when finishing loses something (FR-3.8): with nothing done there's
  * nothing to save, so the choice is to keep going or discard; with sets left undone, it says
- * they won't be saved. With every set done it finishes straight away.
+ * they won't be saved. With every set done it finishes straight away. While recording (FR-3.11)
+ * "done" is "filled in", and the words say so.
  */
 @Composable
 private fun FinishDialog(
     progress: WorkoutProgress,
+    isRecording: Boolean,
     onFinish: () -> Unit,
     onDiscard: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     when {
         progress.completedSets == 0 -> ConfirmDialog(
-            title = stringResource(R.string.finish_nothing_title),
-            text = stringResource(R.string.finish_nothing_body),
+            title = stringResource(if (isRecording) R.string.finish_nothing_recorded_title else R.string.finish_nothing_title),
+            text = stringResource(if (isRecording) R.string.finish_nothing_recorded_body else R.string.finish_nothing_body),
             confirmLabel = stringResource(R.string.finish_nothing_discard),
             dismissLabel = stringResource(R.string.finish_dismiss),
             onConfirm = onDiscard,
@@ -733,7 +753,11 @@ private fun FinishDialog(
         )
         progress.incompleteSets > 0 -> ConfirmDialog(
             title = stringResource(R.string.finish_incomplete_title),
-            text = pluralStringResource(R.plurals.finish_incomplete_body, progress.incompleteSets, progress.incompleteSets),
+            text = pluralStringResource(
+                if (isRecording) R.plurals.finish_unfilled_body else R.plurals.finish_incomplete_body,
+                progress.incompleteSets,
+                progress.incompleteSets,
+            ),
             confirmLabel = stringResource(R.string.finish_confirm),
             dismissLabel = stringResource(R.string.finish_dismiss),
             onConfirm = onFinish,
@@ -817,6 +841,19 @@ private fun ActiveWorkoutEmptyPreview() {
     LiftBookTheme {
         ActiveWorkoutScreen(
             state = WorkoutPreviewData.state(workout = empty),
+            pickerQueryState = rememberTextFieldState(),
+            now = { WorkoutPreviewData.now },
+            onAction = {},
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ActiveWorkoutRecordingPreview() {
+    LiftBookTheme {
+        ActiveWorkoutScreen(
+            state = WorkoutPreviewData.state(workout = WorkoutPreviewData.recorded),
             pickerQueryState = rememberTextFieldState(),
             now = { WorkoutPreviewData.now },
             onAction = {},

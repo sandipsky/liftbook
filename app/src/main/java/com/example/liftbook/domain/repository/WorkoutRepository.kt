@@ -9,6 +9,7 @@ import com.example.liftbook.domain.model.StartWorkoutResult
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutEdits
 import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.model.WorkoutRevision
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -31,15 +32,16 @@ interface WorkoutRepository {
      * pre-filled with the routine's targets, and last time's values where the routine leaves one
      * blank (FR-2.3, FR-3.4). Only one workout can be in progress (FR-3.1), so if one already
      * is, nothing is started — unless it came from this same routine, in which case it is the
-     * one to resume.
+     * one to resume, whatever its mode. [mode] says whether it's logged as it happens or
+     * entered after the fact (FR-3.11).
      */
-    suspend fun startFromRoutine(routineId: String): StartWorkoutResult
+    suspend fun startFromRoutine(routineId: String, mode: WorkoutMode = WorkoutMode.LIVE): StartWorkoutResult
 
     /**
-     * Starts a workout with no exercises yet, called [name] (FR-3.1). Starts nothing while
-     * another workout is in progress.
+     * Starts a workout with no exercises yet, called [name] (FR-3.1), logged as [mode] says.
+     * Starts nothing while another workout is in progress.
      */
-    suspend fun startEmpty(name: String): StartWorkoutResult
+    suspend fun startEmpty(name: String, mode: WorkoutMode = WorkoutMode.LIVE): StartWorkoutResult
 
     /** Deletes the workout in progress, if [workoutId] is it. A finished workout is never touched. */
     suspend fun discardActiveWorkout(workoutId: String)
@@ -103,8 +105,9 @@ interface WorkoutRepository {
 
     /**
      * Finishes the workout in progress (FR-3.8). Sets not marked complete are dropped, and so
-     * are exercises left with no sets and no note. Returns false if [workoutId] isn't the
-     * workout in progress.
+     * are exercises left with no sets and no note. In a workout recorded after the fact
+     * (FR-3.11) nothing marks a set complete: every filled-in set is completed first, and only
+     * the blank ones are dropped. Returns false if [workoutId] isn't the workout in progress.
      */
     suspend fun finishWorkout(workoutId: String, finishedAt: Instant): Boolean
 

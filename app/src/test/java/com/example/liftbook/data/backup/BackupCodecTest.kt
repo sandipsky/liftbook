@@ -8,6 +8,7 @@ import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
+import com.example.liftbook.domain.model.WorkoutMode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -258,5 +259,19 @@ class BackupCodecTest {
         assertEquals(setOf("bench"), rows.sets.map { it.exerciseId }.toSet())
         assertEquals(backup.workouts, rows.toBackupFile(backup.exportedAt, null, backup.settings.toUserPreferences()).workouts)
         assertEquals(backup.schedules, rows.toBackupFile(backup.exportedAt, null, backup.settings.toUserPreferences()).schedules)
+    }
+
+    @Test
+    fun `a recorded workout keeps its mode through the rows, and anything else reads as live`() {
+        val recorded = backup.copy(workouts = listOf(backup.workouts[0].copy(mode = "RECORDED")))
+
+        val rows = recorded.toRows()
+
+        assertEquals(WorkoutMode.RECORDED, rows.workouts.single().mode)
+        assertEquals(recorded.workouts, rows.toBackupFile(backup.exportedAt, null, backup.settings.toUserPreferences()).workouts)
+        // Written only when it isn't the default, so an older file and a live workout read the same.
+        assertEquals(WorkoutMode.LIVE, backup.toRows().workouts.single().mode)
+        assertEquals(WorkoutMode.LIVE, backup.copy(workouts = listOf(backup.workouts[0].copy(mode = "PLANNED"))).toRows().workouts.single().mode)
+        assertFalse(BackupCodec.encode(backup).contains("\"mode\""))
     }
 }

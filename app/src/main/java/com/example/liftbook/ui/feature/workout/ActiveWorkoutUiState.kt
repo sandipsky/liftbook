@@ -11,11 +11,15 @@ import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutExercise
 import com.example.liftbook.domain.model.WorkoutSet
 import com.example.liftbook.ui.components.ExercisePickerUiState
+import java.time.LocalDate
 import java.time.ZoneId
 
 data class ActiveWorkoutUiState(
     val isLoading: Boolean = true,
-    /** Null once loaded means no workout is in progress. */
+    /**
+     * Null once loaded means no workout is in progress. A workout being recorded (FR-3.11) is
+     * read with its filled-in sets done, as finishing will save it.
+     */
     val workout: Workout? = null,
     /** The workout's exercises, in the order shown — which, mid-drag, is ahead of the database. */
     val exercises: List<ActiveExercise> = emptyList(),
@@ -28,11 +32,16 @@ data class ActiveWorkoutUiState(
     val weightUnit: WeightUnit = WeightUnit.KG,
     /** The zone the start time is shown in. */
     val zone: ZoneId = ZoneId.systemDefault(),
+    /** Today in [zone], to date a workout being recorded (FR-3.11). */
+    val today: LocalDate = LocalDate.of(1970, 1, 1),
     /** Exercises shown as a compact list to drag into a new order (FR-3.2). */
     val isReordering: Boolean = false,
     /** The exercise picker, while it's open (FR-3.2). */
     val picker: ExercisePickerUiState? = null,
-)
+) {
+    /** Being entered after the fact (FR-3.11): no clocks, no rest, nothing to mark done. */
+    val isRecording: Boolean get() = workout?.isRecorded == true
+}
 
 /** An exercise in the workout, with its sets ready to edit. */
 data class ActiveExercise(
@@ -105,7 +114,7 @@ sealed interface ActiveWorkoutAction {
 
     data class ChangeSetType(val setId: String, val setType: SetType) : ActiveWorkoutAction
 
-    /** Marks the set done — starting the rest timer — or, if it's done, not done. */
+    /** Marks the set done — starting the rest timer — or, if it's done, not done. Ignored while recording (FR-3.11). */
     data class ToggleSetDone(val setId: String) : ActiveWorkoutAction
 
     // Rest timer (FR-3.5)

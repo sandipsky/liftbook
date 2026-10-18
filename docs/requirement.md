@@ -51,6 +51,7 @@ This is the core screen; everything else exists to feed it or read from it.
 | FR-3.8 | Finish workout → summary screen: duration, total volume, completed sets, any new PRs. Discard requires confirmation. |
 | FR-3.9 | Optional free-text note per workout and per exercise. |
 | FR-3.10 | Set types: normal, warm-up, drop set, failure. Warm-up sets are excluded from volume and PR calculations. |
+| FR-3.11 | Record a workout after the fact. Starting — empty or from a routine — asks whether to start it (live: FR-3.5, 3.6 and marking sets complete apply) or record it: the same screen with no elapsed time, no rest timer and nothing to mark complete; a set counts once it's filled in, and blank sets are dropped on finish. A recorded workout keeps its date but shows no duration. |
 
 ## 4. History
 
@@ -108,7 +109,7 @@ Build logging end to end first; add analytics once logging feels solid.
 | --- | --- | --- |
 | Exercise library | FR-1.1 – 1.4 | FR-1.5 |
 | Routines | FR-2.1 – 2.3 | FR-2.4 |
-| Active workout | FR-3.1 – 3.9 | FR-3.10 |
+| Active workout | FR-3.1 – 3.9, 3.11 | FR-3.10 |
 | History | FR-4.1 – 4.3 | FR-4.4 |
 | Progress | — | FR-5.1 – 5.4 |
 | Settings & data | FR-6.1, 6.3, 6.5 | FR-6.2, 6.4 |

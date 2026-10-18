@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.workout
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshots.Snapshot
 import app.cash.turbine.test
+import com.example.liftbook.domain.calculator.WorkoutProgress
 import com.example.liftbook.domain.calculator.oneRepMax
 import com.example.liftbook.domain.model.Equipment
 import com.example.liftbook.domain.model.ExerciseType
@@ -14,6 +15,7 @@ import com.example.liftbook.domain.model.SetMetrics
 import com.example.liftbook.domain.model.SetTarget
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.SetValues
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRestTimerScheduler
 import com.example.liftbook.testing.FakeRoutineRepository
@@ -395,6 +397,52 @@ class ActiveWorkoutViewModelTest {
     }
 
     @Test
+    fun `a recorded workout counts a set once it's filled in, and marking done does nothing`() = runTest {
+        workouts.startFromRoutine("push", WorkoutMode.RECORDED)
+        val viewModel = activeWorkout()
+        runCurrent()
+
+        // Pre-filled from the routine, so every set already counts; nothing is marked done in the database.
+        val state = viewModel.uiState.value
+        assertTrue(state.isRecording)
+        assertEquals(WorkoutProgress(completedSets = 5, totalSets = 5, volumeKg = 100.0 * 5 * 3), state.progress)
+        assertTrue(workouts.active.value!!.exercises.flatMap { it.sets }.none { it.isCompleted })
+
+        // Clear a set's reps and it stops counting once the edit is saved.
+        viewModel.set(benchSet1).fields.reps.state.setTextAndPlaceCursorAtEnd("")
+        Snapshot.sendApplyNotifications()
+        advanceTimeBy(500)
+        assertEquals(4, viewModel.uiState.value.progress.completedSets)
+
+        viewModel.onAction(ActiveWorkoutAction.ToggleSetDone(benchSet2))
+
+        assertFalse(storedSet(benchSet2).isCompleted)
+        assertNull(workouts.active.value!!.rest)
+        assertNull(alerts.scheduledAt)
+    }
+
+    @Test
+    fun `finishing a recorded workout saves the sets filled in and drops the blank ones`() = runTest {
+        workouts.startFromRoutine("push", WorkoutMode.RECORDED)
+        val viewModel = activeWorkout()
+        runCurrent()
+        viewModel.set(benchSet1).fields.reps.state.setTextAndPlaceCursorAtEnd("")
+        Snapshot.sendApplyNotifications()
+        advanceTimeBy(500)
+
+        viewModel.events.test {
+            viewModel.onAction(ActiveWorkoutAction.Finish)
+            assertEquals(ActiveWorkoutEvent.Finished("workout-1"), awaitItem())
+        }
+
+        val done = workouts.finished.value.getValue("workout-1")
+        assertEquals(WorkoutMode.RECORDED, done.mode)
+        assertEquals(listOf(2, 2), done.exercises.map { it.sets.size })
+        assertTrue(done.exercises.flatMap { it.sets }.all { it.isCompleted && it.completedAt == now })
+        assertNull(alerts.scheduledAt)
+    }
+
+    @Test
     fun `a failed save says so`() = runTest {
         workouts.startFromRoutine("push")
         val viewModel = activeWorkout()
@@ -417,6 +465,16 @@ class ActiveWorkoutViewModelTest {
 
         // The fake starts workouts at the epoch.
         assertEquals(ActiveWorkoutBannerState("Push", Instant.EPOCH, rest = null), banner.activeWorkout.value)
+    }
+
+    @Test
+    fun `the banner knows a workout being recorded, which has no clock`() = runTest {
+        val banner = ActiveWorkoutBannerViewModel(workouts, clock)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { banner.activeWorkout.collect {} }
+
+        workouts.startFromRoutine("push", WorkoutMode.RECORDED)
+
+        assertEquals(ActiveWorkoutBannerState("Push", Instant.EPOCH, rest = null, mode = WorkoutMode.RECORDED), banner.activeWorkout.value)
     }
 
     private fun ActiveWorkoutViewModel.addExercises(vararg ids: String) {

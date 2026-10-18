@@ -13,6 +13,7 @@ import com.example.liftbook.domain.calculator.nextSetAfter
 import com.example.liftbook.domain.calculator.progress
 import com.example.liftbook.domain.calculator.recordSets
 import com.example.liftbook.domain.calculator.searchExercises
+import com.example.liftbook.domain.calculator.withRecordedSets
 import com.example.liftbook.domain.model.ExerciseFilter
 import com.example.liftbook.domain.model.LoggedSet
 import com.example.liftbook.domain.model.RestTimer
@@ -53,6 +54,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -224,6 +226,8 @@ class ActiveWorkoutViewModel @Inject constructor(
      */
     private suspend fun toggleDone(setId: String) {
         val workout = workout?.takeIf { it.isActive } ?: return
+        // A recorded workout has nothing to mark done (FR-3.11): a set counts once it's filled in.
+        if (workout.isRecorded) return
         val (exercise, set) = workout.findSet(setId) ?: return
         if (set.isCompleted) {
             saveEdits()
@@ -447,12 +451,16 @@ class ActiveWorkoutViewModel @Inject constructor(
                 defaultRestSeconds = preferences.defaultRestSeconds,
                 weightUnit = preferences.weightUnit,
                 zone = clock.zone,
+                today = LocalDate.now(clock),
             )
         }
+        // A workout being recorded (FR-3.11) is read with its filled-in sets done: that's what its
+        // progress and records count, and what finishing will save.
+        val shown = workout.withRecordedSets()
         val ordered = local.order?.let { order ->
-            workout.exercises.sortedBy { exercise -> order.indexOf(exercise.id).let { if (it < 0) Int.MAX_VALUE else it } }
-        } ?: workout.exercises
-        val records = workout.recordSets(previousSets)
+            shown.exercises.sortedBy { exercise -> order.indexOf(exercise.id).let { if (it < 0) Int.MAX_VALUE else it } }
+        } ?: shown.exercises
+        val records = shown.recordSets(previousSets)
         val exercises = ordered.map { exercise ->
             // Warm-ups aren't numbered (FR-3.10); every other set takes the next number.
             var working = 0
@@ -476,14 +484,15 @@ class ActiveWorkoutViewModel @Inject constructor(
         }
         return ActiveWorkoutUiState(
             isLoading = false,
-            workout = workout,
+            workout = shown,
             exercises = exercises,
             workoutNote = workoutNote?.state,
-            progress = workout.progress(),
-            rest = workout.rest,
+            progress = shown.progress(),
+            rest = shown.rest,
             defaultRestSeconds = preferences.defaultRestSeconds,
             weightUnit = preferences.weightUnit,
             zone = clock.zone,
+            today = LocalDate.now(clock),
             isReordering = local.isReordering,
             picker = picker,
         )

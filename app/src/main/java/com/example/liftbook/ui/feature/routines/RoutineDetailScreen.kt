@@ -75,6 +75,7 @@ import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.TopBarNavigation
 import com.example.liftbook.ui.components.WorkoutInProgressDialog
+import com.example.liftbook.ui.components.WorkoutModeSheet
 import com.example.liftbook.ui.components.relativeDayText
 import com.example.liftbook.ui.components.workoutDateText
 import com.example.liftbook.ui.theme.LiftBookTheme
@@ -160,6 +161,8 @@ fun RoutineDetailScreen(
     // The name moves into the top bar only once the headline has scrolled out of view.
     val headlineScrolledAway by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    // Start asks how to log it first (FR-3.11); the sheet is up while this is set.
+    var choosingMode by rememberSaveable { mutableStateOf(false) }
     val routine = state.routine
 
     Scaffold(
@@ -180,7 +183,7 @@ fun RoutineDetailScreen(
             if (routine != null && routine.exercises.isNotEmpty()) {
                 BottomActionBar(
                     text = stringResource(R.string.routine_detail_start),
-                    onClick = { onAction(RoutineDetailAction.Start) },
+                    onClick = { choosingMode = true },
                     enabled = !state.isStarting,
                 )
             }
@@ -250,6 +253,16 @@ fun RoutineDetailScreen(
         }
     }
 
+    if (choosingMode && routine != null) {
+        WorkoutModeSheet(
+            title = routine.name,
+            onPick = { mode ->
+                choosingMode = false
+                onAction(RoutineDetailAction.Start(mode))
+            },
+            onDismiss = { choosingMode = false },
+        )
+    }
     if (confirmDelete && routine != null) {
         ConfirmDialog(
             title = stringResource(R.string.routine_delete_title, routine.name),

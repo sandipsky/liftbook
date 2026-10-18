@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.routines
 import app.cash.turbine.test
 import com.example.liftbook.domain.model.UserPreferences
 import com.example.liftbook.domain.model.WeightUnit
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRoutineRepository
 import com.example.liftbook.testing.FakeSettingsRepository
@@ -69,7 +70,7 @@ class RoutineDetailViewModelTest {
         val viewModel = detail()
 
         viewModel.events.test {
-            viewModel.onAction(RoutineDetailAction.Start)
+            viewModel.onAction(RoutineDetailAction.Start(WorkoutMode.LIVE))
             assertEquals(RoutineDetailEvent.OpenWorkout, awaitItem())
         }
         assertEquals(listOf(push.id), workouts.started)
@@ -77,13 +78,24 @@ class RoutineDetailViewModelTest {
     }
 
     @Test
+    fun `recording starts a workout to type in`() = runTest {
+        val viewModel = detail()
+
+        viewModel.events.test {
+            viewModel.onAction(RoutineDetailAction.Start(WorkoutMode.RECORDED))
+            assertEquals(RoutineDetailEvent.OpenWorkout, awaitItem())
+        }
+        assertEquals(WorkoutMode.RECORDED, workouts.active.value?.mode)
+    }
+
+    @Test
     fun `starting the routine already in progress goes back to it`() = runTest {
         val viewModel = detail()
 
         viewModel.events.test {
-            viewModel.onAction(RoutineDetailAction.Start)
+            viewModel.onAction(RoutineDetailAction.Start(WorkoutMode.LIVE))
             awaitItem()
-            viewModel.onAction(RoutineDetailAction.Start)
+            viewModel.onAction(RoutineDetailAction.Start(WorkoutMode.LIVE))
             assertEquals(RoutineDetailEvent.OpenWorkout, awaitItem())
         }
         assertEquals(listOf(push.id), workouts.started)
@@ -95,7 +107,7 @@ class RoutineDetailViewModelTest {
         val viewModel = detail()
 
         viewModel.events.test {
-            viewModel.onAction(RoutineDetailAction.Start)
+            viewModel.onAction(RoutineDetailAction.Start(WorkoutMode.LIVE))
             assertEquals(RoutineDetailEvent.OtherWorkoutActive("Pull"), awaitItem())
         }
         assertEquals(listOf(pull.id), workouts.started)
@@ -107,7 +119,7 @@ class RoutineDetailViewModelTest {
         val viewModel = detail()
 
         viewModel.events.test {
-            viewModel.onAction(RoutineDetailAction.Start)
+            viewModel.onAction(RoutineDetailAction.Start(WorkoutMode.LIVE))
             assertEquals(RoutineDetailEvent.StartFailed, awaitItem())
         }
         assertFalse(viewModel.uiState.value.isStarting)

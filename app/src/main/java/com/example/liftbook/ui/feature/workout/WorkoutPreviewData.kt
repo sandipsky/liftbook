@@ -2,12 +2,14 @@ package com.example.liftbook.ui.feature.workout
 
 import androidx.compose.foundation.text.input.TextFieldState
 import com.example.liftbook.domain.calculator.progress
+import com.example.liftbook.domain.calculator.withRecordedSets
 import com.example.liftbook.domain.model.Exercise
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.domain.model.Workout
 import com.example.liftbook.domain.model.WorkoutExercise
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.model.WorkoutSet
 import com.example.liftbook.ui.feature.routines.RoutinePreviewData
 import java.time.Instant
@@ -77,6 +79,29 @@ internal object WorkoutPreviewData {
         rest = RestTimer(startedAt = now.minusSeconds(37), endsAt = now.plusSeconds(53)),
     )
 
+    /**
+     * The same session being recorded after the fact (FR-3.11): nothing marked done, no rest,
+     * read with its filled-in sets done as the screen reads it. The bench's last set is left blank.
+     */
+    val recorded: Workout = workout.copy(
+        name = "Legs",
+        mode = WorkoutMode.RECORDED,
+        rest = null,
+        exercises = workout.exercises.map { exercise ->
+            exercise.copy(
+                sets = exercise.sets.map { set ->
+                    val blank = set.id == "b4"
+                    set.copy(
+                        isCompleted = false,
+                        completedAt = null,
+                        weightKg = set.weightKg.takeUnless { blank },
+                        reps = set.reps.takeUnless { blank },
+                    )
+                },
+            )
+        },
+    ).withRecordedSets()
+
     /** The screen's state for [workout]. */
     fun state(
         workout: Workout = this.workout,
@@ -108,6 +133,7 @@ internal object WorkoutPreviewData {
         rest = workout.rest,
         weightUnit = unit,
         zone = zone,
+        today = RoutinePreviewData.today,
         isReordering = isReordering,
     )
 }

@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.history
 import com.example.liftbook.domain.calculator.byDay
 import com.example.liftbook.domain.calculator.totals
 import com.example.liftbook.domain.model.WorkoutListItem
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.ui.feature.routines.RoutinePreviewData
 import java.time.LocalDate
 import java.time.YearMonth
@@ -23,9 +24,10 @@ internal object HistoryPreviewData {
         volumeKg: Double,
         sets: Int,
         vararg exercises: String,
+        mode: WorkoutMode = WorkoutMode.LIVE,
     ): WorkoutListItem {
         val start = date.atTime(hour, 5).atZone(zone).toInstant()
-        return WorkoutListItem(id, name, start, start.plusSeconds(minutes * 60), volumeKg, sets, exercises.toList())
+        return WorkoutListItem(id, name, start, start.plusSeconds(minutes * 60), volumeKg, sets, exercises.toList(), mode)
     }
 
     private val push = arrayOf("Bench Press (Barbell)", "Overhead Press (Barbell)", "Chest Dip", "Triceps Pushdown (Cable)")
@@ -35,7 +37,7 @@ internal object HistoryPreviewData {
     /** Newest first, as the history lists them. */
     val workouts: List<WorkoutListItem> = listOf(
         workout("w9", "Push", today.minusDays(1), 18, 64, 8_420.0, 18, *push),
-        workout("w8", "Evening workout", today.minusDays(3), 19, 38, 0.0, 9, "Pull-Up", "Hanging Leg Raise", "Plank"),
+        workout("w8", "Evening workout", today.minusDays(3), 19, 38, 0.0, 9, "Pull-Up", "Hanging Leg Raise", "Plank", mode = WorkoutMode.RECORDED),
         workout("w7", "Legs", today.minusDays(4), 7, 71, 12_900.0, 16, *legs),
         workout("w6", "Pull", today.minusDays(6), 18, 58, 6_150.0, 17, *pull),
         workout("w5", "Push", today.minusDays(8), 18, 62, 8_060.0, 18, *push),

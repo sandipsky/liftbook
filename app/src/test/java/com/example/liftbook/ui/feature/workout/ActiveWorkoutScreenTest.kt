@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.workout
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
@@ -71,6 +72,43 @@ class ActiveWorkoutScreenTest {
         compose.onAllNodesWithContentDescription("Set 3 done")[0].performClick()
 
         assertEquals(listOf(ActiveWorkoutAction.ToggleSetDone("b3")), actions)
+    }
+
+    @Test
+    fun `every set row ends with a button that removes exactly that set`() {
+        show()
+
+        compose.onAllNodesWithContentDescription("Remove Set 3")[0].performClick()
+
+        assertEquals(listOf(ActiveWorkoutAction.RemoveSet("b3")), actions)
+    }
+
+    @Test
+    fun `recording shows no clock, no rest and no done toggles, and counts the sets filled in`() {
+        show(WorkoutPreviewData.state(workout = WorkoutPreviewData.recorded))
+
+        compose.onNodeWithText("Recording").assertIsDisplayed()
+        compose.onNodeWithText("Legs").assertIsDisplayed()
+        // 10 of the 11 sets hold values; the bench's last is blank. No time, and no rest bar.
+        compose.onNodeWithContentDescription("Sets, 10 of 11 sets filled in").assertIsDisplayed()
+        compose.onAllNodes(hasContentDescription("Time, ", substring = true)).assertCountEquals(0)
+        compose.onAllNodesWithText("Rest").assertCountEquals(0)
+        compose.onAllNodes(hasContentDescription(" done", substring = true)).assertCountEquals(0)
+        // Still every set can be removed.
+        compose.onAllNodesWithContentDescription("Remove Set 2")[0].performClick()
+
+        assertEquals(listOf(ActiveWorkoutAction.RemoveSet("b2")), actions)
+    }
+
+    @Test
+    fun `finishing a recording with blank sets says they won't be saved, then finishes`() {
+        show(WorkoutPreviewData.state(workout = WorkoutPreviewData.recorded))
+
+        compose.onNodeWithText("Finish").performClick()
+        compose.onNodeWithText("1 set isn’t filled in and won’t be saved.").assertIsDisplayed()
+        dialogButton("Finish").performClick()
+
+        assertEquals(listOf(ActiveWorkoutAction.Finish), actions)
     }
 
     @Test

@@ -8,6 +8,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import com.example.liftbook.data.local.entity.BodyWeightEntryEntity
 import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
+import com.example.liftbook.domain.model.WorkoutMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
@@ -123,6 +124,37 @@ class LiftBookDatabaseMigrationTest {
                 ),
             )
             assertEquals("Push", database.scheduleDao().getAll().single().routineName)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun `version 4 to 5 keeps every workout, each of them live`() = runTest {
+        createFromSchema(version = 4) { db ->
+            db.execSQL(
+                "INSERT INTO workouts (id, name, routineId, startedAt, finishedAt, note, restStartedAt, restEndsAt) " +
+                    "VALUES ('done', 'Push', NULL, 0, 3600000, 'Good', NULL, NULL)",
+            )
+            db.execSQL(
+                "INSERT INTO workouts (id, name, routineId, startedAt, finishedAt, note, restStartedAt, restEndsAt) " +
+                    "VALUES ('live', 'Pull', NULL, 7200000, NULL, NULL, 7500000, 7590000)",
+            )
+        }
+
+        val database = Room.databaseBuilder(context, LiftBookDatabase::class.java, name).allowMainThreadQueries().build()
+        try {
+            // Opening runs the migration and validates the migrated schema.
+            val done = database.workoutDao().getById("done")!!
+            assertEquals(WorkoutMode.LIVE, done.mode)
+            assertEquals("Good", done.note)
+            val active = database.workoutDao().observeActive().first()!!.workout
+            assertEquals("live", active.id)
+            assertEquals(WorkoutMode.LIVE, active.mode)
+            assertEquals(Instant.ofEpochMilli(7_590_000), active.restEndsAt)
+            // The new column takes a recorded workout (FR-3.11).
+            database.workoutDao().update(done.copy(mode = WorkoutMode.RECORDED))
+            assertEquals(WorkoutMode.RECORDED, database.workoutDao().getById("done")?.mode)
         } finally {
             database.close()
         }

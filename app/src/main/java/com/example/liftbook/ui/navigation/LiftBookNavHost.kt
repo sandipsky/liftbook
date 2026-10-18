@@ -374,6 +374,7 @@ private fun MainBottomBar(
                         now = now,
                         onClick = onResumeWorkout,
                         modifier = Modifier.padding(start = Spacing.gutter, end = Spacing.gutter, top = Spacing.xs),
+                        mode = workout.mode,
                     )
                 }
             }

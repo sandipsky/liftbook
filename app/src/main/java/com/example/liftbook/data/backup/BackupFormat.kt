@@ -127,6 +127,11 @@ internal data class BackupWorkout(
     val finishedAt: Instant,
     val note: String? = null,
     val exercises: List<BackupWorkoutExercise> = emptyList(),
+    /**
+     * A [WorkoutMode] name (FR-3.11), written only when it isn't the default: missing or unknown
+     * reads as live, as every workout was before the field existed.
+     */
+    val mode: String? = null,
 )
 
 @Serializable

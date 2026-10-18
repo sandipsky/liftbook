@@ -30,12 +30,13 @@ fun List<WorkoutListItem>.byDay(zone: ZoneId): Map<LocalDate, List<WorkoutListIt
 /** What a run of workouts adds up to, such as a month's under the calendar. */
 data class WorkoutTotals(
     val workouts: Int,
+    /** Workouts recorded after the fact (FR-3.11) have no duration, and add nothing here. */
     val durationSeconds: Long,
     /** Kilograms; working sets only (FR-3.10). */
     val volumeKg: Double,
 )
 
 fun List<WorkoutListItem>.totals(): WorkoutTotals =
-    WorkoutTotals(workouts = size, durationSeconds = sumOf { it.durationSeconds }, volumeKg = sumOf { it.volumeKg })
+    WorkoutTotals(workouts = size, durationSeconds = sumOf { it.durationSeconds ?: 0L }, volumeKg = sumOf { it.volumeKg })
 
 private const val DAYS_PER_WEEK = 7

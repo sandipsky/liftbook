@@ -3,6 +3,20 @@ package com.example.liftbook.domain.model
 import java.time.Duration
 import java.time.Instant
 
+/**
+ * How a workout is logged (FR-3.1, FR-3.11). Persisted by name — never rename a constant.
+ */
+enum class WorkoutMode {
+    /** As it happens: elapsed time, a rest timer, and each set marked done as it's finished. */
+    LIVE,
+
+    /**
+     * After the fact: the sets are typed in, with no clocks and nothing to mark done — a set
+     * counts once it's filled in. Its times say when it was entered, not how long it took.
+     */
+    RECORDED,
+}
+
 /** A workout: finished, or — while [finishedAt] is null — the one in progress (FR-3.1). */
 data class Workout(
     val id: String,
@@ -16,8 +30,12 @@ data class Workout(
     val note: String? = null,
     /** The rest period running now, if any (FR-3.5). Only an active workout has one. */
     val rest: RestTimer? = null,
+    val mode: WorkoutMode = WorkoutMode.LIVE,
 ) {
     val isActive: Boolean get() = finishedAt == null
+
+    /** Entered after the fact (FR-3.11): it has a date, but no duration worth showing. */
+    val isRecorded: Boolean get() = mode == WorkoutMode.RECORDED
 }
 
 data class WorkoutExercise(

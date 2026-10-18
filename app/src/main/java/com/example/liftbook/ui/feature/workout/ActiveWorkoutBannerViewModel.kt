@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftbook.core.time.ticks
 import com.example.liftbook.domain.model.RestTimer
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.domain.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +24,7 @@ data class ActiveWorkoutBannerState(
     val name: String,
     val startedAt: Instant,
     val rest: RestTimer?,
+    val mode: WorkoutMode = WorkoutMode.LIVE,
 )
 
 /**
@@ -38,14 +40,17 @@ class ActiveWorkoutBannerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val activeWorkout: StateFlow<ActiveWorkoutBannerState?> = workoutRepository.observeActiveWorkout()
-        .map { workout -> workout?.let { ActiveWorkoutBannerState(it.name, it.startedAt, it.rest) } }
+        .map { workout -> workout?.let { ActiveWorkoutBannerState(it.name, it.startedAt, it.rest, it.mode) } }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Now, once a second while there's a workout to show the time of; still otherwise. */
+    /**
+     * Now, once a second while there's a workout to show the time of; still otherwise — and
+     * still for a workout being recorded (FR-3.11), which has no clock.
+     */
     val now: StateFlow<Instant> = activeWorkout
-        .map { it != null }
+        .map { it != null && it.mode == WorkoutMode.LIVE }
         .distinctUntilChanged()
-        .flatMapLatest { active -> if (active) clock.ticks() else flowOf(clock.instant()) }
+        .flatMapLatest { ticking -> if (ticking) clock.ticks() else flowOf(clock.instant()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), clock.instant())
 }

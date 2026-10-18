@@ -18,6 +18,7 @@ import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
+import com.example.liftbook.domain.model.WorkoutMode
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalTime
@@ -186,6 +187,8 @@ private fun WorkoutEntity.toBackup(exercises: List<BackupWorkoutExercise>) = Bac
     finishedAt = checkNotNull(finishedAt) { "Only finished workouts are backed up" },
     note = note,
     exercises = exercises,
+    // Live is the default and goes unsaid, so a file of live workouts reads as it always has.
+    mode = mode.takeIf { it != WorkoutMode.LIVE }?.name,
 )
 
 // A finished workout has no rest running, so the rest timer's columns stay empty.
@@ -196,6 +199,7 @@ private fun BackupWorkout.toEntity() = WorkoutEntity(
     startedAt = startedAt,
     finishedAt = finishedAt,
     note = note,
+    mode = enumOrNull<WorkoutMode>(mode) ?: WorkoutMode.LIVE,
 )
 
 private fun WorkoutExerciseEntity.toBackup(sets: List<BackupSet>) = BackupWorkoutExercise(

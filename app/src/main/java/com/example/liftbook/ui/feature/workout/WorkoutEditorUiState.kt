@@ -15,6 +15,8 @@ data class WorkoutEditorUiState(
     val isUnavailable: Boolean = false,
     /** When it started and ended, as edited so far. */
     val span: WorkoutSpan? = null,
+    /** Entered after the fact (FR-3.11): it has a date to edit, but its times aren't worth showing. */
+    val isRecorded: Boolean = false,
     /** In order. Every set is done, so the rows have no done toggle. */
     val exercises: List<ActiveExercise> = emptyList(),
     /** The workout's note (FR-3.9); null until the workout has loaded. */

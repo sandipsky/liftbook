@@ -8,8 +8,11 @@ import com.example.liftbook.core.format.formatDuration
 import com.example.liftbook.domain.calculator.TimeOfDay
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.WeightUnit
+import com.example.liftbook.domain.model.Workout
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 
 /** The name an empty workout gets from when it starts: "Evening workout". */
@@ -19,6 +22,19 @@ fun TimeOfDay.workoutNameRes(): Int = when (this) {
     TimeOfDay.AFTERNOON -> R.string.workout_name_afternoon
     TimeOfDay.EVENING -> R.string.workout_name_evening
     TimeOfDay.NIGHT -> R.string.workout_name_night
+}
+
+/**
+ * When a finished workout was, under its name: "Thu, 25 Sep · 18:30–19:32". A workout recorded
+ * after the fact (FR-3.11) has a date but no times worth showing: "Thu, 25 Sep · Recorded".
+ */
+@Composable
+fun workoutWhenText(workout: Workout, zone: ZoneId, today: LocalDate): String {
+    val start = workout.startedAt.atZone(zone)
+    val date = workoutDateText(start.toLocalDate(), today)
+    if (workout.isRecorded) return stringResource(R.string.summary_when_recorded, date, stringResource(R.string.history_recorded))
+    val end = (workout.finishedAt ?: workout.startedAt).atZone(zone)
+    return stringResource(R.string.summary_when, date, timeOfDayText(start.toLocalTime()), timeOfDayText(end.toLocalTime()))
 }
 
 /** How long a workout has run at [now], as a clock reading: "32:14", "1:05:30". */

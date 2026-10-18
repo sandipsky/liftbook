@@ -18,8 +18,11 @@ data class WorkoutListItem(
     val completedSets: Int,
     /** In workout order. */
     val exerciseNames: List<String>,
+    val mode: WorkoutMode = WorkoutMode.LIVE,
 ) {
-    val durationSeconds: Long get() = Duration.between(startedAt, finishedAt).seconds.coerceAtLeast(0)
+    /** Null for a workout recorded after the fact (FR-3.11): its times say when it was entered. */
+    val durationSeconds: Long? get() =
+        if (mode == WorkoutMode.RECORDED) null else Duration.between(startedAt, finishedAt).seconds.coerceAtLeast(0)
 }
 
 /**

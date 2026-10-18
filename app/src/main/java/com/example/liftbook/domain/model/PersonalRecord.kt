@@ -28,7 +28,8 @@ data class ExerciseRecords(
 
 /** What a finished workout adds up to (FR-3.8). */
 data class WorkoutSummary(
-    val durationSeconds: Long,
+    /** Null for a workout recorded after the fact (FR-3.11), which has no duration to show. */
+    val durationSeconds: Long?,
     /** Kilograms; working sets only (FR-3.10). */
     val volumeKg: Double,
     val completedSets: Int,

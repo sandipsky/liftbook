@@ -1,6 +1,7 @@
 package com.example.liftbook.ui.feature.home
 
 import com.example.liftbook.domain.model.Routine
+import com.example.liftbook.domain.model.WorkoutMode
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -18,11 +19,11 @@ sealed interface HomeAction {
 
     data object CreateRoutine : HomeAction
 
-    /** Start a workout from this routine, straight from the list (FR-2.3). */
-    data class StartRoutine(val routineId: String) : HomeAction
+    /** Start a workout from this routine, straight from the list (FR-2.3), logged as [mode] says (FR-3.11). */
+    data class StartRoutine(val routineId: String, val mode: WorkoutMode) : HomeAction
 
-    /** Start a workout with nothing in it yet, called [name] (FR-3.1). */
-    data class StartEmpty(val name: String) : HomeAction
+    /** Start a workout with nothing in it yet, called [name] (FR-3.1), logged as [mode] says (FR-3.11). */
+    data class StartEmpty(val name: String, val mode: WorkoutMode) : HomeAction
 
     /** Go to the workout already in progress, from the "still in progress" dialog. */
     data object ResumeWorkout : HomeAction

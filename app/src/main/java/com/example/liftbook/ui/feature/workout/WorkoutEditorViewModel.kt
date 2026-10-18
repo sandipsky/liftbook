@@ -191,6 +191,7 @@ class WorkoutEditorViewModel @AssistedInject constructor(
         val loaded = Form(
             isLoading = false,
             span = WorkoutSpan(workout.startedAt, finishedAt),
+            isRecorded = workout.isRecorded,
             exercises = exercises,
             openedNotes = exercises.filter { it.note != null }.mapTo(HashSet()) { it.id },
         )
@@ -362,6 +363,7 @@ class WorkoutEditorViewModel @AssistedInject constructor(
         return WorkoutEditorUiState(
             isLoading = false,
             span = form.span,
+            isRecorded = form.isRecorded,
             exercises = exercises,
             workoutNote = workoutNote.state,
             weightUnit = weightUnit,
@@ -411,6 +413,8 @@ class WorkoutEditorViewModel @AssistedInject constructor(
         val isLoading: Boolean = true,
         val isUnavailable: Boolean = false,
         val span: WorkoutSpan? = null,
+        /** Entered after the fact (FR-3.11): the date is edited, the times aren't shown. */
+        val isRecorded: Boolean = false,
         /** In order, with their sets. Values are in [setFields]; the sets hold what they opened with. */
         val exercises: List<WorkoutExercise> = emptyList(),
         val isReordering: Boolean = false,

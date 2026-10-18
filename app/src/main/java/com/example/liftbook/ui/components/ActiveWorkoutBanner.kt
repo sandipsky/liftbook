@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.example.liftbook.R
 import com.example.liftbook.core.format.formatDuration
 import com.example.liftbook.domain.model.RestTimer
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.LiftBookPreview
 import com.example.liftbook.ui.theme.Spacing
@@ -36,9 +38,10 @@ import java.time.Instant
 /**
  * The workout in progress, docked above the bottom bar on every top-level screen: its name and
  * how long it's been going (FR-3.6) — or, while resting, how long the rest has left — one tap
- * from resuming. It takes the accent's soft container tone, the same as a routine's start
- * button, because a workout under way is a progress moment. This is what keeps an unfinished
- * workout from ever being lost from view (FR-3.1).
+ * from resuming. A workout being recorded after the fact (FR-3.11) has no clock, so it just
+ * says it's unfinished. It takes the accent's soft container tone, the same as a routine's
+ * start button, because a workout under way is a progress moment. This is what keeps an
+ * unfinished workout from ever being lost from view (FR-3.1).
  *
  * [now] is read here rather than above, so the once-a-second tick redraws only the banner.
  */
@@ -50,14 +53,16 @@ fun ActiveWorkoutBanner(
     now: () -> Instant,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    mode: WorkoutMode = WorkoutMode.LIVE,
 ) {
     val colors = MaterialTheme.colorScheme
-    val at = now()
-    val resting = rest != null && !rest.isOver(at)
-    val status = if (resting) {
-        stringResource(R.string.banner_resting, formatDuration(restSecondsLeft(rest, at)))
-    } else {
-        stringResource(R.string.banner_elapsed, elapsedText(startedAt, at))
+    val recording = mode == WorkoutMode.RECORDED
+    val at = if (recording) startedAt else now()
+    val resting = !recording && rest != null && !rest.isOver(at)
+    val status = when {
+        recording -> stringResource(R.string.banner_recording)
+        resting -> stringResource(R.string.banner_resting, formatDuration(restSecondsLeft(rest, at)))
+        else -> stringResource(R.string.banner_elapsed, elapsedText(startedAt, at))
     }
     Row(
         modifier = modifier
@@ -71,7 +76,11 @@ fun ActiveWorkoutBanner(
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         Icon(
-            if (resting) Icons.Outlined.Timer else Icons.Outlined.FitnessCenter,
+            when {
+                recording -> Icons.Outlined.EditNote
+                resting -> Icons.Outlined.Timer
+                else -> Icons.Outlined.FitnessCenter
+            },
             contentDescription = null,
             tint = colors.onPrimaryContainer,
             modifier = Modifier.size(IconSize.inline),
@@ -122,6 +131,14 @@ private fun ActiveWorkoutBannerPreview() {
                 rest = RestTimer(now.minusSeconds(10), now.plusSeconds(80)),
                 now = { now },
                 onClick = {},
+            )
+            ActiveWorkoutBanner(
+                name = "Legs",
+                startedAt = Instant.parse("2026-09-25T18:30:00Z"),
+                rest = null,
+                now = { now },
+                onClick = {},
+                mode = WorkoutMode.RECORDED,
             )
         }
     }

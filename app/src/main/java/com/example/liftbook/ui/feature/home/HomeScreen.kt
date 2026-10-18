@@ -26,11 +26,11 @@ import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -39,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -55,6 +56,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +72,7 @@ import com.example.liftbook.ui.components.SectionHeader
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
 import com.example.liftbook.ui.components.WorkoutInProgressDialog
+import com.example.liftbook.ui.components.WorkoutModeSheet
 import com.example.liftbook.ui.components.routineMetaText
 import com.example.liftbook.ui.components.workoutNameRes
 import com.example.liftbook.ui.feature.routines.RoutinePreviewData
@@ -125,6 +129,11 @@ fun HomeRoute(
     )
 }
 
+/**
+ * The Workout tab: the routines, each a tap from starting, and a floating button for a workout
+ * with nothing planned (FR-3.1). Either way, starting first asks how to log it — as it happens
+ * or after the fact (FR-3.11) — in a sheet that rises where the thumb already is.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -138,11 +147,9 @@ fun HomeScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val resources = LocalResources.current
     val content = if (state.isLoading) HomeContent.Loading else HomeContent.Loaded
-    val startEmpty = {
-        // Named for when it starts, in the user's language: "Evening workout".
-        val name = resources.getString(TimeOfDay.of(LocalTime.now(state.zone)).workoutNameRes())
-        onAction(HomeAction.StartEmpty(name))
-    }
+    // What's about to start, while the mode sheet asks how: a routine's id, or "" for an empty workout.
+    var starting by rememberSaveable { mutableStateOf<String?>(null) }
+    val startingRoutine = starting?.takeIf { it.isNotEmpty() }?.let { id -> state.routines.firstOrNull { it.id == id } }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -156,12 +163,6 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    // An empty list carries its own create action.
-                    if (content == HomeContent.Loaded && state.routines.isNotEmpty()) {
-                        IconButton(onClick = { onAction(HomeAction.CreateRoutine) }) {
-                            Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.home_new_routine))
-                        }
-                    }
                     IconButton(onClick = { onAction(HomeAction.OpenSettings) }) {
                         Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_open))
                     }
@@ -172,6 +173,20 @@ fun HomeScreen(
                 ),
                 scrollBehavior = scrollBehavior,
             )
+        },
+        floatingActionButton = {
+            // The one accent-filled control on the screen: a new workout is what this tab is for.
+            FloatingActionButton(
+                onClick = { starting = "" },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.home_new_workout),
+                    modifier = Modifier.size(IconSize.action),
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
@@ -188,16 +203,11 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         top = padding.calculateTopPadding() + Spacing.xs,
-                        bottom = padding.calculateBottomPadding() + Spacing.lg,
+                        // Room for the floating button, so the last row can scroll clear of it.
+                        bottom = padding.calculateBottomPadding() + FabClearance,
                     ),
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
-                    item(key = "startEmpty", contentType = "startEmpty") {
-                        StartEmptyButton(
-                            onClick = startEmpty,
-                            modifier = Modifier.padding(horizontal = Spacing.gutter).padding(bottom = Spacing.lg),
-                        )
-                    }
                     if (state.routines.isEmpty()) {
                         item(key = "empty", contentType = "empty") {
                             EmptyState(
@@ -206,7 +216,7 @@ fun HomeScreen(
                                 body = stringResource(R.string.home_empty_body),
                                 modifier = Modifier.padding(top = Spacing.xs),
                                 action = {
-                                    Button(onClick = { onAction(HomeAction.CreateRoutine) }) {
+                                    FilledTonalButton(onClick = { onAction(HomeAction.CreateRoutine) }) {
                                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(IconSize.inline))
                                         Spacer(Modifier.size(Spacing.xs))
                                         Text(stringResource(R.string.home_empty_action))
@@ -229,13 +239,48 @@ fun HomeScreen(
                             today = state.today,
                             zone = state.zone,
                             onOpen = { onAction(HomeAction.OpenRoutine(routine.id)) },
-                            onStart = { onAction(HomeAction.StartRoutine(routine.id)) },
+                            onStart = { starting = routine.id },
                             modifier = Modifier.animateItem(),
                         )
+                    }
+                    if (state.routines.isNotEmpty()) {
+                        // The list ends with its own add action, as a set table ends with Add set.
+                        item(key = "newRoutine", contentType = "newRoutine") {
+                            NewRoutineButton(
+                                onClick = { onAction(HomeAction.CreateRoutine) },
+                                modifier = Modifier.padding(horizontal = Spacing.gutter).padding(top = Spacing.xxs),
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    when {
+        starting == null -> Unit
+        starting == "" -> WorkoutModeSheet(
+            title = stringResource(R.string.home_new_workout),
+            onPick = { mode ->
+                starting = null
+                // Named for when it starts, in the user's language: "Evening workout".
+                val name = resources.getString(TimeOfDay.of(LocalTime.now(state.zone)).workoutNameRes())
+                onAction(HomeAction.StartEmpty(name, mode))
+            },
+            onDismiss = { starting = null },
+        )
+        startingRoutine != null -> WorkoutModeSheet(
+            title = startingRoutine.name,
+            onPick = { mode ->
+                starting = null
+                onAction(HomeAction.StartRoutine(startingRoutine.id, mode))
+            },
+            onDismiss = { starting = null },
+        )
+    }
+    // The routine went away while the sheet was up: nothing left to start.
+    LaunchedEffect(starting, startingRoutine) {
+        if (!starting.isNullOrEmpty() && startingRoutine == null) starting = null
     }
 
     otherWorkoutName?.let { name ->
@@ -250,31 +295,9 @@ fun HomeScreen(
 private enum class HomeContent { Loading, Loaded }
 
 /**
- * Starts a workout with nothing planned (FR-3.1): exercises are added as they're done. It
- * carries the accent's soft tone, like each routine's start button — starting is what this tab
- * is for — and sits first, where it's found without scrolling.
- */
-@Composable
-private fun StartEmptyButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth().heightIn(min = StartEmptyHeight),
-        shape = MaterialTheme.shapes.large,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
-    ) {
-        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(IconSize.action))
-        Spacer(Modifier.size(Spacing.xs))
-        Text(stringResource(R.string.home_start_empty), style = MaterialTheme.typography.titleMedium)
-    }
-}
-
-/**
  * A routine in the list: its name, what's in it, and when it was last done (FR-2.4) — enough to
- * pick today's. The card opens the routine; the play button starts it in one tap (FR-2.3), and
- * carries the accent's soft tone because starting is what this screen is for.
+ * pick today's. The card opens the routine; the play button starts it (FR-2.3), and carries the
+ * accent's soft tone because starting is what this screen is for.
  */
 @Composable
 private fun RoutineCard(
@@ -342,6 +365,27 @@ private fun RoutineCard(
     }
 }
 
+/** Creates a routine (FR-2.1): a quiet row under the list, since the floating button is for workouts. */
+@Composable
+private fun NewRoutineButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().heightIn(min = NewRoutineHeight),
+        shape = MaterialTheme.shapes.large,
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+    ) {
+        val description = stringResource(R.string.home_new_routine)
+        Row(
+            Modifier.clearAndSetSemantics { contentDescription = description },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(IconSize.inline))
+            Spacer(Modifier.size(Spacing.xs))
+            Text(stringResource(R.string.home_new_routine), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
 @Composable
 private fun HomeSkeleton(modifier: Modifier = Modifier) {
     SkeletonContainer(
@@ -352,7 +396,6 @@ private fun HomeSkeleton(modifier: Modifier = Modifier) {
             Modifier.padding(horizontal = Spacing.gutter).padding(top = Spacing.xs),
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
-            SkeletonBlock(Modifier.padding(bottom = Spacing.lg).fillMaxWidth().height(StartEmptyHeight), MaterialTheme.shapes.large)
             SkeletonBlock(Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(0.3f).height(Spacing.md))
             repeat(3) {
                 SkeletonBlock(Modifier.fillMaxWidth().height(SkeletonCardHeight), MaterialTheme.shapes.large)
@@ -362,8 +405,11 @@ private fun HomeSkeleton(modifier: Modifier = Modifier) {
 }
 
 private val StartButtonSize = 48.dp
-private val StartEmptyHeight = 56.dp
+private val NewRoutineHeight = 48.dp
 private val SkeletonCardHeight = Spacing.xxl + Spacing.xxl + Spacing.md
+
+/** The floating button's height plus its margins, kept clear below the list. */
+private val FabClearance = Spacing.xxl + Spacing.xl
 
 private const val CONTENT_FADE_MILLIS = 200
 
