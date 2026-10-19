@@ -79,6 +79,9 @@ class ActiveWorkoutViewModel @Inject constructor(
     /** The exercise picker's search field. */
     val pickerQueryState = TextFieldState()
 
+    /** The picker's muscle and equipment filters; its search text is [pickerQueryState]. */
+    private val pickerFilter = MutableStateFlow(ExerciseFilter())
+
     /**
      * Now, once a second while the screen is showing, for its clocks: elapsed time (FR-3.6) and
      * the rest countdown (FR-3.5). Kept out of [uiState] so the tick redraws only the clocks.
@@ -117,11 +120,17 @@ class ActiveWorkoutViewModel @Inject constructor(
             if (picked == null) {
                 flowOf(null)
             } else {
-                combine(exerciseRepository.observeLibrary(), snapshotFlow { pickerQueryState.text.toString() }) { library, query ->
+                combine(
+                    exerciseRepository.observeLibrary(),
+                    snapshotFlow { pickerQueryState.text.toString() },
+                    pickerFilter,
+                ) { library, query, filter ->
                     ExercisePickerUiState(
-                        results = searchExercises(library, ExerciseFilter(query = query)),
+                        results = searchExercises(library, filter.copy(query = query)),
                         selectedIds = picked,
                         query = query.trim(),
+                        muscleFilter = filter.muscleGroup,
+                        equipmentFilter = filter.equipment,
                         libraryCount = library.size,
                     )
                 }
@@ -178,6 +187,7 @@ class ActiveWorkoutViewModel @Inject constructor(
 
             ActiveWorkoutAction.OpenPicker -> {
                 pickerQueryState.clearText()
+                pickerFilter.value = ExerciseFilter()
                 local.update { it.copy(picked = emptyList()) }
             }
             ActiveWorkoutAction.ClosePicker -> local.update { it.copy(picked = null) }
@@ -186,6 +196,9 @@ class ActiveWorkoutViewModel @Inject constructor(
                 current.copy(picked = if (action.exerciseId in picked) picked - action.exerciseId else picked + action.exerciseId)
             }
             ActiveWorkoutAction.AddPicked -> addPicked()
+            is ActiveWorkoutAction.FilterPickerByMuscle -> pickerFilter.update { it.copy(muscleGroup = action.muscleGroup) }
+            is ActiveWorkoutAction.FilterPickerByEquipment -> pickerFilter.update { it.copy(equipment = action.equipment) }
+            ActiveWorkoutAction.ClearPickerFilters -> pickerFilter.value = ExerciseFilter()
             is ActiveWorkoutAction.RemoveExercise -> write { workoutRepository.removeExercise(action.workoutExerciseId) }
             ActiveWorkoutAction.StartReordering -> local.update { current ->
                 current.copy(isReordering = true, order = workout?.exercises?.map { it.id })

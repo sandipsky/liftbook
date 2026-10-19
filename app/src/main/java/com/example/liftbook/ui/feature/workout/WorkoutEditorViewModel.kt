@@ -74,6 +74,9 @@ class WorkoutEditorViewModel @AssistedInject constructor(
     /** The exercise picker's search field. */
     val pickerQueryState = TextFieldState()
 
+    /** The picker's muscle and equipment filters; its search text is [pickerQueryState]. */
+    private val pickerFilter = MutableStateFlow(ExerciseFilter())
+
     private val form = MutableStateFlow(Form())
 
     private val _events = Channel<WorkoutEditorEvent>(Channel.BUFFERED)
@@ -101,11 +104,17 @@ class WorkoutEditorViewModel @AssistedInject constructor(
             if (picked == null) {
                 flowOf(null)
             } else {
-                combine(exerciseRepository.observeLibrary(), snapshotFlow { pickerQueryState.text.toString() }) { library, query ->
+                combine(
+                    exerciseRepository.observeLibrary(),
+                    snapshotFlow { pickerQueryState.text.toString() },
+                    pickerFilter,
+                ) { library, query, filter ->
                     ExercisePickerUiState(
-                        results = searchExercises(library, ExerciseFilter(query = query)),
+                        results = searchExercises(library, filter.copy(query = query)),
                         selectedIds = picked,
                         query = query.trim(),
+                        muscleFilter = filter.muscleGroup,
+                        equipmentFilter = filter.equipment,
                         libraryCount = library.size,
                     )
                 }
@@ -136,6 +145,7 @@ class WorkoutEditorViewModel @AssistedInject constructor(
 
             WorkoutEditorAction.OpenPicker -> {
                 pickerQueryState.clearText()
+                pickerFilter.value = ExerciseFilter()
                 form.update { it.copy(picked = emptyList()) }
             }
             WorkoutEditorAction.ClosePicker -> form.update { it.copy(picked = null) }
@@ -144,6 +154,9 @@ class WorkoutEditorViewModel @AssistedInject constructor(
                 current.copy(picked = if (action.exerciseId in picked) picked - action.exerciseId else picked + action.exerciseId)
             }
             WorkoutEditorAction.AddPicked -> addPicked()
+            is WorkoutEditorAction.FilterPickerByMuscle -> pickerFilter.update { it.copy(muscleGroup = action.muscleGroup) }
+            is WorkoutEditorAction.FilterPickerByEquipment -> pickerFilter.update { it.copy(equipment = action.equipment) }
+            WorkoutEditorAction.ClearPickerFilters -> pickerFilter.value = ExerciseFilter()
             is WorkoutEditorAction.RemoveExercise -> removeExercise(action.workoutExerciseId)
             WorkoutEditorAction.StartReordering -> form.update { it.copy(isReordering = true) }
             WorkoutEditorAction.StopReordering -> form.update { it.copy(isReordering = false) }

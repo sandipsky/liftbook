@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -29,7 +28,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
@@ -47,7 +45,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -56,45 +53,38 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.liftbook.R
-import com.example.liftbook.domain.model.Equipment
 import com.example.liftbook.domain.model.MuscleGroup
-import com.example.liftbook.ui.components.ChoiceChip
-import com.example.liftbook.ui.components.DropdownFilterChip
 import com.example.liftbook.ui.components.EmptyState
+import com.example.liftbook.ui.components.ExerciseFilterKind
+import com.example.liftbook.ui.components.ExerciseFilterRow
+import com.example.liftbook.ui.components.ExerciseFilterSheet
 import com.example.liftbook.ui.components.SearchField
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
-import com.example.liftbook.ui.components.labelRes
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.LiftBookTheme
 import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
-import kotlinx.coroutines.launch
 
 @Composable
 fun ExerciseLibraryRoute(
@@ -151,7 +141,7 @@ fun ExerciseLibraryScreen(
     val fabExpanded by remember {
         derivedStateOf { listState.firstVisibleItemIndex == 0 || listState.lastScrolledBackward }
     }
-    var openFilter by rememberSaveable { mutableStateOf<LibraryFilter?>(null) }
+    var openFilter by rememberSaveable { mutableStateOf<ExerciseFilterKind?>(null) }
     val content = when {
         state.isLoading -> LibraryContent.Loading
         state.resultCount == 0 -> LibraryContent.Empty
@@ -205,13 +195,18 @@ fun ExerciseLibraryScreen(
     }
 
     openFilter?.let { filter ->
-        FilterSheet(filter = filter, state = state, onAction = onAction, onDismiss = { openFilter = null })
+        ExerciseFilterSheet(
+            kind = filter,
+            muscleFilter = state.muscleFilter,
+            equipmentFilter = state.equipmentFilter,
+            onFilterByMuscle = { onAction(ExerciseLibraryAction.FilterByMuscle(it)) },
+            onFilterByEquipment = { onAction(ExerciseLibraryAction.FilterByEquipment(it)) },
+            onDismiss = { openFilter = null },
+        )
     }
 }
 
 private enum class LibraryContent { Loading, Empty, Results }
-
-private enum class LibraryFilter { Muscle, Equipment }
 
 /**
  * Title, search and filters stay pinned together. The title shares the bar with its action
@@ -223,7 +218,7 @@ private fun LibraryHeader(
     state: ExerciseLibraryUiState,
     queryState: TextFieldState,
     isScrolled: Boolean,
-    onOpenFilter: (LibraryFilter) -> Unit,
+    onOpenFilter: (ExerciseFilterKind) -> Unit,
     onOpenArchived: () -> Unit,
 ) {
     // One surface-tone shift for the whole header once the list scrolls under it.
@@ -256,8 +251,11 @@ private fun LibraryHeader(
             },
             modifier = Modifier.padding(horizontal = Spacing.gutter),
         )
-        FilterRow(
-            state = state,
+        ExerciseFilterRow(
+            muscleFilter = state.muscleFilter,
+            equipmentFilter = state.equipmentFilter,
+            resultCount = state.resultCount,
+            showCount = state.isFiltering && !state.isLoading,
             onOpenFilter = onOpenFilter,
             modifier = Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.xs),
         )
@@ -279,46 +277,6 @@ private fun LibraryMenu(onOpenArchived: () -> Unit) {
                     expanded = false
                     onOpenArchived()
                 },
-            )
-        }
-    }
-}
-
-@Composable
-private fun FilterRow(
-    state: ExerciseLibraryUiState,
-    onOpenFilter: (LibraryFilter) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        DropdownFilterChip(
-            label = state.muscleFilter?.let { stringResource(it.labelRes()) }
-                ?: stringResource(R.string.exercises_filter_muscle),
-            active = state.muscleFilter != null,
-            onClick = { onOpenFilter(LibraryFilter.Muscle) },
-        )
-        DropdownFilterChip(
-            label = state.equipmentFilter?.let { stringResource(it.labelRes()) }
-                ?: stringResource(R.string.exercises_filter_equipment),
-            active = state.equipmentFilter != null,
-            onClick = { onOpenFilter(LibraryFilter.Equipment) },
-        )
-        Spacer(Modifier.weight(1f))
-        AnimatedVisibility(
-            visible = state.isFiltering && !state.isLoading,
-            enter = fadeIn(tween(CONTENT_FADE_MILLIS)),
-            exit = fadeOut(tween(CONTENT_FADE_MILLIS)),
-        ) {
-            Text(
-                text = pluralStringResource(R.plurals.exercises_result_count, state.resultCount, state.resultCount),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                // Announces the count as the user types, so TalkBack users know a search worked.
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
     }
@@ -444,73 +402,6 @@ private val SkeletonWidths = listOf(
     0.58f to 0.3f, 0.46f to 0.36f, 0.66f to 0.28f, 0.52f to 0.34f,
     0.4f to 0.26f, 0.62f to 0.32f, 0.5f to 0.3f, 0.56f to 0.38f,
 )
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FilterSheet(
-    filter: LibraryFilter,
-    state: ExerciseLibraryUiState,
-    onAction: (ExerciseLibraryAction) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    val choose: (ExerciseLibraryAction) -> Unit = { action ->
-        onAction(action)
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-    }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(Modifier.padding(start = Spacing.gutter, end = Spacing.gutter, bottom = Spacing.lg)) {
-            Text(
-                text = stringResource(
-                    if (filter == LibraryFilter.Muscle) R.string.exercises_filter_muscle_title else R.string.exercises_filter_equipment_title,
-                ),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() },
-            )
-            Spacer(Modifier.height(Spacing.md))
-            FlowRow(
-                modifier = Modifier.selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                when (filter) {
-                    LibraryFilter.Muscle -> {
-                        ChoiceChip(
-                            selected = state.muscleFilter == null,
-                            onClick = { choose(ExerciseLibraryAction.FilterByMuscle(null)) },
-                            label = stringResource(R.string.exercises_filter_any_muscle),
-                        )
-                        MuscleGroup.entries.forEach { muscle ->
-                            ChoiceChip(
-                                selected = state.muscleFilter == muscle,
-                                onClick = { choose(ExerciseLibraryAction.FilterByMuscle(muscle)) },
-                                label = stringResource(muscle.labelRes()),
-                            )
-                        }
-                    }
-                    LibraryFilter.Equipment -> {
-                        ChoiceChip(
-                            selected = state.equipmentFilter == null,
-                            onClick = { choose(ExerciseLibraryAction.FilterByEquipment(null)) },
-                            label = stringResource(R.string.exercises_filter_any_equipment),
-                        )
-                        Equipment.entries.forEach { equipment ->
-                            ChoiceChip(
-                                selected = state.equipmentFilter == equipment,
-                                onClick = { choose(ExerciseLibraryAction.FilterByEquipment(equipment)) },
-                                label = stringResource(equipment.labelRes()),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 /** Keeps the last row clear of the floating action button: FAB height plus a margin. */
 private val FabClearance = 56.dp + Spacing.xl

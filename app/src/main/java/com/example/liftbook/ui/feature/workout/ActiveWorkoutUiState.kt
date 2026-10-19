@@ -2,6 +2,8 @@ package com.example.liftbook.ui.feature.workout
 
 import androidx.compose.foundation.text.input.TextFieldState
 import com.example.liftbook.domain.calculator.WorkoutProgress
+import com.example.liftbook.domain.model.Equipment
+import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.SetType
@@ -96,6 +98,13 @@ sealed interface ActiveWorkoutAction {
     data class TogglePicked(val exerciseId: String) : ActiveWorkoutAction
 
     data object AddPicked : ActiveWorkoutAction
+
+    /** Narrows the picker to one muscle group, or any with null (FR-1.4). */
+    data class FilterPickerByMuscle(val muscleGroup: MuscleGroup?) : ActiveWorkoutAction
+
+    data class FilterPickerByEquipment(val equipment: Equipment?) : ActiveWorkoutAction
+
+    data object ClearPickerFilters : ActiveWorkoutAction
 
     data class RemoveExercise(val workoutExerciseId: String) : ActiveWorkoutAction
 

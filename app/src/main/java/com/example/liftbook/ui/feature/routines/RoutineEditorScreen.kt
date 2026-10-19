@@ -206,12 +206,12 @@ fun RoutineEditorScreen(
 
     state.picker?.let { picker ->
         ExercisePickerSheet(
-            results = picker.results,
-            selectedIds = picker.selectedIds,
-            query = picker.query,
+            state = picker,
             queryState = pickerQueryState,
-            libraryCount = picker.libraryCount,
             onToggle = { onAction(RoutineEditorAction.TogglePicked(it)) },
+            onFilterByMuscle = { onAction(RoutineEditorAction.FilterPickerByMuscle(it)) },
+            onFilterByEquipment = { onAction(RoutineEditorAction.FilterPickerByEquipment(it)) },
+            onClearFilters = { onAction(RoutineEditorAction.ClearPickerFilters) },
             onConfirm = { onAction(RoutineEditorAction.AddPicked) },
             onDismiss = { onAction(RoutineEditorAction.ClosePicker) },
         )

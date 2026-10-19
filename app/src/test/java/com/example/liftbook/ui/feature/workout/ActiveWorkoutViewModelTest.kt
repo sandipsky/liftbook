@@ -333,6 +333,29 @@ class ActiveWorkoutViewModelTest {
     }
 
     @Test
+    fun `the picker filters by muscle and equipment, and reopening clears them`() = runTest {
+        workouts.startEmpty("Evening workout")
+        val viewModel = activeWorkout()
+        viewModel.onAction(ActiveWorkoutAction.OpenPicker)
+
+        viewModel.onAction(ActiveWorkoutAction.FilterPickerByMuscle(MuscleGroup.BACK))
+        assertEquals(listOf(pullUp), viewModel.uiState.value.picker?.results)
+        viewModel.onAction(ActiveWorkoutAction.FilterPickerByEquipment(Equipment.BARBELL))
+        assertTrue(viewModel.uiState.value.picker!!.results.isEmpty())
+        viewModel.onAction(ActiveWorkoutAction.ClearPickerFilters)
+        assertEquals(listOf(bench, pullUp), viewModel.uiState.value.picker?.results)
+
+        viewModel.onAction(ActiveWorkoutAction.FilterPickerByEquipment(Equipment.NONE))
+        viewModel.onAction(ActiveWorkoutAction.ClosePicker)
+        viewModel.onAction(ActiveWorkoutAction.OpenPicker)
+
+        val picker = viewModel.uiState.value.picker!!
+        assertNull(picker.muscleFilter)
+        assertNull(picker.equipmentFilter)
+        assertEquals(listOf(bench, pullUp), picker.results)
+    }
+
+    @Test
     fun `an exercise can be removed`() = runTest {
         workouts.startFromRoutine("push")
         val viewModel = activeWorkout()

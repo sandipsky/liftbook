@@ -1,7 +1,9 @@
 package com.example.liftbook.ui.feature.routines
 
 import com.example.liftbook.domain.calculator.RoutineNameError
+import com.example.liftbook.domain.model.Equipment
 import com.example.liftbook.domain.model.Exercise
+import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.ExercisePickerUiState
 
@@ -40,6 +42,13 @@ sealed interface RoutineEditorAction {
 
     /** Adds the picked exercises, in the order they were picked, with default targets. */
     data object AddPicked : RoutineEditorAction
+
+    /** Narrows the picker to one muscle group, or any with null (FR-1.4). */
+    data class FilterPickerByMuscle(val muscleGroup: MuscleGroup?) : RoutineEditorAction
+
+    data class FilterPickerByEquipment(val equipment: Equipment?) : RoutineEditorAction
+
+    data object ClearPickerFilters : RoutineEditorAction
 
     /** Moves the exercise at [from] to [to]; both are positions in the exercise list (FR-2.2). */
     data class MoveExercise(val from: Int, val to: Int) : RoutineEditorAction

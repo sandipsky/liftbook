@@ -545,7 +545,7 @@ RootNavHost
 │   └── ExerciseLibrary                search + muscle/equipment filters (FR-1.4)
 │
 ├── ActiveWorkout                      FULL SCREEN, no bottom bar (FR-3.x)
-│   └── ExercisePicker                 bottom sheet, returns a selection (FR-3.2)
+│   └── ExercisePicker                 search + filters (FR-1.4), returns a selection (FR-3.2)
 │
 ├── WorkoutSummary(workoutId)          FR-3.8
 ├── WorkoutDetail(workoutId)           view / edit a past workout (FR-4.2)
@@ -768,7 +768,8 @@ observed list in memory on every keystroke, well under a millisecond. That allow
 `LIKE` can't express: words in any order, "pullup" = "Pull-Up", plurals, accents, gym shorthand
 (`db`, `rdl`, `ohp`), and results ranked by relevance. It is a pure function with unit tests, and
 a debounce would only add latency. NFR-2's paging concern is history, which is paged. The exercise
-picker in the routine editor uses the same search.
+picker (routine editor, active workout and record mode) uses the same search, and the same
+muscle and equipment filters through the shared `ExerciseFilterRow` / `ExerciseFilterSheet`.
 
 *The routine editor writes nothing until Save*, unlike the active workout: a routine is a plan,
 and closing the editor should discard the edit as a whole. Each exercise's target is a set of
@@ -903,9 +904,11 @@ these are what stop each screen being re-invented:
 
 *As built so far:* `ActiveWorkoutBanner` · `BottomActionBar` (the primary action pinned above the
 keyboard) · `ChoiceChip` / `DropdownFilterChip` · `ConfirmDialog` · `EmptyState` ·
-`ExercisePickerSheet` · `Fact` (a header's labelled value) · `LiftBookTopBar` · `NumberField` ·
-`PrimaryActionButton` · `ReorderableList` · `SearchField` · `SectionHeader` · `SetMetricsText` /
-`SetTargetText` · `SkeletonContainer` / `SkeletonBlock` · `WorkoutInProgressDialog`. `NumberField`
+`ExerciseFilterRow` / `ExerciseFilterSheet` (the muscle and equipment filters, shared by the
+library and the picker) · `ExercisePickerSheet` · `Fact` (a header's labelled value) ·
+`LiftBookTopBar` · `NumberField` · `PrimaryActionButton` · `ReorderableList` · `SearchField` ·
+`SectionHeader` · `SetMetricsText` / `SetTargetText` · `SkeletonContainer` / `SkeletonBlock` ·
+`WorkoutInProgressDialog`. `NumberField`
 covers `WeightField` / `RepsField` in one: whole, decimal (either "." or ",") and duration kinds.
 A duration is typed as digits that fill from the right, microwave-style, so "130" is 1:30 with no
 colon to find on a number pad.

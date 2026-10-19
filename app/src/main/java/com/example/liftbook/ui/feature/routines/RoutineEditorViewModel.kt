@@ -63,6 +63,9 @@ class RoutineEditorViewModel @AssistedInject constructor(
     /** The exercise picker's search field. */
     val pickerQueryState = TextFieldState()
 
+    /** The picker's muscle and equipment filters; its search text is [pickerQueryState]. */
+    private val pickerFilter = MutableStateFlow(ExerciseFilter())
+
     private val form = MutableStateFlow(
         if (routineId == null) Form(saved = Snapshot(name = "", exercises = emptyList())) else Form(isLoading = true),
     )
@@ -83,11 +86,17 @@ class RoutineEditorViewModel @AssistedInject constructor(
             if (picked == null) {
                 flowOf(null)
             } else {
-                combine(exerciseRepository.observeLibrary(), snapshotFlow { pickerQueryState.text.toString() }) { library, query ->
+                combine(
+                    exerciseRepository.observeLibrary(),
+                    snapshotFlow { pickerQueryState.text.toString() },
+                    pickerFilter,
+                ) { library, query, filter ->
                     ExercisePickerUiState(
-                        results = searchExercises(library, ExerciseFilter(query = query)),
+                        results = searchExercises(library, filter.copy(query = query)),
                         selectedIds = picked,
                         query = query.trim(),
+                        muscleFilter = filter.muscleGroup,
+                        equipmentFilter = filter.equipment,
                         libraryCount = library.size,
                     )
                 }
@@ -143,6 +152,7 @@ class RoutineEditorViewModel @AssistedInject constructor(
         when (action) {
             RoutineEditorAction.OpenPicker -> {
                 pickerQueryState.clearText()
+                pickerFilter.value = ExerciseFilter()
                 form.update { it.copy(picked = emptyList()) }
             }
             RoutineEditorAction.ClosePicker -> form.update { it.copy(picked = null) }
@@ -151,6 +161,9 @@ class RoutineEditorViewModel @AssistedInject constructor(
                 current.copy(picked = if (action.exerciseId in picked) picked - action.exerciseId else picked + action.exerciseId)
             }
             RoutineEditorAction.AddPicked -> addPicked()
+            is RoutineEditorAction.FilterPickerByMuscle -> pickerFilter.update { it.copy(muscleGroup = action.muscleGroup) }
+            is RoutineEditorAction.FilterPickerByEquipment -> pickerFilter.update { it.copy(equipment = action.equipment) }
+            RoutineEditorAction.ClearPickerFilters -> pickerFilter.value = ExerciseFilter()
             is RoutineEditorAction.MoveExercise -> form.update { current ->
                 val items = current.items
                 if (action.from !in items.indices || action.to !in items.indices || action.from == action.to) {

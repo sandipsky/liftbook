@@ -14,8 +14,11 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.Workout
+import com.example.liftbook.testing.exercise
+import com.example.liftbook.ui.components.ExercisePickerUiState
 import com.example.liftbook.ui.theme.LiftBookTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -189,6 +192,17 @@ class ActiveWorkoutScreenTest {
         compose.onNodeWithText("Add exercises").performClick()
 
         assertEquals(listOf(ActiveWorkoutAction.OpenPicker), actions)
+    }
+
+    @Test
+    fun `the picker's filters open their choices, and a choice asks for that filter`() {
+        val picker = ExercisePickerUiState(results = listOf(exercise("Bench Press (Barbell)"), exercise("Pull-Up")), libraryCount = 2)
+        show(WorkoutPreviewData.state().copy(picker = picker))
+
+        compose.onNodeWithText("Muscle").performClick()
+        compose.onNodeWithText("Chest").performClick()
+
+        assertEquals(listOf(ActiveWorkoutAction.FilterPickerByMuscle(MuscleGroup.CHEST)), actions)
     }
 
     @Test

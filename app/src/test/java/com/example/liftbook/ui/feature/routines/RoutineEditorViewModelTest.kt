@@ -122,10 +122,26 @@ class RoutineEditorViewModelTest {
     }
 
     @Test
+    fun `the picker filters by muscle and equipment`() = runTest {
+        val viewModel = editor()
+        viewModel.onAction(RoutineEditorAction.OpenPicker)
+
+        viewModel.onAction(RoutineEditorAction.FilterPickerByMuscle(MuscleGroup.BACK))
+        assertEquals(listOf(pullUp.id), viewModel.uiState.value.picker!!.results.map { it.id })
+        viewModel.onAction(RoutineEditorAction.FilterPickerByEquipment(Equipment.CARDIO_MACHINE))
+        assertTrue(viewModel.uiState.value.picker!!.results.isEmpty())
+        viewModel.onAction(RoutineEditorAction.FilterPickerByMuscle(null))
+        assertEquals(listOf(rowing.id), viewModel.uiState.value.picker!!.results.map { it.id })
+        viewModel.onAction(RoutineEditorAction.ClearPickerFilters)
+        assertEquals(3, viewModel.uiState.value.picker!!.results.size)
+    }
+
+    @Test
     fun `reopening the picker starts afresh`() = runTest {
         val viewModel = editor()
         viewModel.onAction(RoutineEditorAction.OpenPicker)
         viewModel.pickerQueryState.type("bench")
+        viewModel.onAction(RoutineEditorAction.FilterPickerByMuscle(MuscleGroup.CHEST))
         viewModel.onAction(RoutineEditorAction.TogglePicked(bench.id))
         viewModel.onAction(RoutineEditorAction.ClosePicker)
 
@@ -133,6 +149,7 @@ class RoutineEditorViewModelTest {
 
         val picker = viewModel.uiState.value.picker!!
         assertEquals("", picker.query)
+        assertNull(picker.muscleFilter)
         assertTrue(picker.selectedIds.isEmpty())
         assertEquals(3, picker.results.size)
     }

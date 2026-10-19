@@ -187,6 +187,20 @@ class WorkoutEditorViewModelTest {
     }
 
     @Test
+    fun `the picker filters by muscle and equipment`() = runTest {
+        workouts.addFinished(push)
+        val viewModel = editor()
+        viewModel.onAction(WorkoutEditorAction.OpenPicker)
+
+        viewModel.onAction(WorkoutEditorAction.FilterPickerByEquipment(Equipment.BARBELL))
+        assertEquals(listOf(bench.id, squat.id), viewModel.uiState.value.picker!!.results.map { it.id })
+        viewModel.onAction(WorkoutEditorAction.FilterPickerByMuscle(MuscleGroup.QUADS))
+        assertEquals(listOf(squat.id), viewModel.uiState.value.picker!!.results.map { it.id })
+        viewModel.onAction(WorkoutEditorAction.ClearPickerFilters)
+        assertEquals(3, viewModel.uiState.value.picker!!.results.size)
+    }
+
+    @Test
     fun `sets and exercises can be added, removed and reordered`() = runTest {
         workouts.addFinished(push)
         exercises.setSessions(

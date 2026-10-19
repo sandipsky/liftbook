@@ -338,12 +338,12 @@ fun ActiveWorkoutScreen(
 
     state.picker?.let { picker ->
         ExercisePickerSheet(
-            results = picker.results,
-            selectedIds = picker.selectedIds,
-            query = picker.query,
+            state = picker,
             queryState = pickerQueryState,
-            libraryCount = picker.libraryCount,
             onToggle = { onAction(ActiveWorkoutAction.TogglePicked(it)) },
+            onFilterByMuscle = { onAction(ActiveWorkoutAction.FilterPickerByMuscle(it)) },
+            onFilterByEquipment = { onAction(ActiveWorkoutAction.FilterPickerByEquipment(it)) },
+            onClearFilters = { onAction(ActiveWorkoutAction.ClearPickerFilters) },
             onConfirm = { onAction(ActiveWorkoutAction.AddPicked) },
             onDismiss = { onAction(ActiveWorkoutAction.ClosePicker) },
         )
