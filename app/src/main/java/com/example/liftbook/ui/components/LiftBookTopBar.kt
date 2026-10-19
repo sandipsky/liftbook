@@ -32,6 +32,9 @@ enum class TopBarNavigation {
 
     /** Dismiss a screen that edits something — leaving means not saving. */
     Close,
+
+    /** Nothing to go back to: the screen is the root, as the first launch's sign-in page is. */
+    None,
 }
 
 /**
@@ -74,16 +77,19 @@ fun LiftBookTopBar(
         },
         modifier = modifier,
         navigationIcon = {
-            IconButton(onClick = onNavigationClick) {
-                when (navigation) {
-                    TopBarNavigation.Back -> Icon(
-                        Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = stringResource(R.string.action_back),
-                    )
-                    TopBarNavigation.Close -> Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = stringResource(R.string.action_close),
-                    )
+            if (navigation != TopBarNavigation.None) {
+                IconButton(onClick = onNavigationClick) {
+                    when (navigation) {
+                        TopBarNavigation.Back -> Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
+                        TopBarNavigation.Close -> Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.action_close),
+                        )
+                        TopBarNavigation.None -> Unit
+                    }
                 }
             }
         },

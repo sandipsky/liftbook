@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import com.example.liftbook.data.preferences.SettingsKeys
+import com.example.liftbook.data.preferences.hasSeenWelcome
 import com.example.liftbook.data.preferences.isLeadMinutes
 import com.example.liftbook.data.preferences.isSnoozeMinutes
 import com.example.liftbook.data.preferences.toUserPreferences
@@ -56,5 +57,14 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setSnoozeMinutes(minutes: Int) {
         require(isSnoozeMinutes(minutes)) { "A snooze has to put the reminder off, by less than a day" }
         dataStore.edit { it[SettingsKeys.snoozeMinutes] = minutes }
+    }
+
+    override val hasSeenWelcome: Flow<Boolean> = dataStore.data
+        .catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }
+        .map { it.hasSeenWelcome }
+        .distinctUntilChanged()
+
+    override suspend fun markWelcomeSeen() {
+        dataStore.edit { it[SettingsKeys.welcomeSeen] = true }
     }
 }

@@ -23,4 +23,9 @@ interface SettingsRepository {
 
     /** How long Snooze puts a reminder off (FR-7.4). */
     suspend fun setSnoozeMinutes(minutes: Int)
+
+    /** Whether the first-launch sign-in page has been passed, by signing in or continuing as a guest (FR-8.8). */
+    val hasSeenWelcome: Flow<Boolean>
+
+    suspend fun markWelcomeSeen()
 }

@@ -48,6 +48,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.liftbook.ui.components.ActiveWorkoutBanner
 import com.example.liftbook.ui.components.WorkoutInProgressDialog
+import com.example.liftbook.ui.feature.account.AccountRoute
+import com.example.liftbook.ui.feature.account.AccountViewModel
+import com.example.liftbook.ui.feature.account.ChangePasswordRoute
+import com.example.liftbook.ui.feature.account.SignInRoute
+import com.example.liftbook.ui.feature.account.SignUpRoute
 import com.example.liftbook.ui.feature.exercises.ArchivedExercisesRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseDetailRoute
 import com.example.liftbook.ui.feature.exercises.ExerciseEditorRoute
@@ -86,6 +91,8 @@ import java.time.Instant
 fun LiftBookNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
+    /** Home, or the first launch's sign-in page (FR-8.8); decided once, by MainViewModel. */
+    startDestination: Route = Route.Home,
     bannerViewModel: ActiveWorkoutBannerViewModel = hiltViewModel(),
     /** The activity's own instance, which MainActivity hands each reminder that opens the app. */
     scheduledViewModel: ScheduledWorkoutViewModel = hiltViewModel(),
@@ -112,7 +119,7 @@ fun LiftBookNavHost(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Route.Home,
+            startDestination = startDestination,
             modifier = Modifier
                 .padding(padding)
                 .consumeWindowInsets(padding),
@@ -269,6 +276,7 @@ fun LiftBookNavHost(
                     onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
                     onOpenReminders = { entry.ifResumed { navController.navigate(Route.Reminders) } },
                     onOpenDataManagement = { entry.ifResumed { navController.navigate(Route.DataManagement) } },
+                    onOpenAccount = { entry.ifResumed { navController.navigate(Route.Account) } },
                 )
             }
             composable<Route.DataManagement> { entry ->
@@ -287,6 +295,54 @@ fun LiftBookNavHost(
                     scheduleId = route.scheduleId,
                     onClose = { entry.ifResumed { navController.navigateUp() } },
                     onDone = { entry.ifResumed { navController.navigateUp() } },
+                )
+            }
+            composable<Route.Welcome> { entry ->
+                SignInRoute(
+                    onNavigateUp = {},
+                    onCreateAccount = { entry.ifResumed { navController.navigate(Route.SignUp) } },
+                    onSignedIn = { navController.enterSignedIn() },
+                    onContinueAsGuest = {
+                        entry.ifResumed { navController.navigate(Route.Home) { popUpTo<Route.Welcome> { inclusive = true } } }
+                    },
+                )
+            }
+            composable<Route.Account> { entry ->
+                AccountRoute(
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onSignIn = { entry.ifResumed { navController.navigate(Route.SignIn) } },
+                    onCreateAccount = { entry.ifResumed { navController.navigate(Route.SignUp) } },
+                    onChangePassword = { entry.ifResumed { navController.navigate(Route.ChangePassword) } },
+                )
+            }
+            composable<Route.SignIn> { entry ->
+                SignInRoute(
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onCreateAccount = { entry.ifResumed { navController.navigate(Route.SignUp) } },
+                    // Signed in, back to the account page, which settles whose data the phone holds (FR-8.6).
+                    onSignedIn = { navController.popBackStack<Route.Account>(inclusive = false) },
+                )
+            }
+            composable<Route.SignUp> { entry ->
+                SignUpRoute(
+                    onNavigateUp = { entry.ifResumed { navController.navigateUp() } },
+                    onSignIn = {
+                        entry.ifResumed {
+                            if (!navController.popBackStack<Route.SignIn>(inclusive = false)) navController.navigate(Route.SignIn)
+                        }
+                    },
+                    // From the account page, back to it; from the first launch, into the app.
+                    onSignedIn = { if (!navController.popBackStack<Route.Account>(inclusive = false)) navController.enterSignedIn() },
+                )
+            }
+            composable<Route.ChangePassword> { entry ->
+                ChangePasswordRoute(
+                    onClose = { entry.ifResumed { navController.navigateUp() } },
+                    onChanged = {
+                        // Hand back that it worked, so the account page can say so where the user lands.
+                        navController.previousBackStackEntry?.savedStateHandle?.set(AccountViewModel.PASSWORD_CHANGED, true)
+                        entry.ifResumed { navController.popBackStack() }
+                    },
                 )
             }
         }
@@ -402,6 +458,15 @@ private fun <T : Any> rememberLastNonNull(value: T?): T? {
 
 private class LastValue<T : Any> {
     var value: T? = null
+}
+
+/**
+ * Signed in from the first launch's page (FR-8.8): Home underneath, then the account page, which
+ * settles whose data the phone holds (FR-8.6) and shows the backup.
+ */
+private fun NavHostController.enterSignedIn() {
+    navigate(Route.Home) { popUpTo<Route.Welcome> { inclusive = true } }
+    navigate(Route.Account)
 }
 
 /** Tabs keep their own back stacks and state, as the Material navigation bar pattern expects. */

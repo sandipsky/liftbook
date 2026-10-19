@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.example.liftbook.domain.model.CloudState
 import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.ScheduleDraft
 import com.example.liftbook.domain.model.ThemeMode
@@ -31,6 +32,16 @@ internal object SettingsKeys {
 
     /** When the reminder alarm is set to go off (FR-7.6). Not a setting either: it's the alarm's own bookkeeping. */
     val reminderAlarmAt = longPreferencesKey("reminderAlarmAt")
+
+    /** The cloud backup's bookkeeping (FR-8.5, FR-8.6): whose data this phone holds, when it last went up, whether it changed since. */
+    val cloudOwnerAccountId = stringPreferencesKey("cloudOwnerAccountId")
+    val cloudLastBackupAt = longPreferencesKey("cloudLastBackupAt")
+    val cloudBackupPending = booleanPreferencesKey("cloudBackupPending")
+    /** Whether backups follow changes on their own (FR-8.7); absent means yes. */
+    val cloudAutoBackup = booleanPreferencesKey("cloudAutoBackup")
+
+    /** The first-launch sign-in page has been passed (FR-8.8). */
+    val welcomeSeen = booleanPreferencesKey("welcomeSeen")
 }
 
 /**
@@ -66,6 +77,17 @@ internal fun isSnoozeMinutes(minutes: Int): Boolean = minutes in 1..ScheduleDraf
 
 internal val Preferences.lastExportedAt: Instant?
     get() = this[SettingsKeys.lastExportedAt]?.let(Instant::ofEpochMilli)
+
+internal val Preferences.hasSeenWelcome: Boolean
+    get() = this[SettingsKeys.welcomeSeen] ?: false
+
+internal val Preferences.cloudState: CloudState
+    get() = CloudState(
+        ownerAccountId = this[SettingsKeys.cloudOwnerAccountId],
+        lastBackupAt = this[SettingsKeys.cloudLastBackupAt]?.let(Instant::ofEpochMilli),
+        backupPending = this[SettingsKeys.cloudBackupPending] ?: false,
+        autoBackup = this[SettingsKeys.cloudAutoBackup] ?: true,
+    )
 
 internal inline fun <reified T : Enum<T>> enumOrNull(stored: String?): T? =
     stored?.let { name -> enumValues<T>().firstOrNull { it.name == name } }

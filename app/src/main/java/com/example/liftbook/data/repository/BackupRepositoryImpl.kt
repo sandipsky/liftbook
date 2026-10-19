@@ -20,13 +20,16 @@ import com.example.liftbook.data.local.dao.BackupDao
 import com.example.liftbook.data.local.seed.ExerciseSeed
 import com.example.liftbook.data.mapper.toDomain
 import com.example.liftbook.data.preferences.SettingsKeys
+import com.example.liftbook.data.preferences.cloudState
 import com.example.liftbook.data.preferences.lastExportedAt
 import com.example.liftbook.data.preferences.setBackedUpSettings
 import com.example.liftbook.data.preferences.toUserPreferences
 import com.example.liftbook.di.IoDispatcher
 import com.example.liftbook.domain.model.BackupException
 import com.example.liftbook.domain.model.BackupProblem
+import com.example.liftbook.domain.model.BackupSnapshot
 import com.example.liftbook.domain.model.BackupSummary
+import com.example.liftbook.domain.model.CloudState
 import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.model.DocumentUri
 import com.example.liftbook.domain.model.ImportMode
@@ -35,6 +38,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -45,10 +49,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Export, import and clearing (FR-6.3–6.5). Every change to the database is one transaction, so
- * an import that fails leaves this phone exactly as it was. Settings live in DataStore and are
- * written after the database, which is what matters most. The schedule changes with the rest, so
- * the caller brings the reminders in step afterwards (FR-7.6).
+ * Export, import and clearing (FR-6.3–6.5), and the same backup held in memory for the cloud
+ * (FR-8.5). Every change to the database is one transaction, so an import that fails leaves
+ * this phone exactly as it was. Settings live in DataStore and are written after the database,
+ * which is what matters most. The schedule changes with the rest, so the caller brings the
+ * reminders in step afterwards (FR-7.6).
  */
 @Singleton
 class BackupRepositoryImpl @Inject constructor(
@@ -68,11 +73,9 @@ class BackupRepositoryImpl @Inject constructor(
     override val lastExportedAt: Flow<Instant?> = preferences.map { it.lastExportedAt }.distinctUntilChanged()
 
     override suspend fun export(destination: DocumentUri): DataCounts {
-        val rows = database.withTransaction { readAll() }
-        val exportedAt = clock.instant()
-        val backup = rows.toBackupFile(exportedAt, BuildConfig.VERSION_NAME, preferences.first().toUserPreferences())
+        val backup = currentBackup()
         withContext(ioDispatcher) { documents.write(destination, BackupCodec.encode(backup)) }
-        dataStore.edit { it[SettingsKeys.lastExportedAt] = exportedAt.toEpochMilli() }
+        dataStore.edit { it[SettingsKeys.lastExportedAt] = backup.exportedAt.toEpochMilli() }
         return backup.counts()
     }
 
@@ -81,8 +84,60 @@ class BackupRepositoryImpl @Inject constructor(
         return BackupSummary(exportedAt = backup.exportedAt, counts = backup.counts())
     }
 
-    override suspend fun import(source: DocumentUri, mode: ImportMode): DataCounts {
-        val backup = read(source)
+    override suspend fun import(source: DocumentUri, mode: ImportMode): DataCounts = importBackup(read(source), mode)
+
+    override suspend fun clearAll() {
+        database.withTransaction {
+            deleteAll()
+            restoreBuiltInExercises()
+        }
+        // Settings go too, and with them when the last backup was made, and whose data this was: it's gone.
+        dataStore.edit { it.clear() }
+    }
+
+    override suspend fun snapshot(): BackupSnapshot {
+        val backup = currentBackup()
+        val document = withContext(ioDispatcher) { BackupCodec.encode(backup) }
+        return BackupSnapshot(document, backup.exportedAt, backup.counts())
+    }
+
+    override suspend fun restore(snapshot: BackupSnapshot, mode: ImportMode): DataCounts {
+        val backup = withContext(ioDispatcher) { BackupCodec.decode(snapshot.document) }
+        return importBackup(backup, mode)
+    }
+
+    // Room emits once on subscribing, which isn't a change.
+    override fun observeChanges(): Flow<Unit> = backupDao.observeChanges().drop(1).map { }
+
+    override val cloudState: Flow<CloudState> = preferences.map { it.cloudState }.distinctUntilChanged()
+
+    override suspend fun setCloudOwner(accountId: String?) {
+        dataStore.edit { settings ->
+            if (accountId == null) settings.remove(SettingsKeys.cloudOwnerAccountId) else settings[SettingsKeys.cloudOwnerAccountId] = accountId
+        }
+    }
+
+    override suspend fun setCloudBackupPending(pending: Boolean) {
+        dataStore.edit { it[SettingsKeys.cloudBackupPending] = pending }
+    }
+
+    override suspend fun setCloudAutoBackup(enabled: Boolean) {
+        dataStore.edit { it[SettingsKeys.cloudAutoBackup] = enabled }
+    }
+
+    override suspend fun setCloudBackedUp(at: Instant) {
+        dataStore.edit {
+            it[SettingsKeys.cloudLastBackupAt] = at.toEpochMilli()
+            it[SettingsKeys.cloudBackupPending] = false
+        }
+    }
+
+    private suspend fun currentBackup(): BackupFile {
+        val rows = database.withTransaction { readAll() }
+        return rows.toBackupFile(clock.instant(), BuildConfig.VERSION_NAME, preferences.first().toUserPreferences())
+    }
+
+    private suspend fun importBackup(backup: BackupFile, mode: ImportMode): DataCounts {
         val rows = backup.toRows()
         return when (mode) {
             ImportMode.MERGE -> database.withTransaction {
@@ -100,15 +155,6 @@ class BackupRepositoryImpl @Inject constructor(
                 backup.counts()
             }
         }
-    }
-
-    override suspend fun clearAll() {
-        database.withTransaction {
-            deleteAll()
-            restoreBuiltInExercises()
-        }
-        // Settings go too, and with them when the last backup was made: it was of data that's gone.
-        dataStore.edit { it.clear() }
     }
 
     private suspend fun read(source: DocumentUri): BackupFile = withContext(ioDispatcher) {

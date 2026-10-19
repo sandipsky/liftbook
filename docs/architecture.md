@@ -69,7 +69,9 @@ com.example.liftbook
 │   │   ├── ProgressRepository.kt
 │   │   ├── ScheduleRepository.kt
 │   │   ├── SettingsRepository.kt
-│   │   └── BackupRepository.kt
+│   │   ├── BackupRepository.kt
+│   │   ├── AccountRepository.kt      the optional account (FR-8.1–8.4)
+│   │   └── CloudBackupRepository.kt  one backup per account online (FR-8.5)
 │   ├── calculator/                   PURE FUNCTIONS — the unit-test target
 │   │   ├── ExerciseSearch.kt         library search + filters, ranked (FR-1.4)
 │   │   ├── ExerciseNames.kt          name normalising + validation (FR-1.2, 1.3)
@@ -78,6 +80,7 @@ com.example.liftbook
 │   │   ├── PersonalRecordDetector.kt
 │   │   └── WeeklySummaryCalculator.kt
 │   └── usecase/                      only where it earns its place (see §4.3)
+│       ├── CloudBackups.kt           cloud backup, and whose data the phone holds (FR-8.5, 8.6)
 │       ├── StartWorkoutUseCase.kt
 │       ├── FinishWorkoutUseCase.kt
 │       ├── ExportDataUseCase.kt
@@ -94,6 +97,7 @@ com.example.liftbook
 │   │   ├── projection/               @Embedded / POJO query results (list rows, aggregates)
 │   │   └── seed/                     ExerciseSeed.kt — preloaded library (FR-1.1)
 │   ├── preferences/                  SettingsDataStore + UserPreferences mapping
+│   ├── cloud/                        Firebase Auth + the Firestore backup store (FR-8)
 │   ├── backup/                       versioned JSON envelope, DTOs, SAF read/write
 │   ├── mapper/                       entity ⇄ domain model (both directions)
 │   └── repository/                   the implementations of domain/repository
@@ -556,11 +560,16 @@ RootNavHost
 ├── RoutineEditor(routineId?)          null id = create (FR-2.1, FR-2.2)
 ├── ExerciseProgress(exerciseId)       charts, range selector (FR-5.1)
 │
+├── Welcome                            first launch only: sign in, create account, or continue as guest (FR-8.8)
+│
 └── SettingsGraph
     ├── SettingsHome                   units, theme, rest, week start (FR-6.1, 6.2)
     ├── ReminderList                   schedule entries + global toggle (FR-7.1, 7.7)
     ├── ReminderEditor(scheduleId?)
-    └── DataManagement                 export / import / clear all (FR-6.3–6.5)
+    ├── DataManagement                 export / import / clear all (FR-6.3–6.5)
+    └── Account                        who is signed in, cloud backup, sign out (FR-8)
+        ├── SignIn / SignUp            email + password, Google, reset link (FR-8.1–8.3)
+        └── ChangePassword             FR-8.4
 ```
 
 Routines sit on **Home** rather than getting their own tab: a routine exists to start a workout, so
@@ -615,7 +624,7 @@ records ("Heaviest · Est. 1RM") under its title, announced politely to TalkBack
 the past-workout page flag the same sets with a trophy on their line.
 
 *As built, FR-6:* there is no `SettingsGraph` node, as there's no `MainGraph`: **`Settings`** and
-**`DataManagement`** are two full-screen destinations. Settings opens from a gear in the Workout
+**`DataManagement`** are two full-screen destinations; FR-8 added `Account`, `SignIn`, `SignUp` and `ChangePassword` the same way, below Settings. Settings opens from a gear in the Workout
 tab's top bar. It shows every setting at once — the default rest as a row that opens the rest
 dialog the workout uses, the week start and the theme as segmented choices — each applied as it's
 picked, and a **Backup & data** row that names the last backup. That screen leads with what's on
@@ -761,6 +770,9 @@ cursors. The screen signature becomes `(state, textFieldState, onAction)`.
 | `ReminderListViewModel` / `ReminderEditorViewModel` | schedules, permission state | FR-7.1, 7.6, 7.7 — see below |
 | `ScheduledWorkoutViewModel` | the workout a reminder offered, the start under way | FR-7.3, 7.4 — activity-scoped, see below |
 | `DataManagementViewModel` | counts, last backup, the operation running, the import draft, confirmations | FR-6.3–6.5 — see below |
+| `AccountViewModel` | who is signed in, cloud backup status, what's online, the set-up question, confirmations | FR-8 — see §6.5 |
+| `SignInViewModel` / `SignUpViewModel` | the form's fields, what's under way, what the server answered; the reset dialog | FR-8.1–8.3. Google's token comes from the screen (`GoogleSignIn`) |
+| `ChangePasswordViewModel` | three fields, one attempt | FR-8.4; hands success back through the previous entry's SavedStateHandle |
 
 *Library search deviates from the original plan* (a debounced DB query via `flatMapLatest`). The
 library is a few hundred rows at most, so `domain/calculator/ExerciseSearch.kt` filters the
@@ -1106,6 +1118,63 @@ The FR-6 slice added `kotlinx-serialization-json` (same 1.9.x line) for the back
 on `buildConfig` for the app version written into it. `DispatcherModule` provides `@IoDispatcher`,
 used for reading and writing backup files.
 
+The FR-8 slice added the Firebase BoM (`firebase-auth`, `firebase-firestore`), Credential Manager
+(`androidx.credentials` + `credentials-play-services-auth`), `googleid`, and
+`kotlinx-coroutines-play-services` for awaiting Firebase's Tasks, plus the `google-services` plugin,
+applied only when `app/google-services.json` exists (§6.5).
+
+### 6.5 Accounts and cloud backup (FR-8)
+
+*Added once the offline-only rule was dropped (spec §8; NFR-1 now reads "the network is for this
+and nothing else").* The phone stays the source of truth; the cloud holds a backup of it, one per
+account, and the app is complete without one.
+
+**Accounts** are Firebase Authentication: email + password with no verification (FR-8.1), Google
+through the Credential Manager (`ui/feature/account/GoogleSignIn.kt`, FR-8.2), reset by emailed
+link (FR-8.3) and change with the current password (FR-8.4). `data/cloud/FirebaseAccountRepository`
+maps Firebase's exceptions to `AccountProblem`, the one vocabulary every screen shows; a 60 s
+timeout (`firebaseCall`) turns Firebase's silent offline hang into `OFFLINE`.
+
+**The backup** is the FR-6.3 document: `BackupRepository.snapshot()` / `restore()` are the file
+export and import held in memory. It's gzip-compressed and cut into ≤ 900 KB pieces for Firestore's
+1 MiB document limit (`data/cloud/BackupChunks`), and lives at `users/{uid}` (when, what counts,
+which pieces) plus `users/{uid}/chunks/{generation}-{index}`. The account document names a new
+generation only once all its pieces are written, so a half-finished upload leaves the previous
+backup whole; pieces of other generations are swept afterwards. Firestore runs with a memory-only
+cache, so reads are the server's truth and nothing of one account lingers for the next. The rules
+(`firebase/firestore.rules`) let an account reach its own path and no other. Firestore rather than
+Cloud Storage because new Firebase projects need a billing plan for Storage; this stays on the free
+plan.
+
+**`domain/usecase/CloudBackups`** owns the policy, under one lock:
+
+- *Whose data the phone holds* (FR-8.6) is recorded in DataStore (`cloudOwnerAccountId`). After a
+  sign-in, `prepare()` compares phone and cloud: nothing online → claim the data and back it up; a
+  backup online and unowned data → `ChooseSource`; another account's data → `OtherAccountData`,
+  which replaces only on request. The Account page asks, and offers the question again
+  (`FinishSetup`) if it was put off or failed.
+- *Automatic backups*: `BackupDao.observeChanges()` (one query over every backed-up table) marks
+  `cloudBackupPending` once changes have settled for 5 s. A pending backup goes up 10 s later, if
+  the owner is signed in and no workout is in progress, under `NonCancellable` so a workout starting
+  mid-upload can't leave half of one, and is retried every 5 min while it fails. The flag survives
+  process death, so a kill before the upload is caught on the next launch. A restore's own writes
+  are ignored for 15 s so they don't trigger a re-upload.
+- Signing out keeps the phone's data and its owner; a different account signing in gets the
+  `OtherAccountData` question.
+- *Automatic backup is a switch* (FR-8.7, `cloudAutoBackup` in DataStore, on by default): off, the
+  runner stays idle and only Back up now sends one.
+- *The first launch* (FR-8.8) opens on `Route.Welcome`, the sign-in page with Continue as guest;
+  `MainViewModel.startDestination` decides once per process from `welcomeSeen` and the signed-in
+  account, and both sign-in view models and the guest action set the flag.
+
+`MainViewModel` calls `CloudBackups.start()` (idempotent) when the UI comes up, rather than the
+Application: alarm receivers that wake the process change no data, and Robolectric tests build the
+production Hilt graph, which mustn't start background database work. `di/CloudModule` provides the Firebase-backed repositories when `google-services.json` was present
+at build time and `Unavailable*` stand-ins otherwise, so a build without the file still runs, with
+the Account page saying why. The plugin is applied conditionally in `app/build.gradle.kts`; the
+Google web client id is read by resource name at runtime for the same reason.
+
+
 ---
 
 ## 7. Build order
@@ -1165,9 +1234,9 @@ and per-entry switches, default lead time and snooze length, and rescheduling af
 an update, a clock or time-zone change, and every edit. Schema v4 added `workout_schedules`;
 backups carry the schedule. The rest timer's alarm is now set again after a reboot, too.
 
-**Spec §8 and §9, checked against the build.** Every FR in §8, MVP and Phase 2, is built except
+**Spec §9 and §10, checked against the build.** Every FR in §8, MVP and Phase 2, is built except
 FR-6.1 — kilograms and kilometres only, decided on request (§2.1). The NFRs:
-- **NFR-1** — no network permission. The manifest now also strips `INTERNET` and
+- **NFR-1** — *as first written; FR-8 (§6.5) later opened the network for the account and cloud backup only.* No network permission. The manifest now also strips `INTERNET` and
   `ACCESS_NETWORK_STATE` if a library ever merges them in (`tools:node="remove"`); the merged
   manifest has neither. Cloud backup is off too (`allowBackup="false"`, and backup rules that
   exclude everything), so nothing leaves the phone behind the user's back — the Backup screen's

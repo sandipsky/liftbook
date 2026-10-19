@@ -3,6 +3,7 @@ package com.example.liftbook.ui.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftbook.domain.calculator.ReminderTimes
+import com.example.liftbook.domain.repository.AccountRepository
 import com.example.liftbook.domain.repository.BackupRepository
 import com.example.liftbook.domain.repository.ScheduleRepository
 import com.example.liftbook.domain.repository.SettingsRepository
@@ -22,13 +23,15 @@ import javax.inject.Inject
 
 /**
  * Settings (FR-6.2): the default rest, where weeks start and the theme — each applied as it's
- * picked, with nothing to save — and the ways to reminders (FR-7) and backups (FR-6.3–6.5).
+ * picked, with nothing to save — and the ways to the account (FR-8), reminders (FR-7) and backups
+ * (FR-6.3–6.5).
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     backupRepository: BackupRepository,
     scheduleRepository: ScheduleRepository,
+    accountRepository: AccountRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -36,7 +39,8 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.userPreferences,
         backupRepository.lastExportedAt,
         scheduleRepository.observeSchedules(),
-    ) { preferences, lastExportedAt, schedules ->
+        accountRepository.account,
+    ) { preferences, lastExportedAt, schedules, account ->
         SettingsUiState(
             isLoading = false,
             defaultRestSeconds = preferences.defaultRestSeconds,
@@ -45,6 +49,8 @@ class SettingsViewModel @Inject constructor(
             remindersEnabled = preferences.remindersEnabled,
             remindersPerWeek = ReminderTimes.perWeek(schedules),
             lastExportedAt = lastExportedAt,
+            accountsAvailable = accountRepository.isAvailable,
+            accountEmail = account?.email,
             today = LocalDate.now(clock),
             zone = clock.zone,
         )
@@ -63,7 +69,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.SetFirstDayOfWeek -> save { settingsRepository.setFirstDayOfWeek(action.firstDayOfWeek) }
             is SettingsAction.SetTheme -> save { settingsRepository.setThemeMode(action.themeMode) }
             // Navigation; handled by the route.
-            SettingsAction.OpenReminders, SettingsAction.OpenDataManagement, SettingsAction.NavigateUp -> Unit
+            SettingsAction.OpenReminders, SettingsAction.OpenDataManagement, SettingsAction.OpenAccount, SettingsAction.NavigateUp -> Unit
         }
     }
 

@@ -19,6 +19,10 @@ data class SettingsUiState(
     val remindersPerWeek: Int = 0,
     /** When a backup was last exported; null if never. */
     val lastExportedAt: Instant? = null,
+    /** Whether this build can sign in at all (FR-8); false without Firebase configuration. */
+    val accountsAvailable: Boolean = true,
+    /** The signed-in account's email, or null while signed out. */
+    val accountEmail: String? = null,
     val today: LocalDate = LocalDate.of(1970, 1, 1),
     val zone: ZoneId = ZoneId.systemDefault(),
 )
@@ -34,6 +38,8 @@ sealed interface SettingsAction {
     data object OpenReminders : SettingsAction
 
     data object OpenDataManagement : SettingsAction
+
+    data object OpenAccount : SettingsAction
 
     data object NavigateUp : SettingsAction
 }

@@ -44,8 +44,10 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) answerReminder(intent)
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val startDestination by viewModel.startDestination.collectAsStateWithLifecycle()
             // Until the setting is read — a few milliseconds — the launch window's background shows.
             val mode = themeMode ?: return@setContent
+            val start = startDestination ?: return@setContent
             val darkTheme = when (mode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
@@ -61,7 +63,7 @@ class MainActivity : ComponentActivity() {
             }
             LiftBookTheme(darkTheme = darkTheme) {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    LiftBookNavHost()
+                    LiftBookNavHost(startDestination = start)
                 }
             }
         }

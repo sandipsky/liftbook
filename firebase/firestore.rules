@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// LiftBook's cloud backup (FR-8.5): each account reaches its own document and what's under it,
+// and nothing else. Paste into Firebase console → Firestore Database → Rules, or deploy with
+// `firebase deploy --only firestore:rules` (see docs/firebase-setup.md).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

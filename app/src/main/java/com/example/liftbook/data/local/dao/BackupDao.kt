@@ -35,6 +35,25 @@ interface BackupDao {
     )
     fun observeCounts(): Flow<DataCountsRow>
 
+    /**
+     * Changes to anything a backup holds, for the cloud copy to follow (FR-8.5). The number means
+     * nothing; the flow emits whenever one of these tables changes.
+     */
+    @Query(
+        """
+        SELECT
+            (SELECT COUNT(*) FROM exercises) +
+            (SELECT COUNT(*) FROM routines) +
+            (SELECT COUNT(*) FROM routine_exercises) +
+            (SELECT COUNT(*) FROM workouts) +
+            (SELECT COUNT(*) FROM workout_exercises) +
+            (SELECT COUNT(*) FROM workout_sets) +
+            (SELECT COUNT(*) FROM body_weight_entries) +
+            (SELECT COUNT(*) FROM workout_schedules)
+        """,
+    )
+    fun observeChanges(): Flow<Long>
+
     @Query("SELECT * FROM exercises ORDER BY createdAt, name")
     suspend fun getExercises(): List<ExerciseEntity>
 

@@ -1,12 +1,13 @@
 # LiftBook
 
-A single-user Android workout tracker in Kotlin. Fully offline: all data lives on-device,
-there are no accounts, no sync and no backend.
+A single-user Android workout tracker in Kotlin. Offline-first: all data lives on-device and every
+feature works without a network. An optional account (Firebase Auth, email/password or Google) adds
+a per-user cloud backup of that data (FR-8); nothing else goes online.
 
 **The spec is `docs/requirement.md`.** Read it before implementing anything. It is the source
 of truth for behaviour, and every requirement has a stable ID (`FR-x.y`, `NFR-n`). Reference
 those IDs in commit messages, TODOs and PR descriptions — e.g. `feat(workout): rest timer (FR-3.5)`.
-Section 8 of the spec defines MVP vs Phase 2 scope; do not build Phase 2 items unless asked.
+Section 9 of the spec defines MVP vs Phase 2 scope; do not build Phase 2 items unless asked.
 
 **The architecture is `docs/architecture.md`** — package layout, data entities, navigation graph
 and ViewModel structure, with the reasoning behind each. Follow it; if a slice needs to deviate,
@@ -29,6 +30,7 @@ build order.
 | Async | Coroutines + Flow; DAOs return `Flow`, never blocking calls on the main thread |
 | Timer / reminders | `AlarmManager` exact alarms + `NotificationManager` |
 | Charts | Hand-rolled Compose `Canvas` (Phase 2). Prefer no chart library; if one is needed, Vico |
+| Account / cloud backup | **Firebase Auth** (email + password, Google via Credential Manager) and **Cloud Firestore** for the per-user backup (FR-8). Configured by the git-ignored `app/google-services.json` (see `docs/firebase-setup.md`); without it the build runs with accounts off. |
 | Build | Gradle Kotlin DSL + `gradle/libs.versions.toml` version catalog — add deps to the catalog, never inline version strings |
 | Tests | JUnit4 for domain logic; Compose UI tests for the active-workout screen |
 
@@ -37,9 +39,12 @@ and `ui/theme/` still holds the Android Studio template's purple placeholder pal
 
 ### Hard constraints
 
-- **No `INTERNET` permission in the manifest, ever (NFR-1).** This rules out downloadable
-  fonts, remote images, crash reporting and analytics SDKs. The app must be fully usable in
-  airplane mode.
+- **The network is for the account and cloud backup only (NFR-1).** Nothing else may touch it:
+  no downloadable fonts, remote images, crash reporting or analytics SDKs. The app must be fully
+  usable in airplane mode, signed in or not.
+- Local Room data is the source of truth. The cloud holds one backup per account under
+  `users/{uid}`, written and read only through `domain/usecase/CloudBackups`; never touch
+  Firebase from a ViewModel or composable.
 - Room entities stay in `data/`. Domain models are plain Kotlin data classes with no
   framework annotations; map between them at the repository boundary.
 - Weights are stored in **one canonical unit (kilograms)** and converted only for display
@@ -69,6 +74,7 @@ com.example.liftbook
 │   │   ├── Converters.kt
 │   │   └── seed/          # preloaded exercise library (FR-1.1)
 │   ├── preferences/       # DataStore settings
+│   ├── cloud/             # Firebase Auth + the Firestore backup store (FR-8)
 │   ├── backup/            # versioned JSON export / import (FR-6.3, 6.4, NFR-6)
 │   └── repository/        # repository implementations
 ├── notification/          # rest timer + workout reminder alarms, receivers, channels
@@ -77,7 +83,7 @@ com.example.liftbook
     ├── components/        # the shared design system — reuse before writing a new one
     ├── navigation/
     └── feature/
-        ├── exercises/  routines/  workout/  history/  progress/  settings/  reminders/
+        ├── exercises/  routines/  workout/  history/  progress/  settings/  reminders/  account/
 ```
 
 One package per feature; each holds its screen composables, its ViewModel and its UI state.
@@ -97,6 +103,8 @@ unit tests, not inline in ViewModels or composables.
 - Editing or deleting a past workout **recomputes** volume and PRs (FR-4.2).
 - Deleting a custom exercise **archives** it; historical sets that reference it stay intact (FR-1.3).
 - Only one workout may be active at a time (FR-3.1), and it autosaves on every change (FR-3.7).
+- The phone's data belongs to one account at a time (FR-8.6): `CloudBackups.prepare()` settles
+  it after sign-in, and another account's data is replaced only after the user confirms.
 
 ---
 

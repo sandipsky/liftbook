@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.update
 
 class FakeSettingsRepository(initial: UserPreferences = UserPreferences()) : SettingsRepository {
     override val userPreferences = MutableStateFlow(initial)
+    override val hasSeenWelcome = MutableStateFlow(false)
 
     /** When set, every write throws it instead of saving. */
     var failure: Exception? = null
@@ -24,6 +25,11 @@ class FakeSettingsRepository(initial: UserPreferences = UserPreferences()) : Set
     override suspend fun setReminderLeadMinutes(minutes: Int) = write { it.copy(reminderLeadMinutes = minutes) }
 
     override suspend fun setSnoozeMinutes(minutes: Int) = write { it.copy(snoozeMinutes = minutes) }
+
+    override suspend fun markWelcomeSeen() {
+        failure?.let { throw it }
+        hasSeenWelcome.value = true
+    }
 
     private fun write(change: (UserPreferences) -> UserPreferences) {
         failure?.let { throw it }

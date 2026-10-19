@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- No INTERNET permission, ever (NFR-1). The app must work fully in airplane mode. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<!-- Network access is for the optional account and cloud backup only (FR-8, NFR-1); everything
+     else works in airplane mode. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- NFR-1, enforced: if a library ever asks for network access, the merged manifest drops it. -->
-    <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACCESS_NETWORK_STATE"
-        tools:node="remove" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- The rest timer's alert (FR-3.5) and workout reminders (FR-7.2). Asked for in context:
          when the first rest starts, and when the first reminder is scheduled (FR-7.6). -->

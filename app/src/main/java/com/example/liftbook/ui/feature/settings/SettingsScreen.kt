@@ -65,6 +65,7 @@ fun SettingsRoute(
     onNavigateUp: () -> Unit,
     onOpenReminders: () -> Unit,
     onOpenDataManagement: () -> Unit,
+    onOpenAccount: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,6 +88,7 @@ fun SettingsRoute(
                 SettingsAction.NavigateUp -> onNavigateUp()
                 SettingsAction.OpenReminders -> onOpenReminders()
                 SettingsAction.OpenDataManagement -> onOpenDataManagement()
+                SettingsAction.OpenAccount -> onOpenAccount()
                 else -> viewModel.onAction(action)
             }
         },
@@ -179,8 +181,29 @@ private fun SettingsList(
             )
         }
 
+        item(key = "accountHeader", contentType = "sectionHeader") {
+            SectionHeader(title = stringResource(R.string.settings_section_account), modifier = Modifier.padding(bottom = Spacing.xxs))
+        }
+        item(key = "account", contentType = "row") {
+            SettingsRow(
+                title = stringResource(R.string.account_title),
+                supporting = when {
+                    !state.accountsAvailable -> stringResource(R.string.settings_account_unavailable)
+                    state.accountEmail != null -> state.accountEmail
+                    else -> stringResource(R.string.settings_account_signed_out)
+                },
+                showsChevron = true,
+                onClick = { onAction(SettingsAction.OpenAccount) },
+                clickLabel = stringResource(R.string.settings_account_click_label),
+                modifier = row,
+            )
+        }
+
         item(key = "trainingHeader", contentType = "sectionHeader") {
-            SectionHeader(title = stringResource(R.string.settings_section_training), modifier = Modifier.padding(bottom = Spacing.xxs))
+            SectionHeader(
+                title = stringResource(R.string.settings_section_training),
+                modifier = Modifier.padding(top = Spacing.lg, bottom = Spacing.xxs),
+            )
         }
         item(key = "rest", contentType = "row") {
             SettingsRow(
@@ -306,6 +329,7 @@ private fun SettingsScreenPreview() {
                 themeMode = ThemeMode.SYSTEM,
                 remindersPerWeek = 4,
                 lastExportedAt = Instant.parse("2026-09-23T19:00:00Z"),
+                accountEmail = "sam@example.com",
                 today = previewToday,
                 zone = ZoneOffset.UTC,
             ),

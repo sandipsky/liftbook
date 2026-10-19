@@ -948,4 +948,142 @@
     <!-- "Snooze 10 min" -->
     <string name="reminder_action_snooze">Snooze %1$d min</string>
     <string name="reminder_action_skip">Skip today</string>
+
+    <!-- Account and cloud backup (FR-8) -->
+    <string name="account_title">Account</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_account_signed_out">Sign in to keep a copy of your workouts online</string>
+    <string name="settings_account_unavailable">Cloud backup isn’t set up in this build</string>
+    <string name="settings_account_click_label">open account</string>
+    <string name="account_loading">Loading account</string>
+    <string name="account_signed_out_body">Keep a copy of your workouts online, and bring them to a new phone. Everything here works without an account; this only adds the backup.</string>
+    <string name="account_sign_in">Sign in</string>
+    <string name="account_create">Create account</string>
+    <string name="account_unavailable_title">Cloud backup isn’t set up</string>
+    <string name="account_unavailable_body">This build has no Firebase configuration. Add google-services.json to the app module and rebuild; docs/firebase-setup.md has the steps.</string>
+    <string name="account_signed_in_as">Signed in as</string>
+    <string name="account_with_google">With Google</string>
+    <string name="account_with_password">With email and password</string>
+    <string name="account_setup_needed_title">Finish setting up</string>
+    <string name="account_setup_needed_body">This phone’s data and your account haven’t been matched up yet. Until they are, nothing is backed up.</string>
+    <string name="account_setup_needed_action">Finish setting up</string>
+    <string name="account_section_backup">Cloud backup</string>
+    <string name="account_backup_body">A copy of everything on this phone, kept online under your account only, and updated after each change.</string>
+    <string name="account_backup_last">Last backup</string>
+    <string name="account_backup_never">Not yet</string>
+    <string name="account_backup_up_to_date">Up to date</string>
+    <string name="account_backup_pending">Changes since then not backed up yet</string>
+    <string name="account_backup_pending_auto_off">Changes since then not backed up; automatic backup is off</string>
+    <string name="account_auto_backup_title">Back up automatically</string>
+    <string name="account_auto_backup_body">After each change, once no workout is in progress</string>
+    <string name="account_backup_waiting_workout">Backs up once the workout in progress is finished</string>
+    <string name="account_backup_running">Backing up…</string>
+    <!-- "Couldn’t back up: No connection. Check your internet and try again." -->
+    <string name="account_backup_failed">Couldn’t back up: %1$s</string>
+    <string name="account_back_up_now">Back up now</string>
+    <!-- "Backed up 142 workouts · 6 routines · 31 weigh-ins" -->
+    <string name="account_backed_up">Backed up %1$s</string>
+    <string name="account_restore_title">Restore from backup</string>
+    <!-- "Replace what’s on this phone with your backup from 3 days ago" -->
+    <string name="account_restore_body">Replace what’s on this phone with your backup from %1$s</string>
+    <string name="account_restore_body_none">No backup online yet</string>
+    <string name="account_restore_body_checking">Checking…</string>
+    <string name="account_restore_click_label">restore</string>
+    <string name="account_restore_dialog_title">Replace what’s on this phone?</string>
+    <string name="account_restore_dialog_body">Everything here is replaced by your backup from %1$s: %2$s. This can’t be undone.</string>
+    <string name="account_restore_dialog_confirm">Restore</string>
+    <string name="account_restored">Restored %1$s</string>
+    <string name="account_restore_failed">Couldn’t restore: %1$s</string>
+    <string name="account_section_security">Security</string>
+    <string name="account_change_password">Change password</string>
+    <string name="account_change_password_body">Needs your current password</string>
+    <string name="account_change_password_click_label">change password</string>
+    <string name="account_password_changed">Password changed</string>
+    <string name="account_sign_out">Sign out</string>
+    <string name="account_sign_out_body">Your data stays on this phone</string>
+    <string name="account_sign_out_click_label">sign out</string>
+    <string name="account_sign_out_dialog_title">Sign out?</string>
+    <string name="account_sign_out_dialog_body">Your data stays on this phone, and your backup stays online.</string>
+    <string name="account_sign_out_dialog_body_pending">Changes since your last backup haven’t gone up yet. Your data stays on this phone either way.</string>
+    <string name="account_signed_out">Signed out</string>
+    <string name="account_sign_out_failed">Couldn’t sign out. Try again.</string>
+    <!-- Nothing on the phone or in the backup: "Restored nothing", "This phone has nothing" -->
+    <string name="account_nothing">nothing</string>
+    <!-- Settling whose data the phone holds, after signing in (FR-8.6) -->
+    <string name="account_setup_choose_title">Use your backup?</string>
+    <!-- "Your account has a backup from 3 days ago: 142 workouts · 6 routines. This phone has 2 workouts. Only one can be kept." -->
+    <string name="account_setup_choose_body">Your account has a backup from %1$s: %2$s. This phone has %3$s. Only one can be kept.</string>
+    <string name="account_setup_choose_body_empty_phone">Your account has a backup from %1$s: %2$s. Restore it to this phone, or start again with nothing.</string>
+    <string name="account_setup_use_backup">Use backup</string>
+    <string name="account_setup_keep_phone">Keep this phone’s data</string>
+    <string name="account_setup_start_fresh">Start fresh</string>
+    <string name="account_setup_other_title">Another account’s data is here</string>
+    <!-- "This phone holds 142 workouts · 6 routines that belong to a different account. To continue as sam@example.com, they’re removed and replaced by your backup from 3 days ago." -->
+    <string name="account_setup_other_body">This phone holds %1$s that belong to a different account. To continue as %2$s, they’re removed and replaced by your backup from %3$s.</string>
+    <string name="account_setup_other_body_no_backup">This phone holds %1$s that belong to a different account. To continue as %2$s, they’re removed. You have no backup online yet.</string>
+    <string name="account_setup_replace">Replace</string>
+    <string name="account_setup_failed">Couldn’t finish setting up: %1$s</string>
+    <!-- Signing in (FR-8.1, FR-8.2) -->
+    <string name="sign_in_title">Sign in</string>
+    <string name="sign_in_body">Your workouts stay on this phone, and your account keeps a copy of them online.</string>
+    <!-- The first launch (FR-8.8) -->
+    <string name="sign_in_welcome_body">Keep a copy of your workouts online, and bring them to a new phone. Or use LiftBook on this phone only; you can sign in later from Settings.</string>
+    <string name="sign_in_guest">Continue as guest</string>
+    <string name="sign_in_email">Email</string>
+    <string name="sign_in_password">Password</string>
+    <string name="sign_in_show_password">Show password</string>
+    <string name="sign_in_hide_password">Hide password</string>
+    <string name="sign_in_forgot">Forgot password?</string>
+    <string name="sign_in_action">Sign in</string>
+    <string name="sign_in_signing_in">Signing in…</string>
+    <string name="sign_in_google">Continue with Google</string>
+    <string name="sign_in_or">or</string>
+    <string name="sign_in_no_account">New to LiftBook?</string>
+    <string name="sign_in_create_account">Create an account</string>
+    <string name="sign_up_title">Create account</string>
+    <string name="sign_up_body">An email and a password, or your Google account. There’s nothing to confirm by email.</string>
+    <string name="sign_up_confirm_password">Confirm password</string>
+    <string name="sign_up_action">Create account</string>
+    <string name="sign_up_creating">Creating account…</string>
+    <string name="sign_up_have_account">Already have an account?</string>
+    <string name="sign_up_sign_in">Sign in</string>
+    <!-- Field errors, found before asking the server -->
+    <string name="account_error_email_blank">Enter your email</string>
+    <string name="account_error_password_blank">Enter your password</string>
+    <string name="account_error_current_blank">Enter your current password</string>
+    <plurals name="account_error_password_short">
+        <item quantity="one">At least %d character</item>
+        <item quantity="other">At least %d characters</item>
+    </plurals>
+    <string name="account_error_password_mismatch">The passwords don’t match</string>
+    <!-- What the server answered -->
+    <string name="account_problem_not_configured">Cloud backup isn’t set up in this build.</string>
+    <string name="account_problem_offline">No connection. Check your internet and try again.</string>
+    <string name="account_problem_invalid_email">That doesn’t look like an email address.</string>
+    <string name="account_problem_wrong_credentials">Wrong email or password.</string>
+    <string name="account_problem_email_in_use">There’s already an account with that email. Sign in instead.</string>
+    <string name="account_problem_weak_password">Choose a longer password.</string>
+    <string name="account_problem_too_many_attempts">Too many attempts. Try again in a few minutes.</string>
+    <string name="account_problem_sign_in_again">Sign out, sign in again, then retry.</string>
+    <string name="account_problem_google_unavailable">Google sign-in isn’t available on this phone.</string>
+    <string name="account_problem_google_not_configured">Google sign-in isn’t set up in this build yet.</string>
+    <string name="account_problem_not_allowed">The server refused the request. Check the project’s Firestore rules.</string>
+    <string name="account_problem_no_backup">There’s no backup online yet.</string>
+    <string name="account_problem_not_set_up">Finish setting up your account first.</string>
+    <string name="account_problem_signed_out">You’re signed out. Sign in and try again.</string>
+    <string name="account_problem_unknown">Something went wrong. Try again.</string>
+    <!-- Password reset (FR-8.3) -->
+    <string name="reset_title">Reset password</string>
+    <string name="reset_body">We’ll email you a link to choose a new one.</string>
+    <string name="reset_send">Send link</string>
+    <!-- "If there’s an account for sam@example.com, a reset link is on its way." -->
+    <string name="reset_sent">If there’s an account for %1$s, a reset link is on its way.</string>
+    <!-- Changing the password (FR-8.4) -->
+    <string name="change_password_title">Change password</string>
+    <string name="change_password_body">Enter your current password, then the new one twice.</string>
+    <string name="change_password_current">Current password</string>
+    <string name="change_password_new">New password</string>
+    <string name="change_password_confirm">Confirm new password</string>
+    <string name="change_password_action">Change password</string>
+    <string name="change_password_changing">Changing…</string>
 </resources>

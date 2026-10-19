@@ -79,4 +79,22 @@ sealed interface Route {
     /** A null [scheduleId] schedules a new workout (FR-7.1). */
     @Serializable
     data class ReminderEditor(val scheduleId: String? = null) : Route
+
+    /** The first launch: sign in, create an account, or continue as a guest (FR-8.8). The root while it shows. */
+    @Serializable
+    data object Welcome : Route
+
+    /** The account and its cloud backup (FR-8); opened from Settings. */
+    @Serializable
+    data object Account : Route
+
+    @Serializable
+    data object SignIn : Route
+
+    @Serializable
+    data object SignUp : Route
+
+    /** Needs the current password (FR-8.4). */
+    @Serializable
+    data object ChangePassword : Route
 }

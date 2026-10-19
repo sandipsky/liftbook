@@ -3,12 +3,12 @@ Sep 25, 2026 · @Sandip
 
 ## Overview
 App Name: LiftBook
-A single-user Android workout tracker in Kotlin that works fully offline, with all data stored on-device and no accounts, sync or backend.
+A single-user Android workout tracker in Kotlin. All data lives on-device and every feature works offline; an optional account adds a per-user cloud backup of that data (§8), and nothing else goes online.
 
 **Assumptions**
 
-- One user per install; no login.
-- No network permission at all in v1.
+- One user per install. An account is optional (FR-8): without one, nothing leaves the phone.
+- Network access is used only by the optional account and its cloud backup (NFR-1).
 - Data must persist between launches. Room (SQLite) is local and the idiomatic Kotlin choice; if "no database" means no SQLite either, Proto DataStore or a JSON file in app storage is enough for the MVP.
 - Requirement IDs (FR-x.y) are stable so they can be referenced in issues and commits.
 
@@ -77,7 +77,7 @@ Progress views are computed from logged sets; nothing is stored separately.
 
 ## 6. Settings and data
 
-With no cloud, JSON export is the only backup path, so it belongs in the MVP.
+JSON export is the backup path that needs no account, so it belongs in the MVP. The cloud backup (FR-8.5) carries the same document.
 
 | ID | Requirement |
 | --- | --- |
@@ -101,7 +101,22 @@ A scheduled workout triggers a notification before it starts so the user remembe
 | FR-7.6 | Reminders are rescheduled after device reboot and after any schedule change; they use exact alarms and request the notification permission on Android 13+. |
 | FR-7.7 | Global on/off toggle for reminders in Settings, plus enable/disable per schedule entry. |
 
-## 8. Scope: MVP vs Phase 2
+## 8. Accounts and cloud backup
+
+Optional: the app is complete without an account. Signing in adds one thing, a copy of the phone's data online under that account alone, so it survives the phone and moves to the next one.
+
+| ID | Requirement |
+| --- | --- |
+| FR-8.1 | Create an account and sign in with an email and password. No email verification; the account is usable as soon as it's created. The app stays fully usable signed out. |
+| FR-8.2 | Sign in with a Google account, through the phone's credential manager. |
+| FR-8.3 | Reset a forgotten password by emailed link. |
+| FR-8.4 | Change the password from inside the app; the current password is required. |
+| FR-8.5 | Cloud backup: the signed-in account's own copy of the phone's data, as the FR-6.3 document, kept under that account's id where no other account can read or write it. Updated automatically once changes settle and no workout is in progress, and on demand; restored on demand. |
+| FR-8.6 | The phone's data belongs to one account at a time. Signing in settles whose: an account with a backup is offered a restore, and another account's data is replaced only after the user confirms. Signing out keeps the data on the phone. |
+| FR-8.7 | Automatic backup can be switched off on the Account page; it is on by default, and Back up now still works when it is off. |
+| FR-8.8 | The first launch opens on the sign-in page, with Create account, Google, and Continue as guest. The page doesn't show again once passed; signing in stays available from Settings. |
+
+## 9. Scope: MVP vs Phase 2
 
 Build logging end to end first; add analytics once logging feels solid.
 
@@ -114,14 +129,15 @@ Build logging end to end first; add analytics once logging feels solid.
 | Progress | — | FR-5.1 – 5.4 |
 | Settings & data | FR-6.1, 6.3, 6.5 | FR-6.2, 6.4 |
 | Reminders | FR-7.1 – 7.3, 7.6, 7.7 | FR-7.4, 7.5 |
+| Accounts & cloud backup | FR-8.1 – 8.8 | — |
 
-## 9. Non-functional requirements and stack
+## 10. Non-functional requirements and stack
 
-The app must be fully usable in airplane mode and stay responsive as history grows.
+The app must be fully usable in airplane mode, signed in or not, and stay responsive as history grows.
 
 | ID | Requirement |
 | --- | --- |
-| NFR-1 | No network permission declared in the manifest. |
+| NFR-1 | The network is used only for the optional account and its cloud backup (FR-8): no analytics, crash reporting, remote images or fonts. Every other feature works with no connection. |
 | NFR-2 | Workout and history screens stay responsive with 1,000+ logged workouts; lists are paged or lazy. |
 | NFR-3 | Rest timer survives backgrounding and Doze (AlarmManager exact alarm or foreground service). |
 | NFR-4 | Minimum Android 8.0 (API 26); target latest stable API. |

@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
+    // On the classpath only; applied below, when its configuration file is present.
+    alias(libs.plugins.google.services) apply false
 }
 
 // Release signing lives in an uncommitted keystore.properties at the repo root. Without it,
@@ -74,6 +76,15 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Firebase (accounts and cloud backup, FR-8) is configured by google-services.json, which holds the
+// project's own keys and isn't committed (see docs/firebase-setup.md). Without it the app still
+// builds and runs, with signing in and cloud backup switched off.
+if (file("google-services.json").exists()) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+} else {
+    logger.warn("app/google-services.json not found: building without Firebase; accounts and cloud backup are off.")
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -96,6 +107,13 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.kotlinx.coroutines.play.services)
     ksp(libs.hilt.compiler)
     ksp(libs.androidx.room.compiler)
 

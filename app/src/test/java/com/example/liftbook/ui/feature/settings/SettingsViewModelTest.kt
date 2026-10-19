@@ -4,11 +4,19 @@ import com.example.liftbook.MainViewModel
 import com.example.liftbook.domain.model.FirstDayOfWeek
 import com.example.liftbook.domain.model.ThemeMode
 import com.example.liftbook.domain.model.UserPreferences
+import com.example.liftbook.domain.usecase.CloudBackups
+import com.example.liftbook.testing.FakeAccountRepository
 import com.example.liftbook.testing.FakeBackupRepository
+import com.example.liftbook.testing.FakeCloudBackupRepository
+import com.example.liftbook.testing.FakeExerciseRepository
+import com.example.liftbook.testing.FakeRestTimerScheduler
+import com.example.liftbook.testing.FakeRoutineRepository
+import com.example.liftbook.testing.FakeWorkoutRepository
 import com.example.liftbook.testing.FakeScheduleRepository
 import com.example.liftbook.testing.FakeSettingsRepository
 import com.example.liftbook.testing.MainDispatcherRule
 import com.example.liftbook.testing.testReminders
+import com.example.liftbook.ui.navigation.Route
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -36,7 +44,7 @@ class SettingsViewModelTest {
     private val events = mutableListOf<SettingsEvent>()
 
     private fun TestScope.settingsScreen(): SettingsViewModel =
-        SettingsViewModel(settings, backups, schedules, clock).also { viewModel ->
+        SettingsViewModel(settings, backups, schedules, FakeAccountRepository(), clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.collect { events += it } }
         }
@@ -79,14 +87,43 @@ class SettingsViewModelTest {
         assertEquals(listOf<SettingsEvent>(SettingsEvent.SaveFailed), events)
     }
 
+    private fun TestScope.main(accounts: FakeAccountRepository = FakeAccountRepository()): MainViewModel {
+        val reminders = testReminders(settings = settings, clock = clock)
+        val cloudBackups = CloudBackups(
+            accounts,
+            FakeCloudBackupRepository(),
+            backups,
+            FakeWorkoutRepository(FakeRoutineRepository(FakeExerciseRepository())),
+            reminders,
+            FakeRestTimerScheduler(),
+            clock,
+            backgroundScope,
+        )
+        return MainViewModel(settings, reminders, cloudBackups, accounts)
+    }
+
     @Test
     fun `the app follows the theme setting as it changes`() = runTest {
-        val main = MainViewModel(settings, testReminders(settings = settings, clock = clock))
-
+        val main = main()
         assertEquals(ThemeMode.SYSTEM, main.themeMode.value)
 
         settings.setThemeMode(ThemeMode.LIGHT)
 
         assertEquals(ThemeMode.LIGHT, main.themeMode.value)
+    }
+
+    @Test
+    fun `the first launch opens on the sign-in page, and never again once it's been passed`() = runTest {
+        assertEquals(Route.Welcome, main().startDestination.value)
+
+        settings.markWelcomeSeen()
+
+        assertEquals(Route.Home, main().startDestination.value)
+    }
+
+    @Test
+    fun `someone already signed in, or a build with nothing to sign in to, opens on Home`() = runTest {
+        assertEquals(Route.Home, main(FakeAccountRepository(FakeAccountRepository.account())).startDestination.value)
+        assertEquals(Route.Home, main(FakeAccountRepository(isAvailable = false)).startDestination.value)
     }
 }
