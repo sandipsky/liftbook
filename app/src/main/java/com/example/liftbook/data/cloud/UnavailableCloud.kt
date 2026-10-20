@@ -37,6 +37,7 @@ object UnavailableCloudBackupRepository : CloudBackupRepository {
     override suspend fun describe(accountId: String): CloudBackupInfo? = unavailable()
     override suspend fun upload(accountId: String, snapshot: BackupSnapshot) = unavailable()
     override suspend fun download(accountId: String): BackupSnapshot? = unavailable()
+    override suspend fun delete(accountId: String) = unavailable()
 }
 
 private fun unavailable(): Nothing = throw AccountException(AccountProblem.NOT_CONFIGURED)

@@ -102,6 +102,8 @@ com.example.liftbook
 │   ├── mapper/                       entity ⇄ domain model (both directions)
 │   └── repository/                   the implementations of domain/repository
 │
+├── work/                             WorkManager: BackupWorker and the scheduler that books it (FR-8.5)
+│
 ├── notification/
 │   ├── channel/                      NotificationChannels — rest timer, reminders
 │   ├── rest/                         RestTimerScheduler, RestTimerReceiver
@@ -1203,15 +1205,31 @@ plan.
 
 - *Whose data the phone holds* (FR-8.6) is recorded in DataStore (`cloudOwnerAccountId`). After a
   sign-in, `prepare()` compares phone and cloud: nothing online → claim the data and back it up; a
-  backup online and unowned data → `ChooseSource`; another account's data → `OtherAccountData`,
-  which replaces only on request. The Account page asks, and offers the question again
-  (`FinishSetup`) if it was put off or failed.
+  backup online and an empty phone → the backup comes straight down (`Restored`, and the page says
+  what arrived); a backup online and unowned data of the phone's own → `ChooseSource`; another
+  account's data → `OtherAccountData`, which replaces only on request. The Account page asks, and
+  offers the question again (`FinishSetup`) if it was put off or failed.
 - *Automatic backups*: `BackupDao.observeChanges()` (one query over every backed-up table) marks
   `cloudBackupPending` once changes have settled for 5 s. A pending backup goes up 10 s later, if
   the owner is signed in and no workout is in progress, under `NonCancellable` so a workout starting
   mid-upload can't leave half of one, and is retried every 5 min while it fails. The flag survives
   process death, so a kill before the upload is caught on the next launch. A restore's own writes
   are ignored for 15 s so they don't trigger a re-upload.
+- *When the app isn't there to send it*, the same moment books a WorkManager job
+  (`domain/repository/BackupUploadScheduler` → `work/WorkManagerBackupUploadScheduler`): one
+  named one-off job, kept if already waiting, constrained to a connected network, with
+  exponential back-off. `work/BackupWorker` calls `CloudBackups.backUpIfDue()`, which sends the
+  pending backup only if the owner is signed in, automatic backup is on and no workout is in
+  progress, and asks for a retry only when an upload actually failed. The in-app runner cancels
+  the job once it has sent the backup itself. `LiftBookApplication` is WorkManager's
+  `Configuration.Provider` with Hilt's worker factory, so the default start-up initialiser is
+  removed in the manifest. On phones that throttle background work the job can wait for a better
+  moment; worst case the next launch sends it, as before.
+- *Deleting everything* (FR-6.5) goes through `CloudBackups.eraseAll()`, from Settings and from the
+  backup page alike: the account's backup online is deleted first — offline, nothing is deleted
+  and the page says so — then the phone's data and settings, and the empty phone stays the
+  account's with nothing pending. Otherwise the cleared phone would restore the backup at the next
+  sign-in.
 - Signing out keeps the phone's data and its owner; a different account signing in gets the
   `OtherAccountData` question.
 - *Automatic backup is a switch* (FR-8.7, `cloudAutoBackup` in DataStore, on by default): off, the

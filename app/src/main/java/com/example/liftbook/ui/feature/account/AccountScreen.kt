@@ -507,7 +507,7 @@ private fun SetupDialog(
     onAction: (AccountAction) -> Unit,
 ) {
     when (setup) {
-        CloudSetup.Done -> Unit
+        CloudSetup.Done, is CloudSetup.Restored -> Unit
         is CloudSetup.ChooseSource -> AlertDialog(
             onDismissRequest = { onAction(AccountAction.DismissSetup) },
             title = { Text(stringResource(R.string.account_setup_choose_title)) },

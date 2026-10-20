@@ -826,19 +826,22 @@
     <string name="import_problem_damaged">Part of this backup can’t be read, so nothing was imported. The file may be damaged.</string>
 
     <!-- Clearing all data (FR-6.5) -->
-    <string name="data_clear_title">Clear all data</string>
+    <string name="data_clear_title">Delete all data</string>
     <string name="data_clear_body">Delete everything on this phone and reset settings</string>
-    <string name="data_clear_click_label">clear all data</string>
-    <string name="data_clear_dialog_title">Clear all data?</string>
+    <string name="data_clear_click_label">delete all data</string>
+    <string name="data_clear_dialog_title">Delete all data?</string>
     <string name="data_clear_dialog_body">Every workout, routine, custom exercise and weigh-in on this phone is deleted, and settings go back to their defaults. This can’t be undone.</string>
-    <string name="data_clear_dialog_last_backup">Last backup · %1$s</string>
-    <string name="data_clear_dialog_no_backup">You haven’t exported a backup, so there’s no way to get this back.</string>
+    <!-- Shown while signed in: the account's backup online is deleted as well -->
+    <string name="data_clear_dialog_cloud">The cloud backup for %1$s is deleted too, so it won’t come back when you sign in.</string>
+    <string name="data_clear_dialog_last_backup">Last file backup · %1$s</string>
+    <string name="data_clear_dialog_no_backup">You haven’t exported a backup file, so there’s no way to get this back.</string>
     <!-- The word typed to confirm. Translate it; it's compared ignoring case. -->
     <string name="data_clear_confirm_word">delete</string>
     <string name="data_clear_confirm_label">Type “%1$s” to confirm</string>
-    <string name="data_clear_confirm">Clear all data</string>
-    <string name="data_cleared">All data cleared</string>
-    <string name="data_clear_failed">Couldn’t clear your data. Try again.</string>
+    <string name="data_clear_confirm">Delete all data</string>
+    <string name="data_cleared">All data deleted</string>
+    <string name="data_clear_failed">Couldn’t delete your data. Try again.</string>
+    <string name="data_clear_cloud_unreachable">Nothing was deleted. Your cloud backup couldn’t be reached; try again when you’re online.</string>
 
     <!-- Workout reminders in Settings (FR-7.7) -->
     <string name="settings_section_reminders">Reminders</string>

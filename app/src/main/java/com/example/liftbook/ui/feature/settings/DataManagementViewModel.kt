@@ -4,10 +4,13 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.liftbook.domain.model.AccountException
 import com.example.liftbook.domain.model.BackupException
 import com.example.liftbook.domain.model.ImportMode
+import com.example.liftbook.domain.repository.AccountRepository
 import com.example.liftbook.domain.repository.BackupRepository
 import com.example.liftbook.domain.repository.RestTimerScheduler
+import com.example.liftbook.domain.usecase.CloudBackups
 import com.example.liftbook.domain.usecase.WorkoutReminders
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -36,6 +39,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DataManagementViewModel @Inject constructor(
     private val backupRepository: BackupRepository,
+    private val cloudBackups: CloudBackups,
+    accountRepository: AccountRepository,
     private val restTimerScheduler: RestTimerScheduler,
     private val reminders: WorkoutReminders,
     private val clock: Clock,
@@ -49,12 +54,14 @@ class DataManagementViewModel @Inject constructor(
     val uiState: StateFlow<DataManagementUiState> = combine(
         backupRepository.observeCounts(),
         backupRepository.lastExportedAt,
+        accountRepository.account,
         session,
-    ) { counts, lastExportedAt, session ->
+    ) { counts, lastExportedAt, account, session ->
         DataManagementUiState(
             isLoading = false,
             counts = counts,
             lastExportedAt = lastExportedAt,
+            accountEmail = account?.email,
             operation = session.operation,
             importing = session.importing,
             isConfirmingReplace = session.isConfirmingReplace,
@@ -102,9 +109,12 @@ class DataManagementViewModel @Inject constructor(
             DataManagementAction.ConfirmClear -> {
                 session.update { it.copy(isConfirmingClear = false) }
                 perform(BackupOperation.CLEARING, failure = DataManagementEvent.ClearFailed) {
-                    backupRepository.clearAll()
-                    restTimerScheduler.cancel()
-                    syncReminders()
+                    // The account's backup online goes too, or it would be back at the next sign-in.
+                    try {
+                        cloudBackups.eraseAll()
+                    } catch (e: AccountException) {
+                        return@perform DataManagementEvent.CloudUnreachable
+                    }
                     DataManagementEvent.Cleared
                 }
             }

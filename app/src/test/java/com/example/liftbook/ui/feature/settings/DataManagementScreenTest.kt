@@ -83,12 +83,12 @@ class DataManagementScreenTest {
     fun `clearing stays off until the word is typed`() {
         show(state(isConfirmingClear = true))
 
-        compose.onNodeWithText("Clear all data").assertIsNotEnabled()
+        compose.onNodeWithText("Delete all data").assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput("Delet")
-        compose.onNodeWithText("Clear all data").assertIsNotEnabled()
+        compose.onNodeWithText("Delete all data").assertIsNotEnabled()
         // Case and a stray space don't matter; the word does.
         compose.onNode(hasSetTextAction()).performTextInput("e ")
-        compose.onNodeWithText("Clear all data").assertIsEnabled().performClick()
+        compose.onNodeWithText("Delete all data").assertIsEnabled().performClick()
 
         assertEquals(listOf<DataManagementAction>(DataManagementAction.ConfirmClear), actions)
     }

@@ -35,13 +35,15 @@ import java.time.ZoneOffset
 
 /**
  * Asks before deleting everything (FR-6.5), by having the user type a word: a tap can be an
- * accident, typing "delete" can't. It says when the last backup was, since that's the only way
- * back, and the button stays off until the word matches.
+ * accident, typing "delete" can't. It says when the last file backup was, since that's the only
+ * way back, and — with [accountEmail] signed in — that the account's backup online goes too.
+ * The button stays off until the word matches.
  */
 @Composable
 fun ClearDataDialog(
     confirmation: TextFieldState,
     lastExportedAt: Instant?,
+    accountEmail: String?,
     today: LocalDate,
     zone: ZoneId,
     onConfirm: () -> Unit,
@@ -58,6 +60,13 @@ fun ClearDataDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 Text(stringResource(R.string.data_clear_dialog_body))
+                if (accountEmail != null) {
+                    Text(
+                        text = stringResource(R.string.data_clear_dialog_cloud, accountEmail),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurface,
+                    )
+                }
                 Text(
                     text = if (lastExportedAt != null) {
                         stringResource(R.string.data_clear_dialog_last_backup, backupDayText(lastExportedAt, today, zone))
@@ -115,6 +124,7 @@ private fun ClearDataDialogPreview() {
         ClearDataDialog(
             confirmation = rememberTextFieldState(),
             lastExportedAt = Instant.parse("2026-09-12T08:00:00Z"),
+            accountEmail = "sam@example.com",
             today = LocalDate.of(2026, 9, 26),
             zone = ZoneOffset.UTC,
             onConfirm = {},

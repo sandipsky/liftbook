@@ -12,6 +12,7 @@ import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.model.ImportMode
 import com.example.liftbook.domain.repository.AccountRepository
 import com.example.liftbook.domain.repository.BackupRepository
+import com.example.liftbook.domain.repository.BackupUploadScheduler
 import com.example.liftbook.domain.repository.CloudBackupRepository
 import com.example.liftbook.domain.repository.RestTimerScheduler
 import com.example.liftbook.domain.repository.WorkoutRepository
@@ -44,7 +45,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * belongs to one account at a time, the one that last backed it up or restored it, and
  * [prepare] settles whose it is when an account signs in. From then on a backup follows every
  * change, once the changes have settled and no workout is in progress — unless automatic backup
- * is switched off (FR-8.7) — and one can be taken or restored by hand.
+ * is switched off (FR-8.7) — and one can be taken or restored by hand. A backup that can't go up
+ * while the app is open is booked with the system ([BackupUploadScheduler]) to go up when a
+ * connection returns, through [backUpIfDue].
  *
  * One instance, [start]ed when the app's UI comes up: its lock keeps a backup, a restore and
  * the set-up from running over each other.
@@ -56,6 +59,7 @@ class CloudBackups(
     private val workouts: WorkoutRepository,
     private val reminders: WorkoutReminders,
     private val restTimer: RestTimerScheduler,
+    private val uploads: BackupUploadScheduler,
     private val clock: Clock,
     private val scope: CoroutineScope,
 ) {
@@ -81,7 +85,9 @@ class CloudBackups(
     /**
      * Keeps the cloud copy following the phone. Any change marks a backup pending once it has
      * settled; a pending backup goes up as soon as the owner is signed in and no workout is in
-     * progress, and is retried if it fails. Once per process; later calls do nothing.
+     * progress, and is retried if it fails. It's also booked with the system at the same time,
+     * so a phone that's offline — or an app that's closed before the upload — sends it when a
+     * connection returns. Once per process; later calls do nothing.
      */
     @OptIn(FlowPreview::class)
     fun start() {
@@ -97,6 +103,7 @@ class CloudBackups(
                 account?.id?.takeIf { state.ownerAccountId == it && state.backupPending && state.autoBackup && active == null }
             }.distinctUntilChanged().collectLatest { accountId ->
                 if (accountId == null) return@collectLatest
+                uploads.scheduleWhenOnline()
                 delay(AUTO_BACKUP_DELAY_MILLIS)
                 while (true) {
                     // Once started, a backup finishes: a workout beginning mid-upload mustn't leave half of one.
@@ -108,9 +115,33 @@ class CloudBackups(
                             false
                         }
                     }
-                    if (done) return@collectLatest
+                    if (done) {
+                        uploads.cancel()
+                        return@collectLatest
+                    }
                     delay(RETRY_DELAY_MILLIS)
                 }
+            }
+        }
+    }
+
+    /**
+     * For the system's background job: sends the pending backup if there is one and it's allowed
+     * — the owner signed in, automatic backup on, no workout in progress. Returns false only
+     * when an upload was tried and failed, so the job is retried; nothing due counts as done.
+     */
+    suspend fun backUpIfDue(): Boolean {
+        val account = accounts.account.first() ?: return true
+        return mutex.withLock {
+            val state = backups.cloudState.first()
+            val due = state.ownerAccountId == account.id && state.backupPending && state.autoBackup &&
+                workouts.observeActiveWorkout().first() == null
+            if (!due) return@withLock true
+            try {
+                backUp(account.id)
+                true
+            } catch (e: AccountException) {
+                false
             }
         }
     }
@@ -122,6 +153,7 @@ class CloudBackups(
             if (backups.cloudState.first().ownerAccountId != account.id) throw AccountException(AccountProblem.NOT_SET_UP)
             backUp(account.id)
         }
+        uploads.cancel()
     }
 
     /** What the signed-in account holds online, or null if nothing yet. */
@@ -138,8 +170,9 @@ class CloudBackups(
 
     /**
      * Settles whose data this phone holds, after signing in (FR-8.6). Nothing to decide when it's
-     * already the account's, or when neither side has anything the other lacks; otherwise the
-     * choice is the user's, answered with [resolve].
+     * already the account's, when neither side has anything the other lacks, or when the phone is
+     * empty and the account has a backup — then the backup simply comes down. Only when both sides
+     * hold something is the choice the user's, answered with [resolve].
      */
     suspend fun prepare(): CloudSetup {
         val account = signedIn()
@@ -150,11 +183,21 @@ class CloudBackups(
             val backup = cloud.describe(account.id)
             when {
                 state.ownerAccountId != null -> CloudSetup.OtherAccountData(phone, backup)
-                backup != null -> CloudSetup.ChooseSource(phone, backup)
-                else -> {
+                backup == null -> {
                     claim(account.id, pending = !phone.isEmpty)
                     CloudSetup.Done
                 }
+                phone.isEmpty -> {
+                    // Nothing here to lose, so nothing to ask.
+                    val snapshot = cloud.download(account.id)
+                    if (snapshot == null) {
+                        claim(account.id, pending = false)
+                        CloudSetup.Done
+                    } else {
+                        CloudSetup.Restored(replaceWith(snapshot, account.id))
+                    }
+                }
+                else -> CloudSetup.ChooseSource(phone, backup)
             }
         }
     }
@@ -181,6 +224,23 @@ class CloudBackups(
                     null
                 }
             }
+        }
+    }
+
+    /**
+     * Deletes everything (FR-6.5): the phone's data and settings and, with an account signed in,
+     * its backup online too — otherwise the backup would come straight back at the next sign-in.
+     * The copy online goes first, so a phone that can't reach it keeps its data and the caller
+     * can say so. Afterwards the empty phone is still the account's, with nothing pending.
+     */
+    suspend fun eraseAll() {
+        val account = accounts.account.first()
+        mutex.withLock {
+            if (account != null) cloud.delete(account.id)
+            ignoreChanges()
+            backups.clearAll()
+            afterReplace()
+            if (account != null) claim(account.id, pending = false)
         }
     }
 

@@ -49,7 +49,10 @@ sealed interface CloudSetup {
     /** Nothing to decide: this phone's data is the account's now. */
     data object Done : CloudSetup
 
-    /** The account has a backup, and this phone's data belongs to no account yet. One has to give way. */
+    /** The phone was empty and the account had a backup, so the backup simply came down: this much. */
+    data class Restored(val counts: DataCounts) : CloudSetup
+
+    /** The account has a backup, and this phone has data of its own that belongs to no account yet. One has to give way. */
     data class ChooseSource(val phone: DataCounts, val backup: CloudBackupInfo) : CloudSetup
 
     /** This phone holds another account's data. It goes before this account's comes in. */

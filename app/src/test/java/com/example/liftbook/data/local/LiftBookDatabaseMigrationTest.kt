@@ -34,6 +34,8 @@ import java.time.LocalDate
 class LiftBookDatabaseMigrationTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
+    // Robolectric puts each test's files under a folder named after the test. On Windows that path
+    // must stay under 260 characters, WAL suffixes included, so test names here stay short.
     private val name = "migration-test.db"
 
     @Before
@@ -158,7 +160,7 @@ class LiftBookDatabaseMigrationTest {
     }
 
     @Test
-    fun `version 5 to 6 deletes retired built-ins that were never used and archives the ones that were`() = runTest {
+    fun `version 5 to 6 retires built-ins, archiving those still in use`() = runTest {
         val landmine = "fd65a9ed-a57f-3358-ba00-6be74ab76e75"
         val rowing = "4a300d9d-e11e-31e5-9350-a00cbba6b629"
         val swimming = "7ec91ba5-f11b-36a0-97e8-c7a8aa079306"
