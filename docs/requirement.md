@@ -41,7 +41,7 @@ This is the core screen; everything else exists to feed it or read from it.
 
 | ID | Requirement |
 | --- | --- |
-| FR-3.1 | Start an empty workout or one from a routine. Only one workout can be active at a time. |
+| FR-3.1 | Start an empty workout or one from a routine. Only one workout can be active at a time. An empty workout is named for the time of day it starts; either kind can be renamed while in progress. |
 | FR-3.2 | Add, remove and reorder exercises mid-workout. |
 | FR-3.3 | Log sets per exercise: weight × reps for strength; duration and distance for cardio; reps only for bodyweight. Each set can be marked complete. |
 | FR-3.4 | Pre-fill each set with the values from the last time that exercise was performed. |

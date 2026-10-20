@@ -68,6 +68,10 @@ interface WorkoutDao {
     @Query("UPDATE workouts SET note = :note WHERE id = :id")
     suspend fun setNote(id: String, note: String?)
 
+    /** Only the workout in progress is renamed this way; a finished one is revised as a whole. */
+    @Query("UPDATE workouts SET name = :name WHERE id = :id AND finishedAt IS NULL")
+    suspend fun setNameIfActive(id: String, name: String)
+
     @Query("UPDATE workouts SET restStartedAt = :startedAt, restEndsAt = :endsAt WHERE id = :id")
     suspend fun setRest(id: String, startedAt: Instant?, endsAt: Instant?)
 

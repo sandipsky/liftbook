@@ -915,6 +915,12 @@ This screen carries most of the app's risk, so its rules are explicit.
   missing values and says how many, or finishes. The banner says "Recording" and doesn't tick.
 - **Reorder mode** shows the new order at once and writes each move; it's shown ahead of the
   database until the database catches up, so the list never flashes back.
+- **Renaming (FR-3.1).** An empty workout starts as "Morning workout" and the like; the name in
+  the header is a control (with a pencil beside it, and a Rename item in the menu for good
+  measure) that opens `NameDialog`, pre-filled and selected so typing replaces it. The
+  ViewModel normalises like a routine's name, drops a blank or unchanged one, and
+  `renameActiveWorkout` writes it — only while the workout is in progress; a finished one is
+  renamed in its editor as part of a revision.
 - **The rest alert** goes through `domain/repository/RestTimerScheduler`, implemented by
   `notification/rest/AlarmRestTimerScheduler`: one exact alarm, replaced by each rest, whose
   receiver posts "Rest over · Next up: <exercise>" on a high-importance channel with vibration.
@@ -1005,7 +1011,9 @@ picker's rows, the routine page's rows and the progress tab's trained-exercise r
 skeletons match); at 40 dp in `ExerciseBlock`'s header, the workout and routine editors' reorder
 rows and `LoggedExerciseCard`; at 64 dp beside the progress page's headline, where the chart is
 the hero; and as a 2:1 panel at the top of the exercise page, which is simply absent when there's
-no drawing. That panel alone asks for `animate`: the bundled animated WebP plays on a loop in an
+no drawing. The same slice added `NameDialog` (one pre-filled, pre-selected field with its
+confirm disabled while blank), which renames the workout in progress. That panel alone asks for
+`animate`: the bundled animated WebP plays on a loop in an
 `ImageView` hosting the system's `AnimatedImageDrawable` (Compose has no player of its own),
 with a multiply colour filter in the paper tone standing in for the still's blend, fading in over
 the still once decoded and stopping when it leaves the screen. Android 8 has no `ImageDecoder`,

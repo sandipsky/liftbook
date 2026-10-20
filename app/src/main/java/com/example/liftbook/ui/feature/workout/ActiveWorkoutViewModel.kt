@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.liftbook.core.time.ticks
 import com.example.liftbook.domain.calculator.RestTimes
 import com.example.liftbook.domain.calculator.SetPrefill
+import com.example.liftbook.domain.calculator.WorkoutNames
 import com.example.liftbook.domain.calculator.findSet
 import com.example.liftbook.domain.calculator.nextSetAfter
 import com.example.liftbook.domain.calculator.progress
@@ -184,6 +185,7 @@ class ActiveWorkoutViewModel @Inject constructor(
             ActiveWorkoutAction.Discard -> discard()
             ActiveWorkoutAction.Finish -> finish()
             ActiveWorkoutAction.SaveNow -> write { saveEdits() }
+            is ActiveWorkoutAction.Rename -> write { rename(action.name) }
 
             ActiveWorkoutAction.OpenPicker -> {
                 pickerQueryState.clearText()
@@ -350,6 +352,17 @@ class ActiveWorkoutViewModel @Inject constructor(
         exercise.sets
             .filter { set -> (setFields[set.id]?.values() ?: set.values).applicableTo(type).metricsFor(type) == null }
             .map { it.id }
+    }
+
+    /**
+     * Renames the workout (FR-3.1). The name is trimmed and capped like a routine's; a blank one
+     * keeps the name it has, so the dialog's Rename can never leave it nameless.
+     */
+    private suspend fun rename(name: String) {
+        val workout = workout?.takeIf { it.isActive } ?: return
+        val normalized = WorkoutNames.normalize(name).take(WorkoutNames.MAX_LENGTH)
+        if (normalized.isEmpty() || normalized == workout.name) return
+        workoutRepository.renameActiveWorkout(workout.id, normalized)
     }
 
     private fun discard() {

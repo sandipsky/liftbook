@@ -152,6 +152,10 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     override suspend fun setSetType(setId: String, setType: SetType) = setDao.setType(setId, setType)
 
+    override suspend fun renameActiveWorkout(workoutId: String, name: String) {
+        workoutDao.setNameIfActive(workoutId, name)
+    }
+
     override suspend fun saveEdits(workoutId: String, edits: WorkoutEdits) {
         if (edits.isEmpty) return
         database.withTransaction {

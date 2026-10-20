@@ -90,6 +90,9 @@ sealed interface ActiveWorkoutAction {
     /** Save what's been typed now, as the screen goes out of view (FR-3.7). */
     data object SaveNow : ActiveWorkoutAction
 
+    /** Give the workout a name of the user's own (FR-3.1); blank keeps the one it has. */
+    data class Rename(val name: String) : ActiveWorkoutAction
+
     // Exercises (FR-3.2)
     data object OpenPicker : ActiveWorkoutAction
 

@@ -376,6 +376,12 @@
     <string name="workout_empty_body">Add what you’re training. Each exercise starts with what you did last time.</string>
     <string name="workout_menu_default_rest">Default rest timer</string>
     <string name="workout_menu_reorder">Reorder exercises</string>
+    <string name="workout_menu_rename">Rename workout</string>
+    <!-- TalkBack's action on the workout's name: "double-tap to rename" -->
+    <string name="workout_rename_click_label">rename</string>
+    <string name="workout_rename_title">Rename workout</string>
+    <string name="workout_rename_label">Name</string>
+    <string name="workout_rename_confirm">Rename</string>
     <string name="workout_discard">Discard workout</string>
     <string name="workout_discard_title">Discard this workout?</string>
     <string name="workout_discard_body">Nothing from it will be saved to your history.</string>

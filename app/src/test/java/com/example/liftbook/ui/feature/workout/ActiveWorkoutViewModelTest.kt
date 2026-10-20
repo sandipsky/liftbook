@@ -94,6 +94,21 @@ class ActiveWorkoutViewModelTest {
     }
 
     @Test
+    fun `renaming trims the name, and a blank one keeps the old`() = runTest {
+        workouts.startFromRoutine("push")
+        val viewModel = activeWorkout()
+
+        viewModel.onAction(ActiveWorkoutAction.Rename("  Leg day  "))
+        runCurrent()
+        assertEquals("Leg day", workouts.active.value?.name)
+        assertEquals("Leg day", viewModel.uiState.value.workout?.name)
+
+        viewModel.onAction(ActiveWorkoutAction.Rename("   "))
+        runCurrent()
+        assertEquals("Leg day", workouts.active.value?.name)
+    }
+
+    @Test
     fun `with nothing in progress there's no workout`() = runTest {
         val state = activeWorkout().uiState.value
 

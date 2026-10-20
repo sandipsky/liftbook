@@ -187,15 +187,16 @@ class LiftBookDatabaseMigrationTest {
 
         val database = Room.databaseBuilder(context, LiftBookDatabase::class.java, name).allowMainThreadQueries().build()
         try {
-            // Opening runs the migration and validates the migrated schema.
+            // Opening runs the migration and validates the migrated schema. A DAO call opens the
+            // database for writing, as the app does; a read-only first open couldn't migrate it.
+            assertEquals("Cardio", database.workoutDao().getById("w")?.name)
             val archivedById = HashMap<String, Int>()
-            database.openHelper.readableDatabase.query("SELECT id, isArchived FROM exercises").use { cursor ->
+            database.openHelper.writableDatabase.query("SELECT id, isArchived FROM exercises").use { cursor ->
                 while (cursor.moveToNext()) archivedById[cursor.getString(0)] = cursor.getInt(1)
             }
             assertEquals(mapOf(rowing to 1, swimming to 1, "bench" to 0), archivedById)
-            // The history and routine that referred to them are untouched.
-            assertEquals("Cardio", database.workoutDao().getById("w")?.name)
-            database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM routine_exercises WHERE exerciseId = '$swimming'").use { cursor ->
+            // The routine that referred to Swimming is untouched.
+            database.openHelper.writableDatabase.query("SELECT COUNT(*) FROM routine_exercises WHERE exerciseId = '$swimming'").use { cursor ->
                 cursor.moveToFirst()
                 assertEquals(1, cursor.getInt(0))
             }
