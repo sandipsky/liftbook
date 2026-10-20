@@ -216,10 +216,11 @@ archiving rather than deleting.
   just hidden in the UI.
 - **Illustrations.** Every built-in names a drawing of the movement
   (`SeedExercise.illustration`): a 540 px WebP in `app/src/main/assets/exercises/`, about 1.7 MB
-  for the set. The name is looked up by id when a row is mapped (`ExerciseSeed.illustrationFor`)
-  rather than stored, so swapping a drawing is a code change, not a migration; custom exercises
-  have none and show a dumbbell glyph. `ExerciseSeedTest` checks that every named file is bundled
-  and every bundled file is named.
+  for the set, with an animated WebP of the same name under `exercises/animated/` (about 12 MB)
+  that the exercise page plays. The name is looked up by id when a row is mapped
+  (`ExerciseSeed.illustrationFor`) rather than stored, so swapping a drawing is a code change, not
+  a migration; custom exercises have none and show a dumbbell glyph. `ExerciseSeedTest` checks
+  that every named still and animation is bundled and every bundled file is named.
 - **Retired built-ins.** Three built-ins the drawing set had no movement for — Landmine Press,
   Rowing (Machine), Swimming — were removed from the library rather than shipped without a
   drawing. `ExerciseSeed.retiredIds` keeps their ids reserved. The v6 migration takes them out of
@@ -1004,8 +1005,12 @@ picker's rows, the routine page's rows and the progress tab's trained-exercise r
 skeletons match); at 40 dp in `ExerciseBlock`'s header, the workout and routine editors' reorder
 rows and `LoggedExerciseCard`; at 64 dp beside the progress page's headline, where the chart is
 the hero; and as a 2:1 panel at the top of the exercise page, which is simply absent when there's
-no drawing. The records block keeps its trophy as the leading mark, and the home and history
-rows that join exercise names into one line stay text.
+no drawing. That panel alone asks for `animate`: the bundled animated WebP plays on a loop in an
+`ImageView` hosting the system's `AnimatedImageDrawable` (Compose has no player of its own),
+with a multiply colour filter in the paper tone standing in for the still's blend, fading in over
+the still once decoded and stopping when it leaves the screen. Android 8 has no `ImageDecoder`,
+so it keeps the still. The records block keeps its trophy as the leading mark, and the home and
+history rows that join exercise names into one line stay text.
 
 ### 5.5 Threading & testing
 

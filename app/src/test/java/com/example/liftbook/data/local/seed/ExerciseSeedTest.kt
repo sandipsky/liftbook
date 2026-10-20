@@ -74,8 +74,16 @@ class ExerciseSeedTest {
         assertTrue(bundledDrawings.path, bundledDrawings.isDirectory)
         val named = seed.map { it.illustration }.toSet()
         named.forEach { name -> assertTrue(name, File(bundledDrawings, "$name.webp").isFile) }
-        val bundled = bundledDrawings.listFiles().orEmpty().map { it.nameWithoutExtension }.toSet()
+        val bundled = bundledDrawings.listFiles { file -> file.isFile }.orEmpty().map { it.nameWithoutExtension }.toSet()
         assertEquals(emptySet<String>(), bundled - named)
+    }
+
+    @Test
+    fun `every drawing has a bundled animation, and every animation a drawing`() {
+        // The exercise page plays the animation named like the drawing; the two sets stay in step.
+        val named = seed.map { it.illustration }.toSet()
+        val animated = bundledAnimations.listFiles { file -> file.isFile }.orEmpty().map { it.nameWithoutExtension }.toSet()
+        assertEquals(named, animated)
     }
 
     @Test
@@ -98,4 +106,5 @@ class ExerciseSeedTest {
 
     /** Unit tests run with the module directory as the working directory. */
     private val bundledDrawings = File("src/main/assets/exercises")
+    private val bundledAnimations = File(bundledDrawings, "animated")
 }

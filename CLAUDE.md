@@ -223,7 +223,8 @@ Concretely:
 - Add new dependencies to `gradle/libs.versions.toml`, then reference them via `libs.…`.
 - Don't add a library for something the platform or Compose already does well.
 - Built-in exercises carry a drawing of the movement: a WebP in `app/src/main/assets/exercises/`,
+  plus an animated WebP of the same name in `exercises/animated/` that the exercise page plays,
   named per exercise in `ExerciseSeed` and shown through `ui/components/ExerciseIllustration`.
-  Custom exercises have none. When adding a built-in, add its drawing there too; `ExerciseSeedTest`
-  checks the names and files agree. Removing a built-in is a migration, not just a deleted line:
+  Custom exercises have none. When adding a built-in, add both files; `ExerciseSeedTest` checks
+  the names and files agree. Removing a built-in is a migration, not just a deleted line:
   add its id to `ExerciseSeed.retiredIds` and follow the v6 pattern in `LiftBookMigrations.kt`.

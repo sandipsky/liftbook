@@ -316,8 +316,8 @@ private fun DetailList(
 }
 
 /**
- * The drawing of the movement when there is one, then the name and its three facts. Without a
- * drawing the name leads, rather than an empty panel standing in.
+ * The movement itself when there is a drawing — the panel plays it on a loop — then the name and
+ * its three facts. Without a drawing the name leads, rather than an empty panel standing in.
  */
 @Composable
 private fun DetailHeader(exercise: Exercise) {
@@ -332,6 +332,7 @@ private fun DetailHeader(exercise: Exercise) {
                 illustration = exercise.illustration,
                 detail = IllustrationDetail.Full,
                 shape = MaterialTheme.shapes.large,
+                animate = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(ExerciseIllustrationDefaults.PanelAspectRatio),

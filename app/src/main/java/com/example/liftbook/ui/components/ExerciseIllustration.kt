@@ -2,7 +2,15 @@ package com.example.liftbook.ui.components
 
 import android.content.res.AssetManager
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.drawable.AnimatedImageDrawable
+import android.os.Build
 import android.util.LruCache
+import android.widget.ImageView
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -19,6 +27,7 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,17 +38,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.liftbook.ui.theme.IconSize
 import com.example.liftbook.ui.theme.LiftBookPreview
 import com.example.liftbook.ui.theme.Spacing
@@ -60,6 +73,11 @@ import kotlin.math.roundToInt
  * is multiplied away into the tile, so there is never a white card inside the tile's corners.
  * The square drawing fits inside whatever shape the tile is given; a wide tile simply has more
  * paper either side.
+ *
+ * With [animate], the still gives way to the movement itself: the animated WebP bundled beside
+ * the drawing plays on a loop over it, blended onto the same paper, once it has decoded. Only
+ * the exercise's own page asks for this; a list of looping figures would be noise. Before
+ * Android 9 there is no system decoder for animated images, so those phones keep the still.
  */
 @Composable
 fun ExerciseIllustration(
@@ -67,6 +85,7 @@ fun ExerciseIllustration(
     modifier: Modifier = Modifier,
     detail: IllustrationDetail = IllustrationDetail.Thumbnail,
     shape: Shape = MaterialTheme.shapes.medium,
+    animate: Boolean = false,
 ) {
     val image = rememberIllustration(illustration, detail)
     val colors = MaterialTheme.colorScheme
@@ -112,6 +131,12 @@ fun ExerciseIllustration(
                 tint = ink,
                 modifier = Modifier.size(if (detail == IllustrationDetail.Full) IconSize.action else IconSize.inline),
             )
+        }
+        val canAnimate = animate && illustration != null &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && !LocalInspectionMode.current
+        if (canAnimate) {
+            // The same centred square the still occupies, so the movement takes over in place.
+            AnimatedDrawing(name = illustration, paper = paper, modifier = Modifier.aspectRatio(1f))
         }
     }
 }
@@ -179,12 +204,51 @@ private fun decode(assets: AssetManager, name: String, sampleSize: Int): ImageBi
     }
 }.getOrNull()?.asImageBitmap()
 
+/**
+ * The movement, looping. An `ImageView` hosts the system's animated-image drawable, since Compose
+ * has no player of its own; a multiply colour filter in the paper tone does to each frame what
+ * the still's blend does, so the frames' white vanishes into the tile. It fades in over the still
+ * once decoded, and stops when it leaves the screen.
+ */
+@RequiresApi(Build.VERSION_CODES.P)
+@Composable
+private fun AnimatedDrawing(name: String, paper: Color, modifier: Modifier = Modifier) {
+    val assets = LocalContext.current.assets
+    var drawable by remember(name) { mutableStateOf<AnimatedImageDrawable?>(null) }
+    LaunchedEffect(name) {
+        drawable = withContext(Dispatchers.IO) { decodeAnimated(assets, name) }
+    }
+    val playing = drawable ?: return
+    val appearance = remember(playing) { Animatable(0f) }
+    LaunchedEffect(playing) { appearance.animateTo(1f, tween(FADE_MILLIS)) }
+    DisposableEffect(playing) {
+        playing.repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
+        playing.start()
+        onDispose { playing.stop() }
+    }
+    val filter = remember(paper) { PorterDuffColorFilter(paper.toArgb(), PorterDuff.Mode.MULTIPLY) }
+    AndroidView(
+        factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.FIT_CENTER } },
+        update = { view ->
+            if (view.drawable !== playing) view.setImageDrawable(playing)
+            view.colorFilter = filter
+        },
+        modifier = modifier.graphicsLayer { alpha = appearance.value },
+    )
+}
+
+@RequiresApi(Build.VERSION_CODES.P)
+private fun decodeAnimated(assets: AssetManager, name: String): AnimatedImageDrawable? = runCatching {
+    ImageDecoder.decodeDrawable(ImageDecoder.createSource(assets, "$ANIMATED_DIR/$name.webp")) as? AnimatedImageDrawable
+}.getOrNull()
+
 /** Decoded drawings by name and detail, up to about 16 MB: a screenful of rows plus a few pages. */
 private object IllustrationCache : LruCache<String, ImageBitmap>(CACHE_BYTES) {
     override fun sizeOf(key: String, value: ImageBitmap): Int = value.width * value.height * BYTES_PER_PIXEL
 }
 
 private const val ASSET_DIR = "exercises"
+private const val ANIMATED_DIR = "exercises/animated"
 private const val FADE_MILLIS = 150
 private const val BYTES_PER_PIXEL = 4
 private const val CACHE_BYTES = 16 * 1024 * 1024
@@ -203,6 +267,7 @@ private fun ExerciseIllustrationPreview() {
                 illustration = "cable_bar_lateral_pulldown",
                 detail = IllustrationDetail.Full,
                 shape = MaterialTheme.shapes.large,
+                animate = true,
                 modifier = Modifier.fillMaxWidth().aspectRatio(ExerciseIllustrationDefaults.PanelAspectRatio),
             )
         }
