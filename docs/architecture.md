@@ -632,8 +632,9 @@ one action swaps to the **calendar** (FR-4.4): the month's totals, then its days
 in a disc of the accent's soft tone. Tapping a day opens its workout, or a sheet to choose when
 there were two. Arrows or a swipe turn the month, never past the current one. The week starts
 on the day FR-6.2's setting says. Which view shows, and the month, live in the `SavedStateHandle`. `WorkoutDetail(workoutId)` reads a past workout back as the summary
-does — stats, the records it set *at the time*, every set — with Edit in the top bar and Delete
-behind the menu. `WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
+does — stats, the records it set *at the time*, every set — with Edit and Delete in the top bar;
+Delete was the overflow menu's only item, so it stands alone, behind its confirmation.
+`WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
 each session to its workout, so FR-4.3 leads into FR-4.2.
 
 *As built, FR-5:* **Progress** is the third tab: this week against last as a small table — this

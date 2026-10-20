@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,10 +26,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -290,34 +286,17 @@ fun RoutineDetailScreen(
 
 private enum class DetailContent { Loading, NotFound, Loaded }
 
+/** Edit, Duplicate and Delete, each a tap away; Delete can't be undone, so it asks first. */
 @Composable
 private fun DetailActions(onAction: (RoutineDetailAction) -> Unit, onDelete: () -> Unit) {
     IconButton(onClick = { onAction(RoutineDetailAction.Edit) }) {
         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.routine_detail_edit))
     }
-    var menuOpen by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { menuOpen = true }) {
-            Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
-        }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.routine_detail_duplicate)) },
-                leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
-                onClick = {
-                    menuOpen = false
-                    onAction(RoutineDetailAction.Duplicate)
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.routine_detail_delete)) },
-                leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null) },
-                onClick = {
-                    menuOpen = false
-                    onDelete()
-                },
-            )
-        }
+    IconButton(onClick = { onAction(RoutineDetailAction.Duplicate) }) {
+        Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.routine_detail_duplicate))
+    }
+    IconButton(onClick = onDelete) {
+        Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.routine_detail_delete))
     }
 }
 

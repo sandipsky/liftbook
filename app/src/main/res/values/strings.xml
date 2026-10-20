@@ -263,8 +263,8 @@
     <string name="routine_fact_last_done">Last done</string>
     <string name="routine_fact_never">Not yet</string>
     <string name="routine_detail_edit">Edit routine</string>
-    <string name="routine_detail_duplicate">Duplicate</string>
-    <string name="routine_detail_delete">Delete</string>
+    <string name="routine_detail_duplicate">Duplicate routine</string>
+    <string name="routine_detail_delete">Delete routine</string>
     <string name="routine_detail_start">Start workout</string>
     <string name="routine_detail_loading">Loading routine</string>
     <string name="routine_detail_not_found_title">This routine no longer exists</string>
