@@ -71,7 +71,7 @@ internal object WorkoutPreviewData {
                 set("d2", reps = 12),
             ),
             exercise(
-                RoutinePreviewData.rowing,
+                RoutinePreviewData.skiErg,
                 set("r1", durationSeconds = 600, distanceMeters = 2_000.0),
             ),
         ),

@@ -121,6 +121,10 @@ class FakeWorkoutRepository(
         if (active.value?.id == workoutId) active.value = null
     }
 
+    override suspend fun renameActiveWorkout(workoutId: String, name: String) {
+        edit { if (it.id == workoutId) it.copy(name = name) else it }
+    }
+
     override suspend fun addExercises(workoutId: String, exerciseIds: List<String>): List<String> {
         val library = requireNotNull(exercises) { "Pass the exercises to add them" }
         val added = exerciseIds.mapNotNull { id ->

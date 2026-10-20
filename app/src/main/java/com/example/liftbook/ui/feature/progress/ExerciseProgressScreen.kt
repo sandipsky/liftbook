@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -34,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
@@ -50,6 +53,8 @@ import com.example.liftbook.domain.model.ProgressRange
 import com.example.liftbook.ui.components.ChartPoint
 import com.example.liftbook.ui.components.ChoiceChip
 import com.example.liftbook.ui.components.EmptyState
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.ProgressChart
 import com.example.liftbook.ui.components.SectionHeader
@@ -227,22 +232,33 @@ private fun ProgressList(
     }
 }
 
+/** The drawing beside the name, compact: the chart is this page's hero, not the picture. */
 @Composable
 private fun Header(exercise: Exercise) {
     val metaSpoken = exerciseMetaSpoken(exercise)
-    Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.gutter).padding(top = Spacing.xs, bottom = Spacing.lg)) {
-        Text(
-            text = exercise.name,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.semantics { heading() },
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.gutter).padding(top = Spacing.xs, bottom = Spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        ExerciseIllustration(
+            illustration = exercise.illustration,
+            modifier = Modifier.size(ExerciseIllustrationDefaults.HeaderSize),
         )
-        Text(
-            text = exerciseMetaText(exercise),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.semantics { contentDescription = metaSpoken },
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = exercise.name,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                text = exerciseMetaText(exercise),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics { contentDescription = metaSpoken },
+            )
+        }
     }
 }
 
@@ -335,7 +351,13 @@ private fun ProgressSkeleton(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
     ) {
         Column(Modifier.padding(horizontal = Spacing.gutter).padding(top = Spacing.xs)) {
-            SkeletonBlock(Modifier.padding(vertical = Spacing.xs).fillMaxWidth(0.7f).height(Spacing.lg))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                SkeletonBlock(Modifier.size(ExerciseIllustrationDefaults.HeaderSize), MaterialTheme.shapes.medium)
+                Column(Modifier.weight(1f)) {
+                    SkeletonBlock(Modifier.padding(vertical = Spacing.xs).fillMaxWidth(0.7f).height(Spacing.lg))
+                    SkeletonBlock(Modifier.fillMaxWidth(0.4f).height(Spacing.sm))
+                }
+            }
             Spacer(Modifier.height(Spacing.lg))
             SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(Spacing.xl), MaterialTheme.shapes.large)
             Spacer(Modifier.height(Spacing.lg))

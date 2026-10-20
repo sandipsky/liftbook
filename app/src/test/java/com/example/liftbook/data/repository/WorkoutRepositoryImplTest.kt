@@ -260,6 +260,19 @@ class WorkoutRepositoryImplTest {
     }
 
     @Test
+    fun `renaming changes the workout in progress, and never a finished one`() = runTest {
+        repository.startFromRoutine(pushRoutine())
+        val id = active().id
+
+        repository.renameActiveWorkout(id, "Leg day")
+        assertEquals("Leg day", active().name)
+
+        repository.finishWorkout(id, clock.instant())
+        repository.renameActiveWorkout(id, "Later")
+        assertEquals("Leg day", repository.observeWorkout(id).first()?.name)
+    }
+
+    @Test
     fun `completing a set stores it, carries values forward and starts the rest`() = runTest {
         repository.startFromRoutine(pushRoutine())
         val sets = active().exercises.first().sets

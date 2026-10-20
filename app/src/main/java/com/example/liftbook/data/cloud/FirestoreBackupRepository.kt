@@ -88,6 +88,21 @@ class FirestoreBackupRepository(private val firestore: FirebaseFirestore) : Clou
         BackupSnapshot(document, info.savedAt, info.counts)
     }
 
+    override suspend fun delete(accountId: String) {
+        firebaseCall {
+            val user = userDocument(accountId)
+            // The pieces first: with the account document still naming them, a reader meanwhile
+            // sees a backup it can't fetch rather than one that's half gone.
+            val chunks = user.collection(CHUNKS).get(Source.SERVER).await()
+            chunks.documents.chunked(DELETES_PER_BATCH).forEach { documents ->
+                val batch = firestore.batch()
+                documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+            }
+            user.delete().await()
+        }
+    }
+
     /** Pieces of earlier backups, and of uploads that never finished. Best effort: the backup is already in. */
     private suspend fun sweep(user: DocumentReference, keep: String) {
         val stale = user.collection(CHUNKS).whereNotEqualTo(FIELD_GENERATION, keep).get(Source.SERVER).await()

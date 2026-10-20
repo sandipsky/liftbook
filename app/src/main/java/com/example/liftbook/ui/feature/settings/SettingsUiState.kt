@@ -23,6 +23,9 @@ data class SettingsUiState(
     val accountsAvailable: Boolean = true,
     /** The signed-in account's email, or null while signed out. */
     val accountEmail: String? = null,
+    /** Deleting everything (FR-6.5): the typed confirmation is up, or the deletion is running. */
+    val isConfirmingDelete: Boolean = false,
+    val isDeleting: Boolean = false,
     val today: LocalDate = LocalDate.of(1970, 1, 1),
     val zone: ZoneId = ZoneId.systemDefault(),
 )
@@ -33,6 +36,13 @@ sealed interface SettingsAction {
     data class SetFirstDayOfWeek(val firstDayOfWeek: FirstDayOfWeek) : SettingsAction
 
     data class SetTheme(val themeMode: ThemeMode) : SettingsAction
+
+    /** Delete everything on the phone — and the account's backup online — after typing the word (FR-6.5). */
+    data object DeleteAllData : SettingsAction
+
+    data object ConfirmDeleteAllData : SettingsAction
+
+    data object DismissDeleteAllData : SettingsAction
 
     // Navigation; handled by the route.
     data object OpenReminders : SettingsAction
@@ -46,4 +56,11 @@ sealed interface SettingsAction {
 
 sealed interface SettingsEvent {
     data object SaveFailed : SettingsEvent
+
+    data object DataDeleted : SettingsEvent
+
+    data object DeleteFailed : SettingsEvent
+
+    /** Nothing was deleted: the account's backup online couldn't be reached to delete it first. */
+    data object CloudUnreachable : SettingsEvent
 }

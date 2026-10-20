@@ -158,10 +158,14 @@ class AccountViewModel @Inject constructor(
 
     private fun setUp() = perform(AccountOperation.SETTING_UP, failure = AccountEvent::SetupFailed) {
         when (val setup = cloudBackups.prepare()) {
-            CloudSetup.Done -> Unit
-            is CloudSetup.ChooseSource, is CloudSetup.OtherAccountData -> session.update { it.copy(setup = setup) }
+            CloudSetup.Done -> null
+            // An empty phone took the account's backup without asking; say what came down.
+            is CloudSetup.Restored -> AccountEvent.Restored(setup.counts)
+            is CloudSetup.ChooseSource, is CloudSetup.OtherAccountData -> {
+                session.update { it.copy(setup = setup) }
+                null
+            }
         }
-        null
     }
 
     private fun signOut() = perform(AccountOperation.SIGNING_OUT, failure = { AccountEvent.SignOutFailed }) {

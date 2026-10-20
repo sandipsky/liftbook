@@ -7,6 +7,7 @@ import com.example.liftbook.domain.model.UserPreferences
 import com.example.liftbook.domain.usecase.CloudBackups
 import com.example.liftbook.testing.FakeAccountRepository
 import com.example.liftbook.testing.FakeBackupRepository
+import com.example.liftbook.testing.FakeBackupUploadScheduler
 import com.example.liftbook.testing.FakeCloudBackupRepository
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRestTimerScheduler
@@ -24,6 +25,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
@@ -43,11 +45,37 @@ class SettingsViewModelTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-26T10:00:00Z"), ZoneOffset.UTC)
     private val events = mutableListOf<SettingsEvent>()
 
+    private val accounts = FakeAccountRepository()
+    private val exercises = FakeExerciseRepository()
+    private val workouts = FakeWorkoutRepository(FakeRoutineRepository(exercises), exercises)
+
+    private fun TestScope.cloudBackups(): CloudBackups = CloudBackups(
+        accounts, FakeCloudBackupRepository(), backups, workouts, testReminders(clock = clock), FakeRestTimerScheduler(),
+        FakeBackupUploadScheduler(), clock, backgroundScope,
+    )
+
     private fun TestScope.settingsScreen(): SettingsViewModel =
-        SettingsViewModel(settings, backups, schedules, FakeAccountRepository(), clock).also { viewModel ->
+        SettingsViewModel(settings, backups, schedules, accounts, cloudBackups(), clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.collect { events += it } }
         }
+
+    @Test
+    fun `deleting everything asks for the word first, then clears the phone and says so`() = runTest {
+        val viewModel = settingsScreen()
+
+        viewModel.onAction(SettingsAction.DeleteAllData)
+
+        assertTrue(viewModel.uiState.value.isConfirmingDelete)
+        assertEquals(0, backups.clears)
+
+        viewModel.onAction(SettingsAction.ConfirmDeleteAllData)
+
+        assertFalse(viewModel.uiState.value.isConfirmingDelete)
+        assertFalse(viewModel.uiState.value.isDeleting)
+        assertEquals(1, backups.clears)
+        assertEquals(listOf<SettingsEvent>(SettingsEvent.DataDeleted), events)
+    }
 
     @Test
     fun `shows the settings as stored, and when the last backup was`() = runTest {
@@ -96,6 +124,7 @@ class SettingsViewModelTest {
             FakeWorkoutRepository(FakeRoutineRepository(FakeExerciseRepository())),
             reminders,
             FakeRestTimerScheduler(),
+            FakeBackupUploadScheduler(),
             clock,
             backgroundScope,
         )

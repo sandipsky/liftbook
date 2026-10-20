@@ -9,8 +9,10 @@ import com.example.liftbook.domain.model.CloudSetupChoice
 import com.example.liftbook.domain.model.CloudState
 import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.model.ImportMode
+import com.example.liftbook.domain.model.WorkoutMode
 import com.example.liftbook.testing.FakeAccountRepository
 import com.example.liftbook.testing.FakeBackupRepository
+import com.example.liftbook.testing.FakeBackupUploadScheduler
 import com.example.liftbook.testing.FakeCloudBackupRepository
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRestTimerScheduler
@@ -26,6 +28,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -52,9 +55,11 @@ class CloudBackupsTest {
     private val online = BackupSnapshot("online", Instant.parse("2026-09-20T08:00:00Z"), DataCounts(workouts = 128, routines = 5, weighIns = 28))
     private val onlineInfo = CloudBackupInfo(online.exportedAt, online.counts)
 
+    private val uploads = FakeBackupUploadScheduler()
+
     /** Started, as in the app, so changes are followed; the collectors run on the test scheduler. */
     private fun TestScope.cloudBackups(): CloudBackups =
-        CloudBackups(accounts, cloud, backups, workouts, testReminders(clock = clock), FakeRestTimerScheduler(), clock, backgroundScope)
+        CloudBackups(accounts, cloud, backups, workouts, testReminders(clock = clock), FakeRestTimerScheduler(), uploads, clock, backgroundScope)
             .also {
                 it.start()
                 runCurrent()
@@ -88,6 +93,111 @@ class CloudBackupsTest {
 
         assertEquals(CloudState(ownerAccountId = sam.id, backupPending = false), backups.cloudState.value)
         assertTrue(cloud.uploads.isEmpty())
+    }
+
+    @Test
+    fun `an empty phone signing in to an account with a backup restores it without asking`() = runTest {
+        backups.counts.value = DataCounts()
+        cloud.stored[sam.id] = online
+        val cloudBackups = cloudBackups()
+
+        assertEquals(CloudSetup.Restored(online.counts), cloudBackups.prepare())
+
+        assertEquals(listOf(online to ImportMode.REPLACE), backups.restores)
+        assertEquals(online.counts, backups.counts.value)
+        assertEquals(CloudState(ownerAccountId = sam.id, lastBackupAt = online.exportedAt, backupPending = false), backups.cloudState.value)
+        letBackupsRun()
+        assertTrue(cloud.uploads.isEmpty())
+    }
+
+    @Test
+    fun `a pending backup is booked with the system too, and withdrawn once it has gone up`() = runTest {
+        backups.cloudState.value = CloudState(ownerAccountId = sam.id, backupPending = true)
+        val cloudBackups = cloudBackups()
+
+        assertTrue(uploads.isWaiting)
+        letBackupsRun()
+
+        assertEquals(1, cloud.uploads.size)
+        assertFalse(uploads.isWaiting)
+        assertNotNull(cloudBackups.status.first().lastBackupAt)
+    }
+
+    @Test
+    fun `the system's job sends the pending backup only when it's due`() = runTest {
+        backups.cloudState.value = CloudState(ownerAccountId = sam.id, backupPending = true)
+        val cloudBackups = cloudBackups()
+
+        // Due: it goes up, and nothing is pending any more.
+        assertTrue(cloudBackups.backUpIfDue())
+        assertEquals(1, cloud.uploads.size)
+        assertFalse(backups.cloudState.value.backupPending)
+
+        // Nothing due is done, not a failure.
+        assertTrue(cloudBackups.backUpIfDue())
+        assertEquals(1, cloud.uploads.size)
+
+        // A workout in progress waits; the in-app runner picks it up when the workout finishes.
+        backups.cloudState.value = CloudState(ownerAccountId = sam.id, backupPending = true)
+        workouts.startEmpty("Morning workout", WorkoutMode.LIVE)
+        assertTrue(cloudBackups.backUpIfDue())
+        assertEquals(1, cloud.uploads.size)
+        workouts.discardActiveWorkout(workouts.active.value!!.id)
+
+        // Only a failed upload asks for another go.
+        cloud.failure = AccountException(AccountProblem.OFFLINE)
+        assertFalse(cloudBackups.backUpIfDue())
+        assertTrue(backups.cloudState.value.backupPending)
+    }
+
+    @Test
+    fun `deleting everything removes the backup online first, then the phone's data`() = runTest {
+        backups.cloudState.value = CloudState(ownerAccountId = sam.id, lastBackupAt = online.exportedAt)
+        cloud.stored[sam.id] = online
+        val cloudBackups = cloudBackups()
+
+        cloudBackups.eraseAll()
+
+        assertEquals(listOf(sam.id), cloud.deleted)
+        assertTrue(cloud.stored.isEmpty())
+        assertEquals(1, backups.clears)
+        assertEquals(DataCounts(), backups.counts.value)
+        // The empty phone is still the account's, with nothing to send.
+        assertEquals(CloudState(ownerAccountId = sam.id, backupPending = false), backups.cloudState.value)
+        letBackupsRun()
+        assertTrue(cloud.uploads.isEmpty())
+    }
+
+    @Test
+    fun `deleting everything while offline deletes nothing`() = runTest {
+        backups.cloudState.value = CloudState(ownerAccountId = sam.id)
+        cloud.stored[sam.id] = online
+        cloud.failure = AccountException(AccountProblem.OFFLINE)
+        val cloudBackups = cloudBackups()
+
+        val problem = try {
+            cloudBackups.eraseAll()
+            null
+        } catch (e: AccountException) {
+            e.problem
+        }
+
+        assertEquals(AccountProblem.OFFLINE, problem)
+        assertEquals(0, backups.clears)
+        assertEquals(onPhone, backups.counts.value)
+        assertEquals(online, cloud.stored[sam.id])
+    }
+
+    @Test
+    fun `deleting everything signed out clears the phone alone`() = runTest {
+        accounts.signOut()
+        val cloudBackups = cloudBackups()
+
+        cloudBackups.eraseAll()
+
+        assertEquals(1, backups.clears)
+        assertTrue(cloud.deleted.isEmpty())
+        assertEquals(CloudState(), backups.cloudState.value)
     }
 
     @Test

@@ -8,6 +8,13 @@ import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.model.DocumentUri
 import com.example.liftbook.domain.model.ImportMode
 import com.example.liftbook.testing.FakeBackupRepository
+import com.example.liftbook.testing.FakeWorkoutRepository
+import com.example.liftbook.testing.FakeRoutineRepository
+import com.example.liftbook.testing.FakeExerciseRepository
+import com.example.liftbook.testing.FakeCloudBackupRepository
+import com.example.liftbook.testing.FakeBackupUploadScheduler
+import com.example.liftbook.testing.FakeAccountRepository
+import com.example.liftbook.domain.usecase.CloudBackups
 import com.example.liftbook.testing.FakeRestTimerScheduler
 import com.example.liftbook.testing.MainDispatcherRule
 import com.example.liftbook.testing.testReminders
@@ -48,8 +55,18 @@ class DataManagementViewModelTest {
         backups.backups[file] = summary
     }
 
+    private val accounts = FakeAccountRepository()
+    private val exercises = FakeExerciseRepository()
+    private val workouts = FakeWorkoutRepository(FakeRoutineRepository(exercises), exercises)
+
+    /** Shares [restTimer] with the screen, since clearing cancels the rest alert through it. */
+    private fun TestScope.cloudBackups(): CloudBackups = CloudBackups(
+        accounts, FakeCloudBackupRepository(), backups, workouts, testReminders(clock = clock), restTimer,
+        FakeBackupUploadScheduler(), clock, backgroundScope,
+    )
+
     private fun TestScope.dataManagement(): DataManagementViewModel =
-        DataManagementViewModel(backups, restTimer, testReminders(clock = clock), clock).also { viewModel ->
+        DataManagementViewModel(backups, cloudBackups(), accounts, restTimer, testReminders(clock = clock), clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.collect { events += it } }
         }

@@ -20,6 +20,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -74,14 +78,19 @@ fun SettingsRoute(
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
-            when (event) {
-                SettingsEvent.SaveFailed -> snackbarHostState.showSnackbar(resources.getString(R.string.settings_save_failed))
+            val message = when (event) {
+                SettingsEvent.SaveFailed -> resources.getString(R.string.settings_save_failed)
+                SettingsEvent.DataDeleted -> resources.getString(R.string.data_cleared)
+                SettingsEvent.DeleteFailed -> resources.getString(R.string.data_clear_failed)
+                SettingsEvent.CloudUnreachable -> resources.getString(R.string.data_clear_cloud_unreachable)
             }
+            snackbarHostState.showSnackbar(message)
         }
     }
 
     SettingsScreen(
         state = state,
+        clearConfirmation = viewModel.clearConfirmation,
         snackbarHostState = snackbarHostState,
         onAction = { action ->
             when (action) {
@@ -105,6 +114,7 @@ fun SettingsRoute(
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
+    clearConfirmation: TextFieldState,
     snackbarHostState: SnackbarHostState,
     onAction: (SettingsAction) -> Unit,
 ) {
@@ -138,6 +148,18 @@ fun SettingsScreen(
                 SettingsList(state, listState, padding, onChooseRest = { choosingRest = true }, onAction = onAction)
             }
         }
+    }
+
+    if (state.isConfirmingDelete) {
+        ClearDataDialog(
+            confirmation = clearConfirmation,
+            lastExportedAt = state.lastExportedAt,
+            accountEmail = state.accountEmail,
+            today = state.today,
+            zone = state.zone,
+            onConfirm = { onAction(SettingsAction.ConfirmDeleteAllData) },
+            onDismiss = { onAction(SettingsAction.DismissDeleteAllData) },
+        )
     }
 
     if (choosingRest) {
@@ -289,6 +311,19 @@ private fun SettingsList(
                 modifier = row,
             )
         }
+        item(key = "delete", contentType = "row") {
+            // Destructive, so in the error colour and always with its icon; the dialog asks for a typed word.
+            SettingsRow(
+                title = stringResource(R.string.data_clear_title),
+                supporting = stringResource(R.string.data_clear_body),
+                icon = Icons.Outlined.DeleteOutline,
+                destructive = true,
+                onClick = { onAction(SettingsAction.DeleteAllData) },
+                clickLabel = stringResource(R.string.data_clear_click_label),
+                enabled = !state.isDeleting,
+                modifier = row,
+            )
+        }
     }
 }
 
@@ -333,6 +368,7 @@ private fun SettingsScreenPreview() {
                 today = previewToday,
                 zone = ZoneOffset.UTC,
             ),
+            clearConfirmation = rememberTextFieldState(),
             snackbarHostState = remember { SnackbarHostState() },
             onAction = {},
         )
@@ -343,6 +379,11 @@ private fun SettingsScreenPreview() {
 @Composable
 private fun SettingsScreenLoadingPreview() {
     LiftBookTheme {
-        SettingsScreen(state = SettingsUiState(today = previewToday), snackbarHostState = remember { SnackbarHostState() }, onAction = {})
+        SettingsScreen(
+            state = SettingsUiState(today = previewToday),
+            clearConfirmation = rememberTextFieldState(),
+            snackbarHostState = remember { SnackbarHostState() },
+            onAction = {},
+        )
     }
 }

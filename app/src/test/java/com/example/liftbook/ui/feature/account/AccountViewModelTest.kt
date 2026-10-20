@@ -10,6 +10,7 @@ import com.example.liftbook.domain.model.DataCounts
 import com.example.liftbook.domain.usecase.CloudBackups
 import com.example.liftbook.testing.FakeAccountRepository
 import com.example.liftbook.testing.FakeBackupRepository
+import com.example.liftbook.testing.FakeBackupUploadScheduler
 import com.example.liftbook.testing.FakeCloudBackupRepository
 import com.example.liftbook.testing.FakeExerciseRepository
 import com.example.liftbook.testing.FakeRestTimerScheduler
@@ -54,7 +55,9 @@ class AccountViewModelTest {
     private val onlineInfo = CloudBackupInfo(online.exportedAt, online.counts)
 
     private fun TestScope.account(): AccountViewModel {
-        val cloudBackups = CloudBackups(accounts, cloud, backups, workouts, testReminders(clock = clock), FakeRestTimerScheduler(), clock, backgroundScope)
+        val cloudBackups = CloudBackups(
+            accounts, cloud, backups, workouts, testReminders(clock = clock), FakeRestTimerScheduler(), FakeBackupUploadScheduler(), clock, backgroundScope,
+        )
         return AccountViewModel(accounts, cloudBackups, backups, savedStateHandle, clock).also { viewModel ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.events.collect { events += it } }

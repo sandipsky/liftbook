@@ -102,6 +102,8 @@ com.example.liftbook
 │   ├── mapper/                       entity ⇄ domain model (both directions)
 │   └── repository/                   the implementations of domain/repository
 │
+├── work/                             WorkManager: BackupWorker and the scheduler that books it (FR-8.5)
+│
 ├── notification/
 │   ├── channel/                      NotificationChannels — rest timer, reminders
 │   ├── rest/                         RestTimerScheduler, RestTimerReceiver
@@ -148,6 +150,13 @@ com.example.liftbook
   There's no `ui/navigation/DeepLinks.kt`: reminders reach the app as intent extras (§4.2).
 - Reminders got their own feature package, as `CLAUDE.md` lays it out, rather than living in
   `settings/`; the rows both use moved to `ui/components/` (§5.4).
+
+*As built, exercise illustrations:*
+- Each built-in in `ExerciseSeed` may name a drawing of its movement: a WebP in
+  `app/src/main/assets/exercises/` (an asset folder, so not in the tree above). The domain
+  `Exercise` carries the name as `illustration`, filled in by `data/mapper/ExerciseMapper` from
+  the seed by id — never a column, never in a backup — and `ui/components/ExerciseIllustration`
+  draws it (§5.4).
 
 **Dependency direction is strictly one-way:** `ui → domain ← data`, with `core` usable by all.
 `ui` never imports from `data`; `domain` imports nothing from either. If a `ui` file ever needs an
@@ -196,7 +205,7 @@ Every library query filters `isArchived = 0`. History queries do not — that is
 archiving rather than deleting.
 
 *As built:*
-- **Seeding.** `data/local/seed/ExerciseSeed.kt` holds 129 built-ins, inserted by a
+- **Seeding.** `data/local/seed/ExerciseSeed.kt` holds 126 built-ins, inserted by a
   `RoomDatabase.Callback.onCreate` inside the database-creation transaction, so the library is
   never observed empty and a crash can't half-seed it. Ids were generated once as name-based UUIDs
   and are now fixed data; renaming a built-in must not change its id. `onCreate` only runs on a
@@ -207,6 +216,21 @@ archiving rather than deleting.
   field locked. Name, muscle group and equipment stay editable.
 - **Built-ins are read-only, custom exercises editable (FR-1.3)** — enforced in the repository, not
   just hidden in the UI.
+- **Illustrations.** Every built-in names a drawing of the movement
+  (`SeedExercise.illustration`): a 540 px WebP in `app/src/main/assets/exercises/`, about 1.7 MB
+  for the set, with an animated WebP of the same name under `exercises/animated/` (about 12 MB)
+  that the exercise page plays. The name is looked up by id when a row is mapped
+  (`ExerciseSeed.illustrationFor`) rather than stored, so swapping a drawing is a code change, not
+  a migration; custom exercises have none and show a dumbbell glyph. `ExerciseSeedTest` checks
+  that every named still and animation is bundled and every bundled file is named.
+- **Retired built-ins.** Three built-ins the drawing set had no movement for — Landmine Press,
+  Rowing (Machine), Swimming — were removed from the library rather than shipped without a
+  drawing. `ExerciseSeed.retiredIds` keeps their ids reserved. The v6 migration takes them out of
+  an existing database: deleted where nothing refers to them, archived where a workout or routine
+  does, since the `RESTRICT` foreign keys and FR-1.3 both say history keeps its exercise. A backup
+  that still carries one is filtered on import (`withoutRetiredBuiltIns`, before merge and replace
+  alike): it arrives archived if the backup's workouts or routines need it, and not at all
+  otherwise.
 
 ### 2.3 `routines` / `routine_exercises`
 
@@ -476,7 +500,11 @@ with their slices as additive changes, which Room's declared `AutoMigration` han
 **v3** adds `body_weight_entries` (FR-5.4) through `AutoMigration(2, 3)`.
 **v4** adds `workout_schedules` (FR-7.1) through `AutoMigration(3, 4)`.
 **v5** adds `workouts.mode` (FR-3.11), defaulting to `LIVE`, through `AutoMigration(4, 5)`.
-`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `4.json`,
+**v6** changes no schema. Its `AutoMigration(5, 6)` carries a spec, `RetireExercisesMigration`,
+whose `onPostMigrate` removes the retired built-ins (§2.2): deleted where unreferenced, archived
+where a workout or routine refers to them. A data-only change still bumps the version, since
+that is the only way Room runs it once per database.
+`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `5.json`,
 inserts rows, and opens it with Room, which runs the migrations and validates the result against
 the current schema. `room-testing`'s `MigrationTestHelper` isn't used: it reads schemas from instrumentation
 assets, which JVM (Robolectric) tests don't have.
@@ -604,8 +632,9 @@ one action swaps to the **calendar** (FR-4.4): the month's totals, then its days
 in a disc of the accent's soft tone. Tapping a day opens its workout, or a sheet to choose when
 there were two. Arrows or a swipe turn the month, never past the current one. The week starts
 on the day FR-6.2's setting says. Which view shows, and the month, live in the `SavedStateHandle`. `WorkoutDetail(workoutId)` reads a past workout back as the summary
-does — stats, the records it set *at the time*, every set — with Edit in the top bar and Delete
-behind the menu. `WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
+does — stats, the records it set *at the time*, every set — with Edit and Delete in the top bar;
+Delete was the overflow menu's only item, so it stands alone, behind its confirmation.
+`WorkoutEditor(workoutId)` edits it (§5.2). The exercise page's history links
 each session to its workout, so FR-4.3 leads into FR-4.2.
 
 *As built, FR-5:* **Progress** is the third tab: this week against last as a small table — this
@@ -889,6 +918,12 @@ This screen carries most of the app's risk, so its rules are explicit.
   missing values and says how many, or finishes. The banner says "Recording" and doesn't tick.
 - **Reorder mode** shows the new order at once and writes each move; it's shown ahead of the
   database until the database catches up, so the list never flashes back.
+- **Renaming (FR-3.1).** An empty workout starts as "Morning workout" and the like; the name in
+  the header is a control (with a pencil beside it, and a Rename item in the menu for good
+  measure) that opens `NameDialog`, pre-filled and selected so typing replaces it. The
+  ViewModel normalises like a routine's name, drops a blank or unchanged one, and
+  `renameActiveWorkout` writes it — only while the workout is in progress; a finished one is
+  renamed in its editor as part of a revision.
 - **The rest alert** goes through `domain/repository/RestTimerScheduler`, implemented by
   `notification/rest/AlarmRestTimerScheduler`: one exact alarm, replaced by each rest, whose
   receiver posts "Rest over · Next up: <exercise>" on a high-importance channel with vibration.
@@ -966,6 +1001,27 @@ editor's clock dial, shared with the reminder editor. The reminders feature's ow
 `ui/feature/reminders/`: `ScheduleCard`, `DayOfWeekPicker` (seven round toggles in the user's
 week order, picked days in ink), `ReminderAlertNotice`, `LeadTimeDialog` and
 `ScheduledWorkoutSheet`.
+
+The illustration slice added `ExerciseIllustration`: an exercise's drawing on a paper-toned
+tile, or a dumbbell glyph when it has none, with no semantics of its own since the name is
+always beside it. The drawings are grey figures on white and are shown the same way in both
+themes — on the light theme's high container, and in dark theme on the inverse surface, which is
+the same tone — rather than recoloured for dark (an inverted treatment was tried and rejected as
+not looking like the drawings). The white is multiplied away into the tile, so there's never a
+white card inside the tile's corners. Decoding happens off the main thread into a 16 MB LRU
+cache and the image fades in; previews decode in place. It sits at 48 dp in `ExerciseRow`, the
+picker's rows, the routine page's rows and the progress tab's trained-exercise rows (their
+skeletons match); at 40 dp in `ExerciseBlock`'s header, the workout and routine editors' reorder
+rows and `LoggedExerciseCard`; at 64 dp beside the progress page's headline, where the chart is
+the hero; and as a 2:1 panel at the top of the exercise page, which is simply absent when there's
+no drawing. The same slice added `NameDialog` (one pre-filled, pre-selected field with its
+confirm disabled while blank), which renames the workout in progress. That panel alone asks for
+`animate`: the bundled animated WebP plays on a loop in an
+`ImageView` hosting the system's `AnimatedImageDrawable` (Compose has no player of its own),
+with a multiply colour filter in the paper tone standing in for the still's blend, fading in over
+the still once decoded and stopping when it leaves the screen. Android 8 has no `ImageDecoder`,
+so it keeps the still. The records block keeps its trophy as the leading mark, and the home and
+history rows that join exercise names into one line stay text.
 
 ### 5.5 Threading & testing
 
@@ -1150,15 +1206,31 @@ plan.
 
 - *Whose data the phone holds* (FR-8.6) is recorded in DataStore (`cloudOwnerAccountId`). After a
   sign-in, `prepare()` compares phone and cloud: nothing online → claim the data and back it up; a
-  backup online and unowned data → `ChooseSource`; another account's data → `OtherAccountData`,
-  which replaces only on request. The Account page asks, and offers the question again
-  (`FinishSetup`) if it was put off or failed.
+  backup online and an empty phone → the backup comes straight down (`Restored`, and the page says
+  what arrived); a backup online and unowned data of the phone's own → `ChooseSource`; another
+  account's data → `OtherAccountData`, which replaces only on request. The Account page asks, and
+  offers the question again (`FinishSetup`) if it was put off or failed.
 - *Automatic backups*: `BackupDao.observeChanges()` (one query over every backed-up table) marks
   `cloudBackupPending` once changes have settled for 5 s. A pending backup goes up 10 s later, if
   the owner is signed in and no workout is in progress, under `NonCancellable` so a workout starting
   mid-upload can't leave half of one, and is retried every 5 min while it fails. The flag survives
   process death, so a kill before the upload is caught on the next launch. A restore's own writes
   are ignored for 15 s so they don't trigger a re-upload.
+- *When the app isn't there to send it*, the same moment books a WorkManager job
+  (`domain/repository/BackupUploadScheduler` → `work/WorkManagerBackupUploadScheduler`): one
+  named one-off job, kept if already waiting, constrained to a connected network, with
+  exponential back-off. `work/BackupWorker` calls `CloudBackups.backUpIfDue()`, which sends the
+  pending backup only if the owner is signed in, automatic backup is on and no workout is in
+  progress, and asks for a retry only when an upload actually failed. The in-app runner cancels
+  the job once it has sent the backup itself. `LiftBookApplication` is WorkManager's
+  `Configuration.Provider` with Hilt's worker factory, so the default start-up initialiser is
+  removed in the manifest. On phones that throttle background work the job can wait for a better
+  moment; worst case the next launch sends it, as before.
+- *Deleting everything* (FR-6.5) goes through `CloudBackups.eraseAll()`, from Settings and from the
+  backup page alike: the account's backup online is deleted first — offline, nothing is deleted
+  and the page says so — then the phone's data and settings, and the empty phone stays the
+  account's with nothing pending. Otherwise the cleared phone would restore the backup at the next
+  sign-in.
 - Signing out keeps the phone's data and its owner; a different account signing in gets the
   `OtherAccountData` question.
 - *Automatic backup is a switch* (FR-8.7, `cloudAutoBackup` in DataStore, on by default): off, the

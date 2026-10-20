@@ -8,6 +8,7 @@ import com.example.liftbook.data.cloud.UnavailableAccountRepository
 import com.example.liftbook.data.cloud.UnavailableCloudBackupRepository
 import com.example.liftbook.domain.repository.AccountRepository
 import com.example.liftbook.domain.repository.BackupRepository
+import com.example.liftbook.domain.repository.BackupUploadScheduler
 import com.example.liftbook.domain.repository.CloudBackupRepository
 import com.example.liftbook.domain.repository.RestTimerScheduler
 import com.example.liftbook.domain.repository.WorkoutRepository
@@ -64,7 +65,8 @@ object CloudModule {
         workouts: WorkoutRepository,
         reminders: WorkoutReminders,
         restTimer: RestTimerScheduler,
+        uploads: BackupUploadScheduler,
         clock: Clock,
         @ApplicationScope scope: CoroutineScope,
-    ): CloudBackups = CloudBackups(accounts, cloud, backups, workouts, reminders, restTimer, clock, scope)
+    ): CloudBackups = CloudBackups(accounts, cloud, backups, workouts, reminders, restTimer, uploads, clock, scope)
 }

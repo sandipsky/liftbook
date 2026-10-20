@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +19,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.liftbook.R
 import com.example.liftbook.domain.model.Exercise
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.exerciseMetaSpoken
 import com.example.liftbook.ui.components.exerciseMetaText
 import com.example.liftbook.ui.theme.LiftBookPreview
@@ -25,7 +28,10 @@ import com.example.liftbook.ui.theme.Spacing
 import com.example.liftbook.ui.theme.ThemePreviews
 import com.example.liftbook.ui.theme.rowTitle
 
-/** An exercise in a list: the name, and its muscle group and equipment beneath. The whole row is the target. */
+/**
+ * An exercise in a list: its drawing, the name, and its muscle group and equipment beneath. The
+ * whole row is the target.
+ */
 @Composable
 internal fun ExerciseRow(
     exercise: Exercise,
@@ -42,6 +48,10 @@ internal fun ExerciseRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
+        ExerciseIllustration(
+            illustration = exercise.illustration,
+            modifier = Modifier.size(ExerciseIllustrationDefaults.ThumbnailSize),
+        )
         Column(Modifier.weight(1f)) {
             Text(
                 text = exercise.name,

@@ -227,6 +227,10 @@ private fun PickerRow(exercise: Exercise, order: Int?, onToggle: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
+        ExerciseIllustration(
+            illustration = exercise.illustration,
+            modifier = Modifier.size(ExerciseIllustrationDefaults.ThumbnailSize),
+        )
         Column(Modifier.weight(1f)) {
             Text(
                 text = exercise.name,
@@ -286,13 +290,28 @@ private const val MARK_FADE_MILLIS = 150
 @ThemePreviews
 @Composable
 private fun PickerRowsPreview() {
-    fun exercise(id: String, name: String, muscle: MuscleGroup, equipment: Equipment) =
-        Exercise(id, name, muscle, equipment, ExerciseType.STRENGTH, isCustom = false, isArchived = false, createdAt = Instant.EPOCH)
+    fun exercise(id: String, name: String, muscle: MuscleGroup, equipment: Equipment, illustration: String? = null) = Exercise(
+        id, name, muscle, equipment, ExerciseType.STRENGTH,
+        isCustom = false, isArchived = false, createdAt = Instant.EPOCH, illustration = illustration,
+    )
     LiftBookPreview {
         Column {
-            PickerRow(exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL), order = 2, onToggle = {})
-            PickerRow(exercise("incline", "Incline Bench Press (Dumbbell)", MuscleGroup.CHEST, Equipment.DUMBBELL), order = null, onToggle = {})
-            PickerRow(exercise("ohp", "Overhead Press (Barbell)", MuscleGroup.SHOULDERS, Equipment.BARBELL), order = 1, onToggle = {})
+            PickerRow(
+                exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL, "barbell_bench_press"),
+                order = 2,
+                onToggle = {},
+            )
+            PickerRow(
+                exercise("incline", "Incline Bench Press (Dumbbell)", MuscleGroup.CHEST, Equipment.DUMBBELL, "dumbbell_incline_bench_press"),
+                order = null,
+                onToggle = {},
+            )
+            PickerRow(
+                exercise("ohp", "Overhead Press (Barbell)", MuscleGroup.SHOULDERS, Equipment.BARBELL, "barbell_standing_wide_military_press"),
+                order = 1,
+                onToggle = {},
+            )
+            PickerRow(exercise("y-raise", "Cable Y-Raise", MuscleGroup.SHOULDERS, Equipment.CABLE), order = null, onToggle = {})
         }
     }
 }
@@ -302,7 +321,7 @@ private fun PickerRowsPreview() {
 private fun PickerEmptyFiltersPreview() {
     LiftBookPreview {
         PickerEmpty(
-            state = ExercisePickerUiState(query = "zercher", muscleFilter = MuscleGroup.QUADS, libraryCount = 129),
+            state = ExercisePickerUiState(query = "zercher", muscleFilter = MuscleGroup.QUADS, libraryCount = 126),
             onClearFilters = {},
         )
     }

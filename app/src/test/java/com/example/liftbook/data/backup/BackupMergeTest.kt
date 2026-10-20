@@ -89,6 +89,24 @@ class BackupMergeTest {
     private val squat = exercise("squat", "Squat (Barbell)", isCustom = false)
 
     @Test
+    fun `a retired built-in comes back archived when the backup's workouts need it, and not at all otherwise`() {
+        val rowing = "4a300d9d-e11e-31e5-9350-a00cbba6b629" // retired, still logged in a workout here
+        val landmine = "fd65a9ed-a57f-3358-ba00-6be74ab76e75" // retired, never used
+        val rows = backup(
+            exercises = listOf(
+                exercise(rowing, "Rowing (Machine)", type = ExerciseType.CARDIO, isCustom = false),
+                exercise(landmine, "Landmine Press", isCustom = false),
+                squat,
+            ),
+            workouts = listOf(workout("cardio", rowing), workout("legs", "squat")),
+        ).withoutRetiredBuiltIns()
+
+        assertEquals(listOf(rowing to true, "squat" to false), rows.exercises.map { it.id to it.isArchived })
+        assertEquals(listOf("cardio", "legs"), rows.workouts.map { it.id })
+        assertEquals(listOf(rowing, "squat"), rows.sets.map { it.exerciseId })
+    }
+
+    @Test
     fun `what this phone has is left alone, and only what's missing is added`() {
         val added = planMerge(
             backup(

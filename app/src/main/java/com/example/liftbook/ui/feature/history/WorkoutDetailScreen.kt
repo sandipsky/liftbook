@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,9 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -120,8 +116,8 @@ fun WorkoutDetailRoute(
 
 /**
  * A past workout, read back (FR-4.2): when it was and how long it took, the three numbers it came
- * to, any records it set, and every set, exercise by exercise. Edit is in the top bar, Delete
- * behind the menu — it can't be undone, so it's a step further away.
+ * to, any records it set, and every set, exercise by exercise. Edit and Delete sit in the top
+ * bar; Delete can't be undone, so it asks first.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,7 +145,10 @@ fun WorkoutDetailScreen(
                         IconButton(onClick = { onAction(WorkoutDetailAction.Edit) }) {
                             Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.workout_detail_edit))
                         }
-                        DetailMenu(onDelete = { confirmDelete = true })
+                        // Delete was the menu's only item, so it stands on its own; the dialog still asks.
+                        IconButton(onClick = { confirmDelete = true }) {
+                            Icon(Icons.Outlined.DeleteOutline, contentDescription = stringResource(R.string.workout_detail_delete))
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -276,26 +275,6 @@ fun WorkoutDetailScreen(
 }
 
 private enum class DetailContent { Loading, NotFound, Workout }
-
-@Composable
-private fun DetailMenu(onDelete: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.workout_detail_delete)) },
-                leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    onDelete()
-                },
-            )
-        }
-    }
-}
 
 @Composable
 private fun DetailHeader(workout: Workout, state: WorkoutDetailUiState) {

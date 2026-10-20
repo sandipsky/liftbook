@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.SwapVert
@@ -59,6 +61,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -69,7 +72,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -88,6 +93,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.liftbook.R
+import com.example.liftbook.domain.calculator.WorkoutNames
 import com.example.liftbook.domain.calculator.WorkoutProgress
 import com.example.liftbook.domain.model.RestTimer
 import com.example.liftbook.domain.model.WeightUnit
@@ -98,6 +104,7 @@ import com.example.liftbook.ui.components.ConfirmDialog
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.ExercisePickerSheet
 import com.example.liftbook.ui.components.LiftBookTopBar
+import com.example.liftbook.ui.components.NameDialog
 import com.example.liftbook.ui.components.NoteField
 import com.example.liftbook.ui.components.ReorderableItem
 import com.example.liftbook.ui.components.RestDurationDialog
@@ -221,7 +228,12 @@ fun ActiveWorkoutScreen(
     var removingExerciseId by rememberSaveable { mutableStateOf<String?>(null) }
     var restDialogExerciseId by rememberSaveable { mutableStateOf<String?>(null) }
     var defaultRestDialog by rememberSaveable { mutableStateOf(false) }
+    var renaming by rememberSaveable { mutableStateOf(false) }
     val workout = state.workout
+    val startRenaming = {
+        focusManager.clearFocus()
+        renaming = true
+    }
 
     BackHandler(enabled = state.isReordering) { onAction(ActiveWorkoutAction.StopReordering) }
 
@@ -259,6 +271,7 @@ fun ActiveWorkoutScreen(
                             }
                             WorkoutMenu(
                                 canReorder = state.exercises.size > 1,
+                                onRename = startRenaming,
                                 onDefaultRest = if (state.isRecording) null else { { defaultRestDialog = true } },
                                 onReorder = {
                                     focusManager.clearFocus()
@@ -322,6 +335,7 @@ fun ActiveWorkoutScreen(
                         modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
                         topPadding = padding.calculateTopPadding(),
                         onAction = onAction,
+                        onRename = startRenaming,
                         onEditRest = { restDialogExerciseId = it },
                         onRemoveExercise = { exercise ->
                             if (exercise.hasCompletedSets) {
@@ -362,6 +376,21 @@ fun ActiveWorkoutScreen(
                 onAction(ActiveWorkoutAction.Discard)
             },
             onDismiss = { confirmFinish = false },
+        )
+    }
+
+    if (renaming && workout != null) {
+        NameDialog(
+            title = stringResource(R.string.workout_rename_title),
+            initialName = workout.name,
+            label = stringResource(R.string.workout_rename_label),
+            confirmLabel = stringResource(R.string.workout_rename_confirm),
+            maxLength = WorkoutNames.MAX_LENGTH,
+            onConfirm = { name ->
+                renaming = false
+                onAction(ActiveWorkoutAction.Rename(name))
+            },
+            onDismiss = { renaming = false },
         )
     }
 
@@ -443,6 +472,7 @@ private fun WorkoutList(
     listState: LazyListState,
     topPadding: Dp,
     onAction: (ActiveWorkoutAction) -> Unit,
+    onRename: () -> Unit,
     onEditRest: (workoutExerciseId: String) -> Unit,
     onRemoveExercise: (ActiveExercise) -> Unit,
     modifier: Modifier = Modifier,
@@ -483,7 +513,7 @@ private fun WorkoutList(
             }
         } else {
             item(key = "header", contentType = "header") {
-                WorkoutHeader(workout = workout, state = state, now = now)
+                WorkoutHeader(workout = workout, state = state, now = now, onRename = onRename)
             }
             itemsIndexed(state.exercises, key = { _, item -> item.id }, contentType = { _, _ -> "exercise" }) { _, item ->
                 ExerciseBlock(
@@ -522,11 +552,13 @@ private fun WorkoutList(
 
 /**
  * The top of the workout: what it is, and the numbers that say how it's going — time (FR-3.6),
- * volume and sets done — with the workout's note beneath (FR-3.9). A workout being recorded
- * (FR-3.11) has no time to show; its numbers are what's been entered: exercises, sets, volume.
+ * volume and sets done — with the workout's note beneath (FR-3.9). The name is a control: an
+ * empty workout starts with one for the time of day, and tapping it renames (FR-3.1); the pencil
+ * beside it says so. A workout being recorded (FR-3.11) has no time to show; its numbers are
+ * what's been entered: exercises, sets, volume.
  */
 @Composable
-private fun WorkoutHeader(workout: Workout, state: ActiveWorkoutUiState, now: () -> Instant) {
+private fun WorkoutHeader(workout: Workout, state: ActiveWorkoutUiState, now: () -> Instant, onRename: () -> Unit) {
     val recording = state.isRecording
     Column(
         Modifier
@@ -541,12 +573,27 @@ private fun WorkoutHeader(workout: Workout, state: ActiveWorkoutUiState, now: ()
             color = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.height(Spacing.xxs))
-        Text(
-            text = workout.name,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.semantics { heading() },
-        )
+        Row(
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .clip(MaterialTheme.shapes.small)
+                .clickable(onClickLabel = stringResource(R.string.workout_rename_click_label), onClick = onRename)
+                .semantics(mergeDescendants = true) { heading() },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Text(
+                text = workout.name,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Icon(
+                Icons.Outlined.Edit,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(IconSize.inline),
+            )
+        }
         if (!recording) {
             Text(
                 text = stringResource(R.string.workout_started_at, timeOfDayText(workout.startedAt.atZone(state.zone).toLocalTime())),
@@ -709,6 +756,7 @@ private class LastRest {
 @Composable
 private fun WorkoutMenu(
     canReorder: Boolean,
+    onRename: () -> Unit,
     onDefaultRest: (() -> Unit)?,
     onReorder: () -> Unit,
     onDiscard: () -> Unit,
@@ -719,6 +767,14 @@ private fun WorkoutMenu(
             Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.action_more_options))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.workout_menu_rename)) },
+                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onRename()
+                },
+            )
             if (onDefaultRest != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.workout_menu_default_rest)) },

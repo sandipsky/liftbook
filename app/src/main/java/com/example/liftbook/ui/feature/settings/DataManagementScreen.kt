@@ -123,6 +123,7 @@ fun DataManagementRoute(
                 DataManagementEvent.ImportFailed -> resources.getString(R.string.import_failed)
                 DataManagementEvent.Cleared -> resources.getString(R.string.data_cleared)
                 DataManagementEvent.ClearFailed -> resources.getString(R.string.data_clear_failed)
+                DataManagementEvent.CloudUnreachable -> resources.getString(R.string.data_clear_cloud_unreachable)
             }
             snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Long)
         }
@@ -232,6 +233,7 @@ fun DataManagementScreen(
         ClearDataDialog(
             confirmation = clearConfirmation,
             lastExportedAt = state.lastExportedAt,
+            accountEmail = state.accountEmail,
             today = state.today,
             zone = state.zone,
             onConfirm = { onAction(DataManagementAction.ConfirmClear) },

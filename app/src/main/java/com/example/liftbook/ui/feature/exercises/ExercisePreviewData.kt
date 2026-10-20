@@ -31,30 +31,31 @@ internal object ExercisePreviewData {
         type: ExerciseType = ExerciseType.STRENGTH,
         isCustom: Boolean = false,
         isArchived: Boolean = false,
-    ) = Exercise(id, name, muscle, equipment, type, isCustom, isArchived, created)
+        illustration: String? = null,
+    ) = Exercise(id, name, muscle, equipment, type, isCustom, isArchived, created, illustration = illustration)
 
-    val benchPress = exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL)
+    val benchPress = exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL, illustration = "barbell_bench_press")
     val cableYRaise = exercise("y-raise", "Cable Y-Raise", MuscleGroup.SHOULDERS, Equipment.CABLE, isCustom = true)
-    val pullUp = exercise("pull-up", "Pull-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT)
-    val rowing = exercise("rowing", "Rowing (Machine)", MuscleGroup.CARDIO, Equipment.CARDIO_MACHINE, ExerciseType.CARDIO)
+    val pullUp = exercise("pull-up", "Pull-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT, illustration = "pull_up")
+    val skiErg = exercise("ski-erg", "Ski Erg", MuscleGroup.CARDIO, Equipment.CARDIO_MACHINE, ExerciseType.CARDIO, illustration = "ski_ergometer")
     val archivedCurl = exercise(
         "spider-curl", "Spider Curl (EZ Bar)", MuscleGroup.BICEPS, Equipment.BARBELL, isCustom = true, isArchived = true,
     )
 
     val library: List<Exercise> = listOf(
-        exercise("ab-wheel", "Ab Wheel Rollout", MuscleGroup.CORE, Equipment.OTHER, ExerciseType.BODYWEIGHT),
-        exercise("arnold", "Arnold Press (Dumbbell)", MuscleGroup.SHOULDERS, Equipment.DUMBBELL),
-        exercise("back-ext", "Back Extension", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT),
+        exercise("ab-wheel", "Ab Wheel Rollout", MuscleGroup.CORE, Equipment.OTHER, ExerciseType.BODYWEIGHT, illustration = "wheel_rollerout"),
+        exercise("arnold", "Arnold Press (Dumbbell)", MuscleGroup.SHOULDERS, Equipment.DUMBBELL, illustration = "dumbbell_arnold_press"),
+        exercise("back-ext", "Back Extension", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT, illustration = "hyperextension"),
         benchPress,
-        exercise("bench-db", "Bench Press (Dumbbell)", MuscleGroup.CHEST, Equipment.DUMBBELL),
-        exercise("bss", "Bulgarian Split Squat (Dumbbell)", MuscleGroup.QUADS, Equipment.DUMBBELL),
+        exercise("bench-db", "Bench Press (Dumbbell)", MuscleGroup.CHEST, Equipment.DUMBBELL, illustration = "dumbbell_bench_press"),
+        exercise("bss", "Bulgarian Split Squat (Dumbbell)", MuscleGroup.QUADS, Equipment.DUMBBELL, illustration = "dumbbell_single_leg_split_squat"),
         cableYRaise,
-        exercise("chin-up", "Chin-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT),
-        exercise("deadlift", "Deadlift (Barbell)", MuscleGroup.BACK, Equipment.BARBELL),
-        exercise("face-pull", "Face Pull (Cable)", MuscleGroup.SHOULDERS, Equipment.CABLE),
-        exercise("hip-thrust", "Hip Thrust (Barbell)", MuscleGroup.GLUTES, Equipment.BARBELL),
+        exercise("chin-up", "Chin-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT, illustration = "chin_up"),
+        exercise("deadlift", "Deadlift (Barbell)", MuscleGroup.BACK, Equipment.BARBELL, illustration = "barbell_deadlift"),
+        exercise("face-pull", "Face Pull (Cable)", MuscleGroup.SHOULDERS, Equipment.CABLE, illustration = "cable_standing_rear_delt_row_with_rope"),
+        exercise("hip-thrust", "Hip Thrust (Barbell)", MuscleGroup.GLUTES, Equipment.BARBELL, illustration = "barbell_lying_lifting_on_hip"),
         pullUp,
-        rowing,
+        skiErg,
     )
 
     private fun session(id: String, name: String, daysAgo: Long, vararg sets: LoggedSet) = ExerciseSession(

@@ -21,6 +21,8 @@ data class DataManagementUiState(
     val importing: ImportDraft? = null,
     val isConfirmingReplace: Boolean = false,
     val isConfirmingClear: Boolean = false,
+    /** The signed-in account, whose backup online a clear deletes too; null while signed out. */
+    val accountEmail: String? = null,
     val today: LocalDate = LocalDate.of(1970, 1, 1),
     val zone: ZoneId = ZoneId.systemDefault(),
 ) {
@@ -87,4 +89,7 @@ sealed interface DataManagementEvent {
     data object Cleared : DataManagementEvent
 
     data object ClearFailed : DataManagementEvent
+
+    /** Nothing was deleted: the account's backup online couldn't be reached to delete it first. */
+    data object CloudUnreachable : DataManagementEvent
 }

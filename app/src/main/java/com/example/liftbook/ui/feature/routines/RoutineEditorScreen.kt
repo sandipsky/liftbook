@@ -91,6 +91,8 @@ import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.BottomActionBar
 import com.example.liftbook.ui.components.ConfirmDialog
 import com.example.liftbook.ui.components.EmptyState
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.ExercisePickerSheet
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.NumberField
@@ -407,6 +409,12 @@ private fun ExerciseBlock(
                     modifier = Modifier.size(IconSize.inline),
                 )
             }
+            ExerciseIllustration(
+                illustration = item.exercise.illustration,
+                modifier = Modifier
+                    .padding(end = Spacing.sm)
+                    .size(ExerciseIllustrationDefaults.InlineSize),
+            )
             Column(Modifier.weight(1f).padding(vertical = Spacing.xs)) {
                 Text(
                     text = item.exercise.name,

@@ -18,4 +18,7 @@ interface CloudBackupRepository {
 
     /** The whole backup, or null if the account has none. */
     suspend fun download(accountId: String): BackupSnapshot?
+
+    /** Removes everything stored for [accountId] (FR-6.5). Nothing stored is not an error. */
+    suspend fun delete(accountId: String)
 }

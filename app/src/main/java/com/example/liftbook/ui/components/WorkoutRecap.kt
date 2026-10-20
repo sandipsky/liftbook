@@ -215,14 +215,24 @@ fun LoggedExerciseCard(
             .then(if (onClick != null) Modifier.clickable(onClickLabel = clickLabel, onClick = onClick) else Modifier)
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
     ) {
-        Text(
-            text = exercise.exercise.name,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(bottom = Spacing.xxs),
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            ExerciseIllustration(
+                illustration = exercise.exercise.illustration,
+                modifier = Modifier.size(ExerciseIllustrationDefaults.InlineSize),
+            )
+            Text(
+                text = exercise.exercise.name,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
         exercise.sets.forEachIndexed { index, set ->
             LoggedSetLine(set = set, number = numbers[index], weightUnit = weightUnit, isRecord = index in exercise.recordSets)
         }

@@ -46,6 +46,13 @@ interface WorkoutRepository {
     suspend fun discardActiveWorkout(workoutId: String)
 
     /**
+     * Renames the workout in progress, if [workoutId] is it (FR-3.1): an empty workout starts
+     * with a name for the time of day, which needn't be kept. A finished workout is renamed as
+     * part of a revision ([saveRevision]) instead.
+     */
+    suspend fun renameActiveWorkout(workoutId: String, name: String)
+
+    /**
      * Adds exercises to the end of the workout, in order, each with the sets done last time
      * (FR-3.2, FR-3.4). Returns the new workout-exercise ids.
      */

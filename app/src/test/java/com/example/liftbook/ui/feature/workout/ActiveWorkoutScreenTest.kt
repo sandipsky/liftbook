@@ -6,6 +6,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.Workout
@@ -52,6 +54,18 @@ class ActiveWorkoutScreenTest {
     private fun Workout.allDone() = copy(exercises = exercises.map { exercise -> exercise.copy(sets = exercise.sets.map { it.copy(isCompleted = true) }) })
 
     private fun dialogButton(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isDialog()))
+
+    @Test
+    fun `the workout is renamed from the menu, and the new name is sent`() {
+        show()
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Rename workout").performClick()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextReplacement("Leg day")
+        dialogButton("Rename").performClick()
+
+        assertEquals(listOf<ActiveWorkoutAction>(ActiveWorkoutAction.Rename("Leg day")), actions)
+    }
 
     @Test
     fun `shows the workout, its numbers and its sets`() {

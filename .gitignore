@@ -19,5 +19,8 @@ keystore.properties
 *.jks
 *.keystore
 
+# Release APKs from scripts/build-release.*
+/dist
+
 # Firebase project configuration: holds the project keys, so each developer adds their own (docs/firebase-setup.md)
 app/google-services.json

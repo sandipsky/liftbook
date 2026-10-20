@@ -41,7 +41,7 @@ This is the core screen; everything else exists to feed it or read from it.
 
 | ID | Requirement |
 | --- | --- |
-| FR-3.1 | Start an empty workout or one from a routine. Only one workout can be active at a time. |
+| FR-3.1 | Start an empty workout or one from a routine. Only one workout can be active at a time. An empty workout is named for the time of day it starts; either kind can be renamed while in progress. |
 | FR-3.2 | Add, remove and reorder exercises mid-workout. |
 | FR-3.3 | Log sets per exercise: weight × reps for strength; duration and distance for cardio; reps only for bodyweight. Each set can be marked complete. |
 | FR-3.4 | Pre-fill each set with the values from the last time that exercise was performed. |
@@ -85,7 +85,7 @@ JSON export is the backup path that needs no account, so it belongs in the MVP. 
 | FR-6.2 | Default rest duration, first day of week (Mon / Sun), theme (light / dark / system). |
 | FR-6.3 | Export all data (exercises, routines, workouts, settings) to a single JSON file via the system file picker. |
 | FR-6.4 | Import from a JSON export. The user chooses merge or replace, with a confirmation before replace. |
-| FR-6.5 | Clear all data, with a typed or two-step confirmation. |
+| FR-6.5 | Delete all data, with a typed confirmation, from Settings or the backup page. With an account signed in, its backup online is deleted too, so the data doesn't return at the next sign-in. |
 
 ## 7. Workout reminders
 
@@ -111,8 +111,8 @@ Optional: the app is complete without an account. Signing in adds one thing, a c
 | FR-8.2 | Sign in with a Google account, through the phone's credential manager. |
 | FR-8.3 | Reset a forgotten password by emailed link. |
 | FR-8.4 | Change the password from inside the app; the current password is required. |
-| FR-8.5 | Cloud backup: the signed-in account's own copy of the phone's data, as the FR-6.3 document, kept under that account's id where no other account can read or write it. Updated automatically once changes settle and no workout is in progress, and on demand; restored on demand. |
-| FR-8.6 | The phone's data belongs to one account at a time. Signing in settles whose: an account with a backup is offered a restore, and another account's data is replaced only after the user confirms. Signing out keeps the data on the phone. |
+| FR-8.5 | Cloud backup: the signed-in account's own copy of the phone's data, as the FR-6.3 document, kept under that account's id where no other account can read or write it. Updated automatically once changes settle and no workout is in progress, and on demand; a backup that can't go up while the app is open is sent when a connection returns, even with the app closed. Restored on demand. |
+| FR-8.6 | The phone's data belongs to one account at a time. Signing in settles whose: on an empty phone the account's backup is restored straight away; when the phone has data of its own the user chooses which to keep; another account's data is replaced only after the user confirms. Signing out keeps the data on the phone. |
 | FR-8.7 | Automatic backup can be switched off on the Account page; it is on by default, and Back up now still works when it is off. |
 | FR-8.8 | The first launch opens on the sign-in page, with Create account, Google, and Continue as guest. The page doesn't show again once passed; signing in stays available from Settings. |
 

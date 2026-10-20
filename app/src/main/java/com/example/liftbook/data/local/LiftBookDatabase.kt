@@ -37,7 +37,7 @@ import com.example.liftbook.data.local.entity.WorkoutSetEntity
         BodyWeightEntryEntity::class,
         WorkoutScheduleEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         // v2: the workout's rest timer (FR-3.5) — two nullable columns on workouts.
@@ -48,6 +48,8 @@ import com.example.liftbook.data.local.entity.WorkoutSetEntity
         AutoMigration(from = 3, to = 4),
         // v5: how a workout was logged (FR-3.11) — a column on workouts, defaulting to live.
         AutoMigration(from = 4, to = 5),
+        // v6: no schema change; retires three built-in exercises from the library.
+        AutoMigration(from = 5, to = 6, spec = RetireExercisesMigration::class),
     ],
 )
 @TypeConverters(Converters::class)

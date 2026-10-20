@@ -193,7 +193,7 @@ private fun ExerciseFilterRowPreview() {
             ExerciseFilterRow(
                 muscleFilter = null,
                 equipmentFilter = null,
-                resultCount = 129,
+                resultCount = 126,
                 showCount = false,
                 onOpenFilter = {},
                 modifier = Modifier.padding(Spacing.gutter),

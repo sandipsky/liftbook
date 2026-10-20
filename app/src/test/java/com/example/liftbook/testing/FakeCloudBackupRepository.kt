@@ -14,6 +14,9 @@ class FakeCloudBackupRepository : CloudBackupRepository {
     /** Every upload, in order, with the account it went to. */
     val uploads = mutableListOf<Pair<String, BackupSnapshot>>()
 
+    /** Every account whose backup was deleted, in order. */
+    val deleted = mutableListOf<String>()
+
     /** When set, the next call throws it. */
     var failure: AccountException? = null
 
@@ -31,6 +34,12 @@ class FakeCloudBackupRepository : CloudBackupRepository {
     override suspend fun download(accountId: String): BackupSnapshot? {
         fail()
         return stored[accountId]
+    }
+
+    override suspend fun delete(accountId: String) {
+        fail()
+        stored.remove(accountId)
+        deleted += accountId
     }
 
     private fun fail() {

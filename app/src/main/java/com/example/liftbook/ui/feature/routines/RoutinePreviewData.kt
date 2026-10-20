@@ -26,19 +26,20 @@ internal object RoutinePreviewData {
         muscle: MuscleGroup,
         equipment: Equipment,
         type: ExerciseType = ExerciseType.STRENGTH,
-    ) = Exercise(id, name, muscle, equipment, type, isCustom = false, isArchived = false, createdAt = created)
+        illustration: String? = null,
+    ) = Exercise(id, name, muscle, equipment, type, isCustom = false, isArchived = false, createdAt = created, illustration = illustration)
 
-    val bench = exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL)
-    val overheadPress = exercise("ohp", "Overhead Press (Barbell)", MuscleGroup.SHOULDERS, Equipment.BARBELL)
-    val inclineDumbbell = exercise("incline-db", "Incline Bench Press (Dumbbell)", MuscleGroup.CHEST, Equipment.DUMBBELL)
-    val dips = exercise("dips", "Chest Dip", MuscleGroup.CHEST, Equipment.NONE, ExerciseType.BODYWEIGHT)
-    val pushdown = exercise("pushdown", "Triceps Pushdown (Cable)", MuscleGroup.TRICEPS, Equipment.CABLE)
-    val rowing = exercise("rowing", "Rowing (Machine)", MuscleGroup.CARDIO, Equipment.CARDIO_MACHINE, ExerciseType.CARDIO)
-    val pullUp = exercise("pull-up", "Pull-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT)
-    val row = exercise("row", "Bent-Over Row (Barbell)", MuscleGroup.BACK, Equipment.BARBELL)
-    val squat = exercise("squat", "Squat (Barbell)", MuscleGroup.QUADS, Equipment.BARBELL)
-    val rdl = exercise("rdl", "Romanian Deadlift (Barbell)", MuscleGroup.HAMSTRINGS, Equipment.BARBELL)
-    val plank = exercise("plank", "Plank", MuscleGroup.CORE, Equipment.NONE, ExerciseType.CARDIO)
+    val bench = exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL, illustration = "barbell_bench_press")
+    val overheadPress = exercise("ohp", "Overhead Press (Barbell)", MuscleGroup.SHOULDERS, Equipment.BARBELL, illustration = "barbell_standing_wide_military_press")
+    val inclineDumbbell = exercise("incline-db", "Incline Bench Press (Dumbbell)", MuscleGroup.CHEST, Equipment.DUMBBELL, illustration = "dumbbell_incline_bench_press")
+    val dips = exercise("dips", "Chest Dip", MuscleGroup.CHEST, Equipment.NONE, ExerciseType.BODYWEIGHT, illustration = "chest_dip")
+    val pushdown = exercise("pushdown", "Triceps Pushdown (Cable)", MuscleGroup.TRICEPS, Equipment.CABLE, illustration = "cable_pushdown")
+    val skiErg = exercise("ski-erg", "Ski Erg", MuscleGroup.CARDIO, Equipment.CARDIO_MACHINE, ExerciseType.CARDIO, illustration = "ski_ergometer")
+    val pullUp = exercise("pull-up", "Pull-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT, illustration = "pull_up")
+    val row = exercise("row", "Bent-Over Row (Barbell)", MuscleGroup.BACK, Equipment.BARBELL, illustration = "barbell_bent_over_row")
+    val squat = exercise("squat", "Squat (Barbell)", MuscleGroup.QUADS, Equipment.BARBELL, illustration = "barbell_full_squat")
+    val rdl = exercise("rdl", "Romanian Deadlift (Barbell)", MuscleGroup.HAMSTRINGS, Equipment.BARBELL, illustration = "barbell_romanian_deadlift")
+    val plank = exercise("plank", "Plank", MuscleGroup.CORE, Equipment.NONE, ExerciseType.CARDIO, illustration = "front_plank_with_twist")
 
     private fun item(exercise: Exercise, target: SetTarget) = RoutineExercise(id = "re-${exercise.id}", exercise = exercise, target = target)
 
@@ -58,7 +59,7 @@ internal object RoutinePreviewData {
         item(inclineDumbbell, SetTarget(sets = 3, reps = 10, weightKg = 26.0)),
         item(dips, SetTarget(sets = 3, reps = 12)),
         item(pushdown, SetTarget(sets = 3, reps = 15)),
-        item(rowing, SetTarget(sets = 1, durationSeconds = 600, distanceMeters = 2_000.0)),
+        item(skiErg, SetTarget(sets = 1, durationSeconds = 600, distanceMeters = 2_000.0)),
     )
 
     val pull = routine(
@@ -82,8 +83,8 @@ internal object RoutinePreviewData {
         exercises = push.exercises.take(4).map {
             RoutineEditorExercise(key = it.id, exercise = it.exercise, fields = TargetFields.from(it.target, unit))
         } + RoutineEditorExercise(
-            key = "rowing",
-            exercise = rowing,
+            key = "ski-erg",
+            exercise = skiErg,
             fields = TargetFields.from(push.exercises.last().target, unit),
         ),
         weightUnit = unit,
