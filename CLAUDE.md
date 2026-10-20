@@ -116,6 +116,7 @@ unit tests, not inline in ViewModels or composables.
 ./gradlew testDebugUnitTest            # domain unit tests
 ./gradlew connectedDebugAndroidTest    # instrumented / Compose UI tests
 ./gradlew lint                         # Android lint
+scripts/build-release.sh [--install]   # signed release APK into dist/ (Windows: scripts\build-release.cmd [-Install])
 ```
 
 Prefer a real device over the emulator when testing the rest timer and reminders — Doze and

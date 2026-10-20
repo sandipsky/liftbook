@@ -93,18 +93,35 @@ the same on the emulator.
 
 ### Signed release builds
 
-Release signing reads a `keystore.properties` file in the repository root. It is gitignored and
-must never be committed:
+One script builds the signed APK and drops it in `dist/`, named after the version and the time:
+
+```bash
+scripts/build-release.sh              # Linux, macOS, Git Bash
+scripts/build-release.sh --install    # …and install it on the connected phone
+```
+
+```bat
+scripts\build-release.cmd             :: Windows (runs scripts\build-release.ps1)
+scripts\build-release.cmd -Install
+```
+
+Release signing reads a `keystore.properties` file in the repository root. The first run creates
+it for you, along with a signing key in `liftbook-release.jks`, after asking for a password
+(or reading `LIFTBOOK_KEYSTORE_PASSWORD` in a shell with no terminal). Both files are gitignored
+and must never be committed. **Back them up:** every later update must be signed with the same
+key, or the phone refuses to install it over the old one. To use a key of your own, write the
+file by hand instead; `storeFile` is resolved from the `app/` module, so a keystore in the
+repository root is `../liftbook-release.jks`:
 
 ```properties
-storeFile=/absolute/path/to/liftbook.jks
+storeFile=../liftbook-release.jks
 storePassword=…
 keyAlias=…
 keyPassword=…
 ```
 
-Then run `./gradlew assembleRelease`. Without the file the release build still works, it just
-isn't signed.
+Plain `./gradlew assembleRelease` still works too; without the file it builds an unsigned APK,
+which no phone will install.
 
 ## Tech stack
 
