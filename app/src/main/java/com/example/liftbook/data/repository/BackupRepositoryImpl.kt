@@ -15,6 +15,7 @@ import com.example.liftbook.data.backup.planMerge
 import com.example.liftbook.data.backup.toBackupFile
 import com.example.liftbook.data.backup.toRows
 import com.example.liftbook.data.backup.toUserPreferences
+import com.example.liftbook.data.backup.withoutRetiredBuiltIns
 import com.example.liftbook.data.local.LiftBookDatabase
 import com.example.liftbook.data.local.dao.BackupDao
 import com.example.liftbook.data.local.seed.ExerciseSeed
@@ -138,7 +139,8 @@ class BackupRepositoryImpl @Inject constructor(
     }
 
     private suspend fun importBackup(backup: BackupFile, mode: ImportMode): DataCounts {
-        val rows = backup.toRows()
+        // An older backup may still carry built-ins this version has retired.
+        val rows = backup.toRows().withoutRetiredBuiltIns()
         return when (mode) {
             ImportMode.MERGE -> database.withTransaction {
                 val added = planMerge(rows, readLocal())

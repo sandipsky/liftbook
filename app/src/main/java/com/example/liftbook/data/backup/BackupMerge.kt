@@ -4,6 +4,7 @@ import com.example.liftbook.data.local.entity.BodyWeightEntryEntity
 import com.example.liftbook.data.local.entity.ExerciseEntity
 import com.example.liftbook.data.local.entity.RoutineEntity
 import com.example.liftbook.data.local.entity.WorkoutScheduleEntity
+import com.example.liftbook.data.local.seed.ExerciseSeed
 import com.example.liftbook.domain.calculator.ExerciseNames
 import com.example.liftbook.domain.calculator.RoutineNames
 import java.util.Locale
@@ -98,6 +99,29 @@ internal fun planMerge(backup: BackupRows, local: LocalRows): BackupRows {
         schedules = backup.schedules
             .filterNot { schedule -> local.schedules.any { it.id == schedule.id || it.remindsWith(schedule) } }
             .map { it.copy(routineId = it.routineId?.takeIf { id -> id in knownRoutineIds }) },
+    )
+}
+
+/**
+ * Built-ins that have since left the library ([ExerciseSeed.retiredIds]) don't come back through
+ * a backup. One the backup's workouts or routines still refer to arrives archived, so its history
+ * stays readable (FR-1.3) while the library stays without it; one nothing refers to is left out.
+ * Applied before a merge or a replace alike.
+ */
+internal fun BackupRows.withoutRetiredBuiltIns(): BackupRows {
+    if (exercises.none { it.id in ExerciseSeed.retiredIds }) return this
+    val referenced = HashSet<String>()
+    routineExercises.mapTo(referenced) { it.exerciseId }
+    workoutExercises.mapTo(referenced) { it.exerciseId }
+    sets.mapTo(referenced) { it.exerciseId }
+    return copy(
+        exercises = exercises.mapNotNull { exercise ->
+            when {
+                exercise.id !in ExerciseSeed.retiredIds -> exercise
+                exercise.id in referenced -> exercise.copy(isArchived = true)
+                else -> null
+            }
+        },
     )
 }
 

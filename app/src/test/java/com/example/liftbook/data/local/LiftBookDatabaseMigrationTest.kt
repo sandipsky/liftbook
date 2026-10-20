@@ -157,6 +157,53 @@ class LiftBookDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun `version 5 to 6 deletes retired built-ins that were never used and archives the ones that were`() = runTest {
+        val landmine = "fd65a9ed-a57f-3358-ba00-6be74ab76e75"
+        val rowing = "4a300d9d-e11e-31e5-9350-a00cbba6b629"
+        val swimming = "7ec91ba5-f11b-36a0-97e8-c7a8aa079306"
+        createFromSchema(version = 5) { db ->
+            val exercise = "INSERT INTO exercises (id, name, primaryMuscle, equipment, type, isCustom, isArchived, defaultRestSeconds, notes, createdAt) VALUES "
+            db.execSQL("$exercise ('$landmine', 'Landmine Press', 'SHOULDERS', 'BARBELL', 'STRENGTH', 0, 0, NULL, NULL, 0)")
+            db.execSQL("$exercise ('$rowing', 'Rowing (Machine)', 'CARDIO', 'CARDIO_MACHINE', 'CARDIO', 0, 0, NULL, NULL, 0)")
+            db.execSQL("$exercise ('$swimming', 'Swimming', 'CARDIO', 'NONE', 'CARDIO', 0, 0, NULL, NULL, 0)")
+            db.execSQL("$exercise ('bench', 'Bench Press (Barbell)', 'CHEST', 'BARBELL', 'STRENGTH', 0, 0, NULL, NULL, 0)")
+            // Rowing was logged in a workout and Swimming sits in a routine; Landmine Press was never used.
+            db.execSQL(
+                "INSERT INTO workouts (id, name, routineId, startedAt, finishedAt, note, restStartedAt, restEndsAt, mode) " +
+                    "VALUES ('w', 'Cardio', NULL, 0, 3600000, NULL, NULL, NULL, 'LIVE')",
+            )
+            db.execSQL("INSERT INTO workout_exercises (id, workoutId, exerciseId, position, note, restSecondsOverride) VALUES ('we', 'w', '$rowing', 0, NULL, NULL)")
+            db.execSQL(
+                "INSERT INTO workout_sets (id, workoutExerciseId, workoutId, exerciseId, position, setType, isCompleted, weightKg, reps, durationSeconds, distanceMeters, completedAt) " +
+                    "VALUES ('s', 'we', 'w', '$rowing', 0, 'NORMAL', 1, NULL, NULL, 600, 2000.0, 600000)",
+            )
+            db.execSQL("INSERT INTO routines (id, name, notes, createdAt, updatedAt) VALUES ('r', 'Swim day', NULL, 0, 0)")
+            db.execSQL(
+                "INSERT INTO routine_exercises (id, routineId, exerciseId, position, targetSets, targetReps, targetWeightKg, targetDurationSeconds, targetDistanceMeters, restSecondsOverride, notes) " +
+                    "VALUES ('re', 'r', '$swimming', 0, 1, NULL, NULL, 1200, NULL, NULL, NULL)",
+            )
+        }
+
+        val database = Room.databaseBuilder(context, LiftBookDatabase::class.java, name).allowMainThreadQueries().build()
+        try {
+            // Opening runs the migration and validates the migrated schema.
+            val archivedById = HashMap<String, Int>()
+            database.openHelper.readableDatabase.query("SELECT id, isArchived FROM exercises").use { cursor ->
+                while (cursor.moveToNext()) archivedById[cursor.getString(0)] = cursor.getInt(1)
+            }
+            assertEquals(mapOf(rowing to 1, swimming to 1, "bench" to 0), archivedById)
+            // The history and routine that referred to them are untouched.
+            assertEquals("Cardio", database.workoutDao().getById("w")?.name)
+            database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM routine_exercises WHERE exerciseId = '$swimming'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(1, cursor.getInt(0))
+            }
+        } finally {
+            database.close()
+        }
+    }
+
     /** Creates the database exactly as schema [version] describes it, then runs [populate] on it. */
     private fun createFromSchema(version: Int, populate: (SupportSQLiteDatabase) -> Unit) {
         val schema = JSONObject(File(SCHEMA_DIR, "$version.json").readText()).getJSONObject("database")

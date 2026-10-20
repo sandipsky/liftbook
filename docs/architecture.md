@@ -149,6 +149,13 @@ com.example.liftbook
 - Reminders got their own feature package, as `CLAUDE.md` lays it out, rather than living in
   `settings/`; the rows both use moved to `ui/components/` (§5.4).
 
+*As built, exercise illustrations:*
+- Each built-in in `ExerciseSeed` may name a drawing of its movement: a WebP in
+  `app/src/main/assets/exercises/` (an asset folder, so not in the tree above). The domain
+  `Exercise` carries the name as `illustration`, filled in by `data/mapper/ExerciseMapper` from
+  the seed by id — never a column, never in a backup — and `ui/components/ExerciseIllustration`
+  draws it (§5.4).
+
 **Dependency direction is strictly one-way:** `ui → domain ← data`, with `core` usable by all.
 `ui` never imports from `data`; `domain` imports nothing from either. If a `ui` file ever needs an
 `import ...data.local.entity`, the mapper is missing.
@@ -196,7 +203,7 @@ Every library query filters `isArchived = 0`. History queries do not — that is
 archiving rather than deleting.
 
 *As built:*
-- **Seeding.** `data/local/seed/ExerciseSeed.kt` holds 129 built-ins, inserted by a
+- **Seeding.** `data/local/seed/ExerciseSeed.kt` holds 126 built-ins, inserted by a
   `RoomDatabase.Callback.onCreate` inside the database-creation transaction, so the library is
   never observed empty and a crash can't half-seed it. Ids were generated once as name-based UUIDs
   and are now fixed data; renaming a built-in must not change its id. `onCreate` only runs on a
@@ -207,6 +214,20 @@ archiving rather than deleting.
   field locked. Name, muscle group and equipment stay editable.
 - **Built-ins are read-only, custom exercises editable (FR-1.3)** — enforced in the repository, not
   just hidden in the UI.
+- **Illustrations.** Every built-in names a drawing of the movement
+  (`SeedExercise.illustration`): a 540 px WebP in `app/src/main/assets/exercises/`, about 1.7 MB
+  for the set. The name is looked up by id when a row is mapped (`ExerciseSeed.illustrationFor`)
+  rather than stored, so swapping a drawing is a code change, not a migration; custom exercises
+  have none and show a dumbbell glyph. `ExerciseSeedTest` checks that every named file is bundled
+  and every bundled file is named.
+- **Retired built-ins.** Three built-ins the drawing set had no movement for — Landmine Press,
+  Rowing (Machine), Swimming — were removed from the library rather than shipped without a
+  drawing. `ExerciseSeed.retiredIds` keeps their ids reserved. The v6 migration takes them out of
+  an existing database: deleted where nothing refers to them, archived where a workout or routine
+  does, since the `RESTRICT` foreign keys and FR-1.3 both say history keeps its exercise. A backup
+  that still carries one is filtered on import (`withoutRetiredBuiltIns`, before merge and replace
+  alike): it arrives archived if the backup's workouts or routines need it, and not at all
+  otherwise.
 
 ### 2.3 `routines` / `routine_exercises`
 
@@ -476,7 +497,11 @@ with their slices as additive changes, which Room's declared `AutoMigration` han
 **v3** adds `body_weight_entries` (FR-5.4) through `AutoMigration(2, 3)`.
 **v4** adds `workout_schedules` (FR-7.1) through `AutoMigration(3, 4)`.
 **v5** adds `workouts.mode` (FR-3.11), defaulting to `LIVE`, through `AutoMigration(4, 5)`.
-`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `4.json`,
+**v6** changes no schema. Its `AutoMigration(5, 6)` carries a spec, `RetireExercisesMigration`,
+whose `onPostMigrate` removes the retired built-ins (§2.2): deleted where unreferenced, archived
+where a workout or routine refers to them. A data-only change still bumps the version, since
+that is the only way Room runs it once per database.
+`LiftBookDatabaseMigrationTest` builds the old database from the committed `1.json` – `5.json`,
 inserts rows, and opens it with Room, which runs the migrations and validates the result against
 the current schema. `room-testing`'s `MigrationTestHelper` isn't used: it reads schemas from instrumentation
 assets, which JVM (Robolectric) tests don't have.
@@ -966,6 +991,21 @@ editor's clock dial, shared with the reminder editor. The reminders feature's ow
 `ui/feature/reminders/`: `ScheduleCard`, `DayOfWeekPicker` (seven round toggles in the user's
 week order, picked days in ink), `ReminderAlertNotice`, `LeadTimeDialog` and
 `ScheduledWorkoutSheet`.
+
+The illustration slice added `ExerciseIllustration`: an exercise's drawing on a paper-toned
+tile, or a dumbbell glyph when it has none, with no semantics of its own since the name is
+always beside it. The drawings are grey figures on white and are shown the same way in both
+themes — on the light theme's high container, and in dark theme on the inverse surface, which is
+the same tone — rather than recoloured for dark (an inverted treatment was tried and rejected as
+not looking like the drawings). The white is multiplied away into the tile, so there's never a
+white card inside the tile's corners. Decoding happens off the main thread into a 16 MB LRU
+cache and the image fades in; previews decode in place. It sits at 48 dp in `ExerciseRow`, the
+picker's rows, the routine page's rows and the progress tab's trained-exercise rows (their
+skeletons match); at 40 dp in `ExerciseBlock`'s header, the workout and routine editors' reorder
+rows and `LoggedExerciseCard`; at 64 dp beside the progress page's headline, where the chart is
+the hero; and as a 2:1 panel at the top of the exercise page, which is simply absent when there's
+no drawing. The records block keeps its trophy as the leading mark, and the home and history
+rows that join exercise names into one line stay text.
 
 ### 5.5 Threading & testing
 

@@ -59,6 +59,8 @@ import com.example.liftbook.domain.model.ExerciseType
 import com.example.liftbook.domain.model.PersonalRecord
 import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WeightUnit
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.NoteField
 import com.example.liftbook.ui.components.ReorderableListState
 import com.example.liftbook.ui.components.dragHandle
@@ -74,10 +76,10 @@ import com.example.liftbook.ui.theme.rowTitle
 import com.example.liftbook.ui.theme.tabularNumbers
 
 /**
- * One exercise in the workout: its name, its rest time, an optional note (FR-3.9) and its sets
- * as a table to log into (FR-3.3). The block is a single tonal surface; the table inside it has
- * no rules or boxes, only the fields themselves. It grows and shrinks smoothly as sets come and
- * go.
+ * One exercise in the workout: its drawing and name, its rest time, an optional note (FR-3.9)
+ * and its sets as a table to log into (FR-3.3). The block is a single tonal surface; the table
+ * inside it has no rules or boxes, only the fields themselves. It grows and shrinks smoothly as
+ * sets come and go.
  *
  * Recording a workout after the fact (FR-3.11), or editing a finished one (FR-4.2), passes
  * neither [onToggleDone] nor [onEditRest]: there's nothing to mark done, and no rest to time.
@@ -111,6 +113,13 @@ fun ExerciseBlock(
             Modifier.fillMaxWidth().padding(start = Spacing.md, end = Spacing.xxs, top = Spacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // A step smaller than in lists: the name, rest chip and menu share this row.
+            ExerciseIllustration(
+                illustration = exercise.illustration,
+                modifier = Modifier
+                    .padding(end = Spacing.sm)
+                    .size(ExerciseIllustrationDefaults.InlineSize),
+            )
             Column(Modifier.weight(1f).padding(vertical = Spacing.xs)) {
                 Text(
                     text = exercise.name,
@@ -395,6 +404,12 @@ fun ReorderRow(
         ) {
             Icon(Icons.Outlined.DragIndicator, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(IconSize.action))
         }
+        ExerciseIllustration(
+            illustration = item.item.exercise.illustration,
+            modifier = Modifier
+                .padding(end = Spacing.sm)
+                .size(ExerciseIllustrationDefaults.InlineSize),
+        )
         Column(Modifier.weight(1f).padding(vertical = Spacing.sm)) {
             Text(
                 text = item.item.exercise.name,

@@ -20,6 +20,12 @@ data class Exercise(
     /** Per-exercise rest override for the rest timer (FR-3.5); null means the global default. */
     val defaultRestSeconds: Int? = null,
     val notes: String? = null,
+    /**
+     * The name of the drawing of the movement that ships with the app, for the built-ins that
+     * have one; the UI resolves it to the bundled image. Null for custom exercises and the few
+     * built-ins the drawing set lacks.
+     */
+    val illustration: String? = null,
 ) {
     val isEditable: Boolean get() = isCustom
 }

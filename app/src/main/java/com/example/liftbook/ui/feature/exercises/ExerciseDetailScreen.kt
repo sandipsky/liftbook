@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,7 +77,10 @@ import com.example.liftbook.domain.model.SetType
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.ChartPoint
 import com.example.liftbook.ui.components.EmptyState
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.Fact
+import com.example.liftbook.ui.components.IllustrationDetail
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.LoggedSetLine
 import com.example.liftbook.ui.components.SectionHeader
@@ -311,6 +315,10 @@ private fun DetailList(
     }
 }
 
+/**
+ * The drawing of the movement when there is one, then the name and its three facts. Without a
+ * drawing the name leads, rather than an empty panel standing in.
+ */
 @Composable
 private fun DetailHeader(exercise: Exercise) {
     Column(
@@ -319,6 +327,17 @@ private fun DetailHeader(exercise: Exercise) {
             .padding(horizontal = Spacing.gutter)
             .padding(top = Spacing.xs, bottom = Spacing.lg),
     ) {
+        if (exercise.illustration != null) {
+            ExerciseIllustration(
+                illustration = exercise.illustration,
+                detail = IllustrationDetail.Full,
+                shape = MaterialTheme.shapes.large,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(ExerciseIllustrationDefaults.PanelAspectRatio),
+            )
+            Spacer(Modifier.height(Spacing.lg))
+        }
         if (exercise.isCustom) {
             Text(
                 text = stringResource(R.string.exercise_detail_custom),
@@ -549,6 +568,12 @@ private fun DetailSkeleton(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
     ) {
         Column(Modifier.padding(horizontal = Spacing.gutter).padding(top = Spacing.xs)) {
+            // Nearly every built-in has a drawing, so the panel is part of the shape that's coming.
+            SkeletonBlock(
+                Modifier.fillMaxWidth().aspectRatio(ExerciseIllustrationDefaults.PanelAspectRatio),
+                MaterialTheme.shapes.large,
+            )
+            Spacer(Modifier.height(Spacing.lg))
             SkeletonBlock(Modifier.padding(vertical = Spacing.xs).fillMaxWidth(0.7f).height(Spacing.lg))
             Spacer(Modifier.height(Spacing.lg))
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {

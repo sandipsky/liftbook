@@ -60,6 +60,8 @@ import com.example.liftbook.domain.model.TrainedExercise
 import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.ChartPoint
 import com.example.liftbook.ui.components.EmptyState
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.SectionHeader
 import com.example.liftbook.ui.components.SkeletonBlock
 import com.example.liftbook.ui.components.SkeletonContainer
@@ -362,6 +364,12 @@ private fun TrainedExerciseRow(trained: TrainedExercise, state: ProgressUiState,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
+        ExerciseIllustration(
+            illustration = trained.exercise.illustration,
+            modifier = Modifier
+                .padding(end = Spacing.xs)
+                .size(ExerciseIllustrationDefaults.ThumbnailSize),
+        )
         Column(Modifier.weight(1f)) {
             Text(trained.exercise.name, style = MaterialTheme.typography.rowTitle, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(meta, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)

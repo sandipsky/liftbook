@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -61,6 +62,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -76,6 +78,7 @@ import com.example.liftbook.R
 import com.example.liftbook.domain.model.MuscleGroup
 import com.example.liftbook.ui.components.EmptyState
 import com.example.liftbook.ui.components.ExerciseFilterKind
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.ExerciseFilterRow
 import com.example.liftbook.ui.components.ExerciseFilterSheet
 import com.example.liftbook.ui.components.SearchField
@@ -384,14 +387,21 @@ private fun LibrarySkeleton(modifier: Modifier = Modifier) {
     ) {
         Column(Modifier.padding(top = Spacing.xs)) {
             SkeletonWidths.forEach { (nameWidth, metaWidth) ->
-                // Blocks sit inside the real rows' line heights, so nothing shifts when content arrives.
-                Column(Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.sm)) {
-                    SkeletonBlock(
-                        Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(nameWidth).height(Spacing.md),
-                    )
-                    SkeletonBlock(
-                        Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(metaWidth).height(Spacing.sm),
-                    )
+                // Blocks sit where the real rows' drawing and lines will, so nothing shifts when content arrives.
+                Row(
+                    modifier = Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    SkeletonBlock(Modifier.size(ExerciseIllustrationDefaults.ThumbnailSize), MaterialTheme.shapes.medium)
+                    Column(Modifier.weight(1f)) {
+                        SkeletonBlock(
+                            Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(nameWidth).height(Spacing.md),
+                        )
+                        SkeletonBlock(
+                            Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(metaWidth).height(Spacing.sm),
+                        )
+                    }
                 }
             }
         }
@@ -425,7 +435,7 @@ private fun sampleState(
             library.groupBy { it.name.first().uppercase() }.map { (initial, group) -> ExerciseSection(initial, group) }
         },
         resultCount = if (empty) 0 else library.size,
-        libraryCount = 129,
+        libraryCount = 126,
     )
 }
 

@@ -17,7 +17,8 @@ network permission, so it works the same in airplane mode as anywhere else.
 ## Features
 
 **Exercise library**
-- 129 built-in exercises, each with a primary muscle group, equipment and type
+- 126 built-in exercises, each with a primary muscle group, equipment, type and a drawing of
+  the movement
 - Custom exercises. Deleting one archives it, so past workouts that used it stay intact
 - Search by name, filter by muscle group and equipment
 - Each exercise has a page with its full history and the values from last time

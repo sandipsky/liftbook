@@ -98,7 +98,7 @@ private fun SearchFieldPreview() {
     LiftBookPreview {
         SearchField(
             state = rememberTextFieldState(),
-            placeholder = "Search 129 exercises",
+            placeholder = "Search 126 exercises",
             modifier = Modifier.padding(Spacing.gutter),
         )
     }
@@ -110,7 +110,7 @@ private fun SearchFieldFilledPreview() {
     LiftBookPreview {
         SearchField(
             state = rememberTextFieldState("bench"),
-            placeholder = "Search 129 exercises",
+            placeholder = "Search 126 exercises",
             modifier = Modifier.padding(Spacing.gutter),
         )
     }

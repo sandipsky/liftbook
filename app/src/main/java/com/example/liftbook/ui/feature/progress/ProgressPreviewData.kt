@@ -26,13 +26,22 @@ internal object ProgressPreviewData {
     val zone: ZoneId = ZoneId.of("UTC")
     val today: LocalDate = LocalDate.of(2026, 9, 26)
 
-    private fun exercise(id: String, name: String, muscle: MuscleGroup, equipment: Equipment, type: ExerciseType = ExerciseType.STRENGTH) =
-        Exercise(id, name, muscle, equipment, type, isCustom = false, isArchived = false, createdAt = today.atStartOfDay(zone).toInstant())
+    private fun exercise(
+        id: String,
+        name: String,
+        muscle: MuscleGroup,
+        equipment: Equipment,
+        type: ExerciseType = ExerciseType.STRENGTH,
+        illustration: String? = null,
+    ) = Exercise(
+        id, name, muscle, equipment, type,
+        isCustom = false, isArchived = false, createdAt = today.atStartOfDay(zone).toInstant(), illustration = illustration,
+    )
 
-    val bench = exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL)
-    private val squat = exercise("squat", "Squat (Barbell)", MuscleGroup.QUADS, Equipment.BARBELL)
-    private val pullUp = exercise("pull-up", "Pull-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT)
-    private val ohp = exercise("ohp", "Overhead Press (Barbell)", MuscleGroup.SHOULDERS, Equipment.BARBELL)
+    val bench = exercise("bench", "Bench Press (Barbell)", MuscleGroup.CHEST, Equipment.BARBELL, illustration = "barbell_bench_press")
+    private val squat = exercise("squat", "Squat (Barbell)", MuscleGroup.QUADS, Equipment.BARBELL, illustration = "barbell_full_squat")
+    private val pullUp = exercise("pull-up", "Pull-Up", MuscleGroup.BACK, Equipment.NONE, ExerciseType.BODYWEIGHT, illustration = "pull_up")
+    private val ohp = exercise("ohp", "Overhead Press (Barbell)", MuscleGroup.SHOULDERS, Equipment.BARBELL, illustration = "barbell_standing_wide_military_press")
 
     /** Twice a week for three months, the top set creeping up. */
     private val benchWorkouts: List<ExerciseWorkout> = listOf(

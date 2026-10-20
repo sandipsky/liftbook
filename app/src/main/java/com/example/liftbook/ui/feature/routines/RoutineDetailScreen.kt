@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -51,9 +52,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -68,6 +69,8 @@ import com.example.liftbook.domain.model.WeightUnit
 import com.example.liftbook.ui.components.BottomActionBar
 import com.example.liftbook.ui.components.ConfirmDialog
 import com.example.liftbook.ui.components.EmptyState
+import com.example.liftbook.ui.components.ExerciseIllustration
+import com.example.liftbook.ui.components.ExerciseIllustrationDefaults
 import com.example.liftbook.ui.components.Fact
 import com.example.liftbook.ui.components.LiftBookTopBar
 import com.example.liftbook.ui.components.SetTargetText
@@ -357,7 +360,7 @@ private fun DetailHeader(routine: Routine, state: RoutineDetailUiState) {
     }
 }
 
-/** One exercise in order: its place, its name, and the target each set starts from. */
+/** One exercise in order: its place, its drawing, its name, and the target each set starts from. */
 @Composable
 private fun RoutineExerciseRow(number: Int, item: RoutineExercise, weightUnit: WeightUnit, onClick: () -> Unit) {
     Row(
@@ -365,16 +368,21 @@ private fun RoutineExerciseRow(number: Int, item: RoutineExercise, weightUnit: W
             .fillMaxWidth()
             .clickable(onClickLabel = stringResource(R.string.routine_exercise_click_label), onClick = onClick)
             .padding(horizontal = Spacing.gutter, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = number.toString(),
             style = MaterialTheme.typography.titleMedium.tabularNumbers(),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .width(Spacing.xl)
-                .alignBy(FirstBaseline),
+            modifier = Modifier.width(Spacing.xl),
         )
-        Column(Modifier.weight(1f).alignBy(FirstBaseline)) {
+        ExerciseIllustration(
+            illustration = item.exercise.illustration,
+            modifier = Modifier
+                .padding(end = Spacing.md)
+                .size(ExerciseIllustrationDefaults.ThumbnailSize),
+        )
+        Column(Modifier.weight(1f)) {
             Text(
                 text = item.exercise.name,
                 style = MaterialTheme.typography.rowTitle,
@@ -413,9 +421,16 @@ private fun DetailSkeleton(modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.height(Spacing.lg))
             SkeletonRowWidths.forEach { (nameWidth, targetWidth) ->
-                Column(Modifier.padding(start = Spacing.xl, top = Spacing.sm, bottom = Spacing.sm)) {
-                    SkeletonBlock(Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(nameWidth).height(Spacing.md))
-                    SkeletonBlock(Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(targetWidth).height(Spacing.sm))
+                Row(
+                    modifier = Modifier.padding(start = Spacing.xl, top = Spacing.sm, bottom = Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    SkeletonBlock(Modifier.size(ExerciseIllustrationDefaults.ThumbnailSize), MaterialTheme.shapes.medium)
+                    Column(Modifier.weight(1f)) {
+                        SkeletonBlock(Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(nameWidth).height(Spacing.md))
+                        SkeletonBlock(Modifier.padding(vertical = Spacing.xxs).fillMaxWidth(targetWidth).height(Spacing.sm))
+                    }
                 }
             }
         }
